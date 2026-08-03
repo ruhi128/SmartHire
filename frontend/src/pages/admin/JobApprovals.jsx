@@ -46,8 +46,8 @@ export default function JobApprovals() {
   const T = {
     page:  { padding: 24, maxWidth: 1100, margin: '0 auto' },
     card: {
-      background: isDark ? '#0b1a2e' : '#ffffff',
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)'}`,
+      background: isDark ? 'var(--bg-card)' : '#ffffff',
+      border: `1px solid ${isDark ? 'var(--border)' : 'rgba(0,0,0,0.08)'}`,
       borderRadius: 14, marginBottom: 14, overflow: 'hidden',
     },
     badge: (color) => ({
@@ -62,15 +62,15 @@ export default function JobApprovals() {
     },
     textarea: {
       width: '100%', boxSizing: 'border-box', resize: 'vertical',
-      background: isDark ? '#071525' : '#f8fafc',
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)'}`,
+      background: isDark ? 'var(--bg-input)' : '#f8fafc',
+      border: `1px solid ${isDark ? 'var(--border)' : 'rgba(0,0,0,0.12)'}`,
       borderRadius: 8, padding: '8px 12px', fontSize: 13,
-      color: isDark ? '#e2e8f0' : '#0f172a', outline: 'none',
+      color: isDark ? 'var(--text-primary)' : '#0f172a', outline: 'none',
       fontFamily: "'Sora',sans-serif", minHeight: 70,
     },
   };
 
-  const DC = { 'full-time': '#10c98a', internship: '#00c8f0', contract: '#f5a623' };
+  const DC = { 'full-time': '#16a34a', internship: '#4f46e5', contract: '#d97706' };
 
   return (
     <div style={T.page}>
@@ -78,7 +78,7 @@ export default function JobApprovals() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800,
-            color: isDark ? '#f0f6ff' : '#0f172a', fontFamily: "'Sora',sans-serif" }}>
+            color: isDark ? 'var(--text-primary)' : '#0f172a', fontFamily: "'Sora',sans-serif" }}>
             Job Approvals
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: isDark ? '#475569' : '#64748b' }}>
@@ -87,8 +87,8 @@ export default function JobApprovals() {
         </div>
         <button onClick={load} style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          padding: '8px 14px', background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+          padding: '8px 14px', background: isDark ? 'var(--bg-card-high)' : '#f1f5f9',
+          border: `1px solid ${isDark ? 'var(--border)' : 'rgba(0,0,0,0.1)'}`,
           borderRadius: 8, fontSize: 12, fontWeight: 600,
           color: isDark ? '#94a3b8' : '#64748b', cursor: 'pointer',
         }}>
@@ -98,11 +98,11 @@ export default function JobApprovals() {
 
       {/* Info banner */}
       <div style={{ padding: '10px 14px', marginBottom: 20,
-        background: 'rgba(124,92,252,0.07)', border: '1px solid rgba(124,92,252,0.2)',
+        background: 'rgba(79,70,229,0.07)', border: '1px solid rgba(79,70,229,0.2)',
         borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-        <AlertCircle size={15} color="#7c5cfc" style={{ flexShrink: 0, marginTop: 1 }}/>
+        <AlertCircle size={15} color="#4f46e5" style={{ flexShrink: 0, marginTop: 1 }}/>
         <p style={{ margin: 0, fontSize: 12, color: isDark ? '#94a3b8' : '#475569', lineHeight: 1.6 }}>
-          <strong style={{ color: '#7c5cfc' }}>Approval flow:</strong> When you approve a job,
+          <strong style={{ color: '#4f46e5' }}>Approval flow:</strong> When you approve a job,
           it becomes immediately visible in the student job listings <strong>and</strong> an
           announcement is automatically sent to all students. Rejected jobs are hidden and the
           recruiter is notified via the reason field.
@@ -112,12 +112,12 @@ export default function JobApprovals() {
       {/* Content */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <Loader2 size={28} color="#7c5cfc" style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}/>
+          <Loader2 size={28} color="#4f46e5" style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}/>
           <p style={{ margin: '12px 0 0', color: isDark ? '#475569' : '#94a3b8' }}>Loading pending jobs...</p>
         </div>
       ) : jobs.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <CheckCircle size={40} color="#10c98a" style={{ marginBottom: 12 }}/>
+          <CheckCircle size={40} color="#16a34a" style={{ marginBottom: 12 }}/>
           <h3 style={{ margin: 0, color: isDark ? '#94a3b8' : '#64748b', fontWeight: 600 }}>All caught up!</h3>
           <p style={{ color: isDark ? '#475569' : '#94a3b8', marginTop: 6, fontSize: 14 }}>No pending job approvals.</p>
         </div>
@@ -135,20 +135,20 @@ export default function JobApprovals() {
                   {/* Company logo / initial */}
                   <div style={{
                     width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-                    background: isDark ? 'rgba(124,92,252,0.15)' : '#ede9fe',
+                    background: 'rgba(79,70,229,0.12)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 16, fontWeight: 800, color: '#7c5cfc',
+                    fontSize: 16, fontWeight: 800, color: '#4f46e5',
                   }}>
                     {job.companies?.name?.[0] || '?'}
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: isDark ? '#e2e8f0' : '#0f172a' }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: isDark ? 'var(--text-primary)' : '#0f172a' }}>
                         {job.title}
                       </span>
                       <span style={T.badge(DC[job.job_type] || '#94a3b8')}>{job.job_type}</span>
-                      <span style={T.badge('#f5a623')}>
+                      <span style={T.badge('#d97706')}>
                         <Clock size={10}/> Pending Review
                       </span>
                     </div>
@@ -167,7 +167,7 @@ export default function JobApprovals() {
                       <span style={T.row}><Users size={12}/>
                         CGPA {job.min_cgpa}+ · Backlogs ≤{job.max_backlogs}
                       </span>
-                      <span style={{ ...T.row, fontSize: 11, color: isDark ? '#334155' : '#cbd5e1' }}>
+                      <span style={{ ...T.row, fontSize: 11, color: 'var(--text-muted)' }}>
                         Posted {new Date(job.created_at).toLocaleDateString('en-IN', { day:'numeric', month:'short' })}
                       </span>
                     </div>
@@ -177,7 +177,7 @@ export default function JobApprovals() {
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
                     <button onClick={() => setExpanded(isOpen ? null : job.id)} style={{
                       padding: '6px 12px', background: 'none',
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                      border: `1px solid ${isDark ? 'var(--border)' : 'rgba(0,0,0,0.1)'}`,
                       borderRadius: 7, fontSize: 12, color: isDark ? '#64748b' : '#94a3b8',
                       cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                     }}>
@@ -188,9 +188,9 @@ export default function JobApprovals() {
                       onClick={() => act(job.id, 'reject')}
                       disabled={acting === job.id}
                       style={{
-                        padding: '6px 14px', background: 'rgba(240,75,75,0.1)',
-                        border: '1px solid rgba(240,75,75,0.3)', borderRadius: 7,
-                        fontSize: 12, fontWeight: 700, color: '#f04b4b',
+                        padding: '6px 14px', background: 'rgba(220,38,38,0.1)',
+                        border: '1px solid rgba(220,38,38,0.3)', borderRadius: 7,
+                        fontSize: 12, fontWeight: 700, color: '#dc2626',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                       }}>
                       <XCircle size={13}/> Reject
@@ -199,9 +199,9 @@ export default function JobApprovals() {
                       onClick={() => act(job.id, 'approve')}
                       disabled={acting === job.id}
                       style={{
-                        padding: '6px 14px', background: 'rgba(16,201,138,0.12)',
-                        border: '1px solid rgba(16,201,138,0.3)', borderRadius: 7,
-                        fontSize: 12, fontWeight: 700, color: '#10c98a',
+                        padding: '6px 14px', background: 'rgba(22,163,74,0.12)',
+                        border: '1px solid rgba(22,163,74,0.3)', borderRadius: 7,
+                        fontSize: 12, fontWeight: 700, color: '#16a34a',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                       }}>
                       {acting === job.id
@@ -215,7 +215,7 @@ export default function JobApprovals() {
                 {/* Expanded details */}
                 {isOpen && (
                   <div style={{
-                    borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}`,
+                    borderTop: `1px solid ${isDark ? 'var(--border)' : 'rgba(0,0,0,0.06)'}`,
                     padding: '16px 20px',
                     background: isDark ? 'rgba(0,0,0,0.15)' : '#f8fafc',
                   }}>
@@ -241,9 +241,9 @@ export default function JobApprovals() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {job.required_skills.map(s => (
                               <span key={s} style={{ padding: '2px 8px', borderRadius: 5, fontSize: 11,
-                                background: isDark ? 'rgba(0,200,240,0.08)' : '#e0f2fe',
-                                color: isDark ? '#00c8f0' : '#0284c7',
-                                border: `1px solid ${isDark ? 'rgba(0,200,240,0.2)' : '#bae6fd'}`,
+                                background: 'rgba(79,70,229,0.08)',
+                                color: '#4f46e5',
+                                border: '1px solid rgba(79,70,229,0.2)',
                               }}>{s}</span>
                             ))}
                           </div>
@@ -258,8 +258,8 @@ export default function JobApprovals() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {job.eligible_branches.map(b => (
                               <span key={b} style={{ padding: '2px 8px', borderRadius: 5, fontSize: 11,
-                                background: isDark ? 'rgba(124,92,252,0.1)' : '#ede9fe',
-                                color: '#7c5cfc', border: '1px solid rgba(124,92,252,0.2)',
+                                background: 'rgba(79,70,229,0.1)',
+                                color: '#4f46e5', border: '1px solid rgba(79,70,229,0.2)',
                               }}>{b}</span>
                             ))}
                           </div>
@@ -284,17 +284,17 @@ export default function JobApprovals() {
                     {/* Action buttons (also in expanded view) */}
                     <div style={{ display: 'flex', gap: 10, marginTop: 14, justifyContent: 'flex-end' }}>
                       <button onClick={() => act(job.id, 'reject')} disabled={acting === job.id} style={{
-                        padding: '9px 20px', background: 'rgba(240,75,75,0.1)',
-                        border: '1px solid rgba(240,75,75,0.3)', borderRadius: 8,
-                        fontSize: 13, fontWeight: 700, color: '#f04b4b', cursor: 'pointer',
+                        padding: '9px 20px', background: 'rgba(220,38,38,0.1)',
+                        border: '1px solid rgba(220,38,38,0.3)', borderRadius: 8,
+                        fontSize: 13, fontWeight: 700, color: '#dc2626', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}>
                         <XCircle size={14}/> Reject Job
                       </button>
                       <button onClick={() => act(job.id, 'approve')} disabled={acting === job.id} style={{
-                        padding: '9px 22px', background: '#10c98a',
+                        padding: '9px 22px', background: '#16a34a',
                         border: 'none', borderRadius: 8,
-                        fontSize: 13, fontWeight: 700, color: '#040c18', cursor: 'pointer',
+                        fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer',
                         display: 'flex', alignItems: 'center', gap: 6,
                       }}>
                         {acting === job.id

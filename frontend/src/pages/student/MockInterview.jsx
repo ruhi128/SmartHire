@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const CYAN = '#00c8f0', GREEN = '#10c98a', AMBER = '#f5a623',
-      RED  = '#f04b4b', VIOLET = '#7c5cfc';
+const CYAN = '#4f46e5', GREEN = '#16a34a', AMBER = '#d97706',
+      RED  = '#dc2626', VIOLET = '#4f46e5';
 
 const QUESTIONS = [
   'Tell me about yourself and your technical background.',
@@ -729,9 +729,9 @@ export default function MockInterview() {
 
       {/* STT not supported warning */}
       {!stt.isSupported && (
-        <div style={{ padding: '12px 16px', marginBottom: 16, background: 'rgba(240,75,75,0.08)', border: '1px solid rgba(240,75,75,0.25)', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ padding: '12px 16px', marginBottom: 16, background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           <AlertCircle size={16} color={RED} style={{ flexShrink: 0, marginTop: 1 }} />
-          <p style={{ margin: 0, fontSize: 13, color: '#f04b4b' }}>
+          <p style={{ margin: 0, fontSize: 13, color: RED }}>
             <strong>Speech recognition not available in this browser.</strong><br />
             Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> for the best experience.
           </p>
@@ -749,14 +749,14 @@ export default function MockInterview() {
               </div>
             )}
             {camReady && (
-              <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(16,201,138,0.15)', border: '1px solid rgba(16,201,138,0.3)', borderRadius: 6, padding: '3px 8px' }}>
+              <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', alignItems: 'center', gap: 5, background: 'rgba(22,163,74,0.15)', border: '1px solid rgba(22,163,74,0.3)', borderRadius: 6, padding: '3px 8px' }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: GREEN }} />
                 <span style={{ fontSize: 11, color: GREEN, fontWeight: 700 }}>LIVE</span>
               </div>
             )}
           </div>
           <button
-            style={{ ...BTN, width: '100%', background: camReady ? 'rgba(0,200,240,0.1)' : CYAN, color: camReady ? CYAN : '#040c18', border: `1px solid ${CYAN}` }}
+            style={{ ...BTN, width: '100%', background: camReady ? 'rgba(79,70,229,0.1)' : CYAN, color: camReady ? CYAN : '#ffffff', border: `1px solid ${CYAN}` }}
             onClick={startCamera}
           >
             {camReady ? <><CheckCircle size={15} /> Camera Ready</> : <><Video size={15} /> Start Camera</>}
@@ -767,7 +767,7 @@ export default function MockInterview() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={infoBox(CYAN)}>
               <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 700, color: CYAN }}>📋 How scoring works</p>
-              <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.8 }}>
+              <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
                 Your spoken answers are transcribed and analysed for:<br />
                 <strong style={{ color: VIOLET }}>Relevance</strong> · <strong style={{ color: GREEN }}>Fluency</strong> · <strong style={{ color: CYAN }}>Confidence</strong> · <strong style={{ color: AMBER }}>Structure</strong>
               </p>
@@ -779,7 +779,7 @@ export default function MockInterview() {
               { label: 'Speech Recognition', ready: stt.isSupported,   icon: <Mic size={14} /> },
             ].map(item => (
               <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#94a3b8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
                   {item.icon}{item.label}
                 </div>
                 {item.ready
@@ -788,7 +788,7 @@ export default function MockInterview() {
               </div>
             ))}
             <button
-              style={{ ...BTN, background: camReady && modelsLoaded ? GREEN : '#0f2040', color: camReady && modelsLoaded ? '#040c18' : '#334155', border: 'none', marginTop: 4 }}
+              style={{ ...BTN, background: camReady && modelsLoaded ? GREEN : 'var(--bg-card-high)', color: camReady && modelsLoaded ? '#ffffff' : '#334155', border: 'none', marginTop: 4 }}
               disabled={!camReady || !modelsLoaded}
               onClick={startInterview}
             >
@@ -805,9 +805,9 @@ export default function MockInterview() {
           { icon: '💪', t: 'Confidence', d: 'Say "I built X" not "I think maybe"' },
           { icon: '📐', t: 'Structure',  d: 'Use STAR: Situation → Action → Result' },
         ].map(tip => (
-          <div key={tip.t} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 14 }}>
+          <div key={tip.t} style={{ background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
             <p style={{ margin: '0 0 4px', fontSize: 20 }}>{tip.icon}</p>
-            <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{tip.t}</p>
+            <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{tip.t}</p>
             <p style={{ margin: 0, fontSize: 11, color: '#475569' }}>{tip.d}</p>
           </div>
         ))}
@@ -822,10 +822,10 @@ export default function MockInterview() {
     <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
       {/* Top bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0b1a2e', border: '1px solid rgba(0,200,240,0.12)', borderRadius: 12, padding: '12px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', border: '1px solid rgba(79,70,229,0.12)', borderRadius: 12, padding: '12px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: RED }} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>Live Interview</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Live Interview</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Clock size={14} color={AMBER} />
@@ -833,7 +833,7 @@ export default function MockInterview() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Mic status + volume bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: stt.isListening ? 'rgba(16,201,138,0.1)' : 'rgba(240,75,75,0.1)', border: `1px solid ${stt.isListening ? GREEN : RED}33`, borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', background: stt.isListening ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', border: `1px solid ${stt.isListening ? GREEN : RED}33`, borderRadius: 8 }}>
             {stt.isListening
               ? <Mic size={12} color={GREEN} />
               : <MicOff size={12} color={RED} />}
@@ -844,7 +844,7 @@ export default function MockInterview() {
             {stt.isListening && (
               <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 14 }}>
                 {[0.25, 0.5, 0.75, 1].map((thresh, i) => (
-                  <div key={i} style={{ width: 3, borderRadius: 2, height: `${(i + 1) * 3 + 2}px`, background: stt.volume / 100 >= thresh ? GREEN : 'rgba(255,255,255,0.1)', transition: 'background 0.1s' }} />
+                  <div key={i} style={{ width: 3, borderRadius: 2, height: `${(i + 1) * 3 + 2}px`, background: stt.volume / 100 >= thresh ? GREEN : 'var(--border)', transition: 'background 0.1s' }} />
                 ))}
               </div>
             )}
@@ -854,7 +854,7 @@ export default function MockInterview() {
       </div>
 
       {stt.error && (
-        <div style={{ padding: '10px 14px', background: 'rgba(240,75,75,0.08)', border: '1px solid rgba(240,75,75,0.2)', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ padding: '10px 14px', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
           <AlertCircle size={14} color={RED} />
           <span style={{ fontSize: 12, color: RED }}>{stt.error}</span>
         </div>
@@ -871,7 +871,7 @@ export default function MockInterview() {
             </div>
             <div style={{ position: 'absolute', bottom: 8, left: 8, right: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: faceMetrics.faceDetected ? GREEN : RED, boxShadow: `0 0 6px ${faceMetrics.faceDetected ? GREEN : RED}` }} />
-              <span style={{ fontSize: 11, color: '#e2e8f0', fontWeight: 600 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-primary)', fontWeight: 600 }}>
                 {faceMetrics.faceDetected ? `${faceMetrics.expression}` : '⚠Face Detected '}
               </span>
             </div>
@@ -884,7 +884,7 @@ export default function MockInterview() {
             <MetricBar label="Fluency"     value={liveScores.fluencyScore}    color={GREEN} />
             <MetricBar label="Confidence"  value={liveScores.confidenceScore} color={CYAN} />
             <MetricBar label="Structure"   value={liveScores.structureScore}  color={AMBER} />
-            <div style={{ marginTop: 8, padding: '5px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginTop: 8, padding: '5px 10px', background: 'var(--bg-card-high)', borderRadius: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: 11, color: '#475569' }}>Words spoken</span>
               <span style={{ fontSize: 12, fontWeight: 700, color: liveScores.wordCount >= 50 ? GREEN : liveScores.wordCount >= 20 ? AMBER : RED }}>
                 {liveScores.wordCount} / 60+
@@ -903,7 +903,7 @@ export default function MockInterview() {
               <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>Interview Question</span>
             </div>
 
-            <p style={{ fontSize: 19, color: '#f0f6ff', lineHeight: 1.7, fontWeight: 600, margin: '0 0 10px' }}>
+            <p style={{ fontSize: 19, color: 'var(--text-primary)', lineHeight: 1.7, fontWeight: 600, margin: '0 0 10px' }}>
               {QUESTIONS[currentQ]}
             </p>
             <p style={{ fontSize: 12, color: '#475569', fontStyle: 'italic', margin: '0 0 12px' }}>
@@ -911,7 +911,7 @@ export default function MockInterview() {
             </p>
 
             {/* Live transcription box */}
-            <div style={{ background: 'rgba(0,200,240,0.04)', border: `1px solid ${stt.isListening ? 'rgba(0,200,240,0.25)' : 'rgba(255,255,255,0.06)'}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14, minHeight: 90, transition: 'border-color 0.3s' }}>
+            <div style={{ background: 'rgba(79,70,229,0.04)', border: `1px solid ${stt.isListening ? 'rgba(79,70,229,0.25)' : 'var(--border)'}`, borderRadius: 10, padding: '12px 14px', marginBottom: 14, minHeight: 90, transition: 'border-color 0.3s' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 6, height: 6, borderRadius: '50%', background: stt.isListening ? GREEN : '#334155', ...(stt.isListening ? { animation: 'pulse 1s infinite' } : {}) }} />
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -926,7 +926,7 @@ export default function MockInterview() {
 
               {/* Final text (confirmed) */}
               {stt.finalText && (
-                <p style={{ margin: 0, fontSize: 13, color: '#cbd5e1', lineHeight: 1.7 }}>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.7 }}>
                   {stt.finalText}
                 </p>
               )}
@@ -963,7 +963,7 @@ export default function MockInterview() {
                 {transcript.map((t, i) => {
                   const sc = answerScores[i];
                   return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'rgba(16,201,138,0.05)', border: '1px solid rgba(16,201,138,0.12)', borderRadius: 8 }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', background: 'rgba(22,163,74,0.05)', border: '1px solid rgba(22,163,74,0.12)', borderRadius: 8 }}>
                       <span style={{ fontSize: 11, fontWeight: 800, color: GREEN, width: 20, flexShrink: 0 }}>Q{i + 1}</span>
                       <span style={{ fontSize: 12, color: '#64748b', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.answer}</span>
                       {sc && (
@@ -997,11 +997,11 @@ export default function MockInterview() {
 
       <GlowCard accent={result?.overallScore >= 70 ? GREEN : result?.overallScore >= 40 ? AMBER : RED} style={{ marginBottom: 16 }}>
         <div style={{ textAlign: 'center', padding: '16px 0 20px' }}>
-          <div style={{ width: 110, height: 110, borderRadius: '50%', background: `conic-gradient(${result?.overallScore >= 70 ? GREEN : result?.overallScore >= 40 ? AMBER : RED} ${(result?.overallScore || 0) * 3.6}deg, #0b1a2e 0)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: `0 0 30px ${result?.overallScore >= 70 ? GREEN : AMBER}44` }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: '#f0f6ff' }}>{result?.overallScore}</span>
+          <div style={{ width: 110, height: 110, borderRadius: '50%', background: `conic-gradient(${result?.overallScore >= 70 ? GREEN : result?.overallScore >= 40 ? AMBER : RED} ${(result?.overallScore || 0) * 3.6}deg, var(--bg-card-high) 0)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: `0 0 30px ${result?.overallScore >= 70 ? GREEN : AMBER}44` }}>
+            <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)' }}>{result?.overallScore}</span>
             <span style={{ fontSize: 10, color: '#64748b' }}>/ 100</span>
           </div>
-          <p style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: '#f0f6ff' }}>Grade: {result?.grade}</p>
+          <p style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)' }}>Grade: {result?.grade}</p>
           <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>Duration: {fmt(result?.duration || 0)}</p>
         </div>
 
@@ -1019,7 +1019,7 @@ export default function MockInterview() {
                 <p style={{ margin: 0, fontSize: 12, color: '#64748b', fontWeight: 600 }}>{m.l}</p>
                 <span style={{ fontSize: 20, fontWeight: 900, color: m.c }}>{m.v}%</span>
               </div>
-              <div style={{ height: 4, background: '#0b1a2e', borderRadius: 2, marginBottom: 6 }}>
+              <div style={{ height: 4, background: 'var(--bg-card)', borderRadius: 2, marginBottom: 6 }}>
                 <div style={{ width: `${m.v}%`, height: '100%', background: m.c, borderRadius: 2, transition: 'width 1s ease' }} />
               </div>
               <p style={{ margin: 0, fontSize: 10, color: '#334155' }}>{m.desc}</p>
@@ -1032,9 +1032,9 @@ export default function MockInterview() {
       <GlowCard title="Question-by-Question Breakdown" accent={CYAN} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {answerScores.map((sc, i) => (
-            <div key={i} style={{ padding: '12px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10 }}>
+            <div key={i} style={{ padding: '12px 14px', background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#e2e8f0', flex: 1, paddingRight: 12 }}>Q{i + 1}: {QUESTIONS[i]}</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', flex: 1, paddingRight: 12 }}>Q{i + 1}: {QUESTIONS[i]}</p>
                 <span style={{ fontSize: 14, fontWeight: 800, flexShrink: 0, color: sc.relevanceScore >= 60 ? GREEN : sc.relevanceScore >= 30 ? AMBER : RED }}>
                   {sc.relevanceScore}%
                 </span>
@@ -1066,20 +1066,20 @@ export default function MockInterview() {
           <div>
             <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: GREEN }}>✅ Strengths</p>
             {result?.feedback?.strengths?.map((s, i) => (
-              <p key={i} style={{ margin: '0 0 7px', fontSize: 13, color: '#94a3b8', paddingLeft: 12, borderLeft: `2px solid ${GREEN}44`, lineHeight: 1.6 }}>{s}</p>
+              <p key={i} style={{ margin: '0 0 7px', fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 12, borderLeft: `2px solid ${GREEN}44`, lineHeight: 1.6 }}>{s}</p>
             ))}
           </div>
           <div>
             <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: AMBER }}>🎯 Areas to Improve</p>
             {result?.feedback?.improvements?.map((s, i) => (
-              <p key={i} style={{ margin: '0 0 7px', fontSize: 13, color: '#94a3b8', paddingLeft: 12, borderLeft: `2px solid ${AMBER}44`, lineHeight: 1.6 }}>{s}</p>
+              <p key={i} style={{ margin: '0 0 7px', fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 12, borderLeft: `2px solid ${AMBER}44`, lineHeight: 1.6 }}>{s}</p>
             ))}
           </div>
           {result?.feedback?.tips?.length > 0 && (
             <div>
               <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: CYAN }}>💡 Tips</p>
               {result?.feedback?.tips?.map((s, i) => (
-                <p key={i} style={{ margin: '0 0 7px', fontSize: 13, color: '#94a3b8', paddingLeft: 12, borderLeft: `2px solid ${CYAN}44`, lineHeight: 1.6 }}>{s}</p>
+                <p key={i} style={{ margin: '0 0 7px', fontSize: 13, color: 'var(--text-secondary)', paddingLeft: 12, borderLeft: `2px solid ${CYAN}44`, lineHeight: 1.6 }}>{s}</p>
               ))}
             </div>
           )}
@@ -1087,10 +1087,10 @@ export default function MockInterview() {
       </GlowCard>
 
       <div style={{ display: 'flex', gap: 12 }}>
-        <button style={{ ...BTN, flex: 1, background: CYAN, color: '#040c18', border: 'none' }} onClick={resetAll}>
+        <button style={{ ...BTN, flex: 1, background: CYAN, color: '#ffffff', border: 'none' }} onClick={resetAll}>
           Practice Again
         </button>
-        <button style={{ ...BTN, flex: 1, background: 'transparent', color: '#64748b', border: '1px solid rgba(255,255,255,0.08)' }} onClick={() => window.location.href = '/student/dashboard'}>
+        <button style={{ ...BTN, flex: 1, background: 'transparent', color: '#64748b', border: '1px solid var(--border)' }} onClick={() => window.location.href = '/student/dashboard'}>
           Back to Dashboard
         </button>
       </div>
@@ -1107,7 +1107,7 @@ export default function MockInterview() {
 }
 
 const BTN     = { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '11px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif" };
-const H1      = { margin: 0, fontSize: 24, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" };
+const H1      = { margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" };
 const SUB     = { margin: '6px 0 0', fontSize: 13, color: '#475569' };
 const infoBox = c => ({ background: `${c}08`, border: `1px solid ${c}20`, borderRadius: 10, padding: '12px 14px' });
 
@@ -1115,10 +1115,10 @@ function MetricBar({ label, value, color }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{ fontSize: 11, color: '#94a3b8' }}>{label}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
         <span style={{ fontSize: 12, fontWeight: 700, color }}>{Math.round(value || 0)}%</span>
       </div>
-      <div style={{ height: 5, background: '#0f2040', borderRadius: 3 }}>
+      <div style={{ height: 5, background: 'var(--bg-card-high)', borderRadius: 3 }}>
         <div style={{ width: `${value || 0}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s ease', boxShadow: `0 0 6px ${color}55` }} />
       </div>
     </div>

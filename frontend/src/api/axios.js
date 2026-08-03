@@ -39,7 +39,10 @@ api.interceptors.response.use(
       // Small delay so toast is visible before redirect
       setTimeout(() => { window.location.href = '/login'; }, 1500);
     } else if (status === 403) {
-      toast.error('You do not have permission to do that.');
+      // Don't show the generic message when the user just needs to verify email
+      if (!error.response?.data?.needsVerification) {
+        toast.error('You do not have permission to do that.');
+      }
     } else if (status === 429) {
       toast.error('Too many requests. Please slow down.');
     } else if (status >= 500) {
@@ -54,8 +57,19 @@ api.interceptors.response.use(
 
 // Auth
 export const authAPI = {
-  register: (data)          => api.post('/api/auth/register', data),
-  login:    (email, pass)   => api.post('/api/auth/login', { email, password: pass }),
+  register:    (data)          => api.post('/api/auth/register', data),
+  login:       (email, pass)   => api.post('/api/auth/login', { email, password: pass }),
+  verifyEmail: (email, code)   => api.post('/api/auth/verify-email', { email, code }),
+  resendCode:  (email)         => api.post('/api/auth/resend-code', { email }),
+};
+
+// Notifications
+export const notificationsAPI = {
+  list:        (params)        => api.get('/api/notifications', { params }),
+  unreadCount: ()              => api.get('/api/notifications/unread-count'),
+  markRead:    (id)            => api.patch(`/api/notifications/${id}/read`),
+  markAllRead: ()              => api.patch('/api/notifications/read-all'),
+  remove:      (id)            => api.delete(`/api/notifications/${id}`),
 };
 
 // Student profile
@@ -81,10 +95,11 @@ export const jobsAPI = {
 
 // Applications
 export const applicationsAPI = {
-  apply:         (jobId)          => api.post('/api/applications', { jobId }),
+  apply:         (jobId)          => api.post('/api/applications', { job_id: jobId }),
   getMyApps:     ()               => api.get('/api/applications/my'),
   getByJob:      (jobId)          => api.get(`/api/applications/job/${jobId}`),
   updateStatus:  (id, status)     => api.patch(`/api/applications/${id}/status`, { status }),
+  updateStage:   (id, stage)      => api.patch(`/api/applications/${id}/stage`, { stage }),
 };
 
 // Aptitude

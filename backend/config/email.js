@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const T = require('../utils/emailTemplates');
 
 // ── Transporter (Gmail with App Password) ──
 const transporter = nodemailer.createTransport({
@@ -15,4 +16,76 @@ transporter.verify((err) => {
   else     console.log('✅  Email transporter ready');
 });
 
-module.exports = transporter;
+const FROM   = `"CampusReady T&P" <${process.env.EMAIL_USER}>`;
+const PORTAL = process.env.CLIENT_URL || 'http://localhost:3000';
+
+// ── Low-level send ──
+async function sendMail(to, subject, html) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    console.warn('[email] EMAIL_USER/EMAIL_PASS not set — skipping send to', to);
+    return { skipped: true };
+  }
+  return transporter.sendMail({ from: FROM, to, subject, html });
+}
+
+// ── Email verification (OTP) ──
+async function sendOtpEmail(to, name, code, expiryMinutes = 10) {
+  return sendMail(
+    to,
+    `Your CampusReady verification code: ${code}`,
+    T.otpTemplate({ name, code, expiryMinutes })
+  );
+}
+
+// ── New job / company on campus ──
+async function sendJobOpeningEmail(to, info) {
+  return sendMail(
+    to,
+    `🏢 ${info.companyName} is hiring — ${info.jobTitle}`,
+    T.jobOpeningTemplate({ ...info, portalUrl: `${PORTAL}/student/jobs` })
+  );
+}
+
+// ── Application status emails (used by routes/applications.js) ──
+async function sendShortlistEmail(to, studentName, companyName, jobTitle) {
+  return sendMail(
+    to,
+    `✅ You've been shortlisted — ${companyName}`,
+    T.applicationStatusTemplate({ studentName, companyName, jobTitle, status: 'shortlisted', portalUrl: PORTAL })
+  );
+}
+async function sendSelectionEmail(to, studentName, companyName, jobTitle) {
+  return sendMail(
+    to,
+    `🎊 Congratulations! Selected at ${companyName}`,
+    T.applicationStatusTemplate({ studentName, companyName, jobTitle, status: 'selected', portalUrl: PORTAL })
+  );
+}
+async function sendRejectionEmail(to, studentName, companyName, jobTitle) {
+  return sendMail(
+    to,
+    `Application update — ${companyName}`,
+    T.applicationStatusTemplate({ studentName, companyName, jobTitle, status: 'rejected', portalUrl: PORTAL })
+  );
+}
+
+// ── Announcement broadcast (used by routes/admin.js) ──
+async function sendAnnouncementEmail(emails, title, content, priority = 'info') {
+  const list = Array.isArray(emails) ? emails : [emails];
+  const html = T.announcementTemplate({ title, content, priority, portalUrl: PORTAL });
+  return transporter.sendMail({ from: FROM, bcc: list, subject: `📢 ${title}`, html });
+}
+
+// Export helpers as a plain object. IMPORTANT: do NOT assign module.exports = transporter,
+// because that makes module.exports the same object as `transporter` and overwrites
+// nodemailer's real `transporter.sendMail` with our wrapper → infinite recursion.
+module.exports = {
+  transporter,
+  sendMail,
+  sendOtpEmail,
+  sendJobOpeningEmail,
+  sendShortlistEmail,
+  sendSelectionEmail,
+  sendRejectionEmail,
+  sendAnnouncementEmail,
+};

@@ -10,10 +10,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const TYPE_COLOR = { aptitude: '#00c8f0', technical: '#7c5cfc', behavioural: '#f5a623' };
+const TYPE_COLOR = { aptitude: '#4f46e5', technical: '#4f46e5', behavioural: '#d97706' };
 const GRADE_COLOR = {
-  'A+': '#10c98a', 'A': '#10c98a', 'B+': '#00c8f0', 'B': '#00c8f0',
-  'C': '#f5a623', 'D': '#f04b4b', 'F': '#f04b4b',
+  'A+': '#16a34a', 'A': '#16a34a', 'B+': '#4f46e5', 'B': '#4f46e5',
+  'C': '#d97706', 'D': '#dc2626', 'F': '#dc2626',
 };
 
 function fmtTime(s) {
@@ -51,11 +51,11 @@ export default function CompanyOATests() {
   const timerRef  = useRef(null);
   const startRef  = useRef(null);
 
-  const bg   = isDark ? '#040c18' : '#f0f4f8';
-  const card = isDark ? '#0b1a2e' : '#ffffff';
-  const bord = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
-  const txt  = isDark ? '#e2e8f0' : '#0f172a';
-  const txt2 = isDark ? '#94a3b8' : '#64748b';
+  const bg   = 'var(--bg-base)';
+  const card = 'var(--bg-card)';
+  const bord = 'var(--border)';
+  const txt  = 'var(--text-primary)';
+  const txt2 = 'var(--text-secondary)';
 
   // ── Load available tests ────────────────────────────────────────
   const loadTests = async () => {
@@ -258,7 +258,7 @@ export default function CompanyOATests() {
         </div>
         <button onClick={loadTests} style={{
           display: 'flex', alignItems: 'center', gap: 6,
-          padding: '8px 14px', background: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+          padding: '8px 14px', background: 'var(--bg-card-high)',
           border: `1px solid ${bord}`, borderRadius: 8,
           fontSize: 12, fontWeight: 600, color: txt2, cursor: 'pointer',
         }}>
@@ -269,14 +269,14 @@ export default function CompanyOATests() {
       {/* Proctoring info banner */}
       <div style={{
         padding: '10px 14px', marginBottom: 18,
-        background: 'rgba(124,92,252,0.07)',
-        border: '1px solid rgba(124,92,252,0.2)',
+        background: 'rgba(79,70,229,0.07)',
+        border: '1px solid rgba(79,70,229,0.2)',
         borderRadius: 10, display: 'flex', gap: 10,
         alignItems: 'flex-start',
       }}>
-        <Shield size={15} color="#7c5cfc" style={{ flexShrink: 0, marginTop: 1 }} />
+        <Shield size={15} color="#4f46e5" style={{ flexShrink: 0, marginTop: 1 }} />
         <p style={{ margin: 0, fontSize: 12, color: txt2, lineHeight: 1.6 }}>
-          <strong style={{ color: '#7c5cfc' }}>Proctoring Enabled:</strong> Tests run in
+          <strong style={{ color: '#4f46e5' }}>Proctoring Enabled:</strong> Tests run in
           fullscreen mode. Tab switching, copy-paste, and right-click are disabled.
           3 violations will auto-submit your test. <strong>Only 1 attempt is allowed per test.</strong>
         </p>
@@ -284,7 +284,7 @@ export default function CompanyOATests() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
-          <Loader2 size={28} color="#7c5cfc" style={{
+          <Loader2 size={28} color="#4f46e5" style={{
             animation: 'spin 1s linear infinite', display: 'inline-block',
           }} />
           <p style={{ margin: '12px 0 0', color: txt2 }}>Loading company tests...</p>
@@ -293,7 +293,7 @@ export default function CompanyOATests() {
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
           <Building2 size={44} color={isDark ? '#1e3a5f' : '#d1d5db'} style={{ marginBottom: 14 }} />
           <h3 style={{ margin: 0, color: txt2, fontWeight: 600 }}>No tests available yet</h3>
-          <p style={{ color: isDark ? '#334155' : '#94a3b8', marginTop: 6, fontSize: 14 }}>
+          <p style={{ color: 'var(--text-muted)', marginTop: 6, fontSize: 14 }}>
             Companies haven't submitted any OA tests for your branch yet. Check back soon!
           </p>
         </div>
@@ -304,7 +304,7 @@ export default function CompanyOATests() {
           gap: 16,
         }}>
           {tests.map(t => {
-            const typeCol = TYPE_COLOR[t.test_type] || '#94a3b8';
+            const typeCol = TYPE_COLOR[t.test_type] || '#64748b';
             const attempted = t.attempt_count > 0;
             return (
               <div key={t.id} style={{
@@ -412,13 +412,13 @@ export default function CompanyOATests() {
                       display: 'flex', alignItems: 'center',
                       justifyContent: 'center', gap: 8,
                       padding: '10px', borderRadius: 9,
-                      background: isDark ? 'rgba(16,201,138,0.08)' : '#f0fdf4',
-                      border: '1px solid rgba(16,201,138,0.25)',
+                      background: isDark ? 'rgba(22,163,74,0.08)' : '#f0fdf4',
+                      border: '1px solid rgba(22,163,74,0.25)',
                     }}>
-                      <CheckCircle size={15} color="#10c98a" />
+                      <CheckCircle size={15} color="#16a34a" />
                       <span style={{
                         fontSize: 13, fontWeight: 700,
-                        color: '#10c98a',
+                        color: '#16a34a',
                       }}>
                         Completed · Grade: {t.best_grade}
                       </span>
@@ -432,7 +432,7 @@ export default function CompanyOATests() {
                         width: '100%', padding: '10px', borderRadius: 9,
                         border: 'none', background: typeCol,
                         boxShadow: `0 4px 14px ${typeCol}44`,
-                        color: '#040c18', fontSize: 13, fontWeight: 700,
+                        color: '#ffffff', fontSize: 13, fontWeight: 700,
                         cursor: 'pointer', fontFamily: "'Sora',sans-serif",
                         display: 'flex', alignItems: 'center',
                         justifyContent: 'center', gap: 8,
@@ -466,7 +466,7 @@ export default function CompanyOATests() {
   if (screen === 'test') {
     const q = questions[current];
     const timerPct = (timeLeft / ((test?.duration || 60) * 60)) * 100;
-    const timerCol = timerPct > 40 ? '#10c98a' : timerPct > 15 ? '#f5a623' : '#f04b4b';
+    const timerCol = timerPct > 40 ? '#16a34a' : timerPct > 15 ? '#d97706' : '#dc2626';
     const sectionGroups = [...new Set(questions.map(q => q.section))];
 
     return (
@@ -494,11 +494,11 @@ export default function CompanyOATests() {
           <div style={{
             display: 'flex', alignItems: 'center', gap: 4,
             padding: '4px 10px', borderRadius: 7,
-            background: 'rgba(124,92,252,0.1)',
-            border: '1px solid rgba(124,92,252,0.25)',
+            background: 'rgba(79,70,229,0.1)',
+            border: '1px solid rgba(79,70,229,0.25)',
           }}>
-            <Maximize size={12} color="#7c5cfc" />
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#7c5cfc' }}>PROCTORED</span>
+            <Maximize size={12} color="#4f46e5" />
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#4f46e5' }}>PROCTORED</span>
           </div>
 
           {/* Timer */}
@@ -532,8 +532,8 @@ export default function CompanyOATests() {
             disabled={submitting}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', background: '#10c98a',
-              border: 'none', borderRadius: 9, color: '#040c18',
+              padding: '8px 16px', background: '#16a34a',
+              border: 'none', borderRadius: 9, color: '#ffffff',
               fontSize: 13, fontWeight: 700, cursor: 'pointer',
             }}
           >
@@ -547,12 +547,12 @@ export default function CompanyOATests() {
         {/* Warnings bar */}
         {warnings > 0 && (
           <div style={{
-            padding: '6px 20px', background: 'rgba(240,75,75,0.1)',
-            borderBottom: '1px solid rgba(240,75,75,0.25)',
+            padding: '6px 20px', background: 'rgba(220,38,38,0.1)',
+            borderBottom: '1px solid rgba(220,38,38,0.25)',
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <AlertCircle size={13} color="#f04b4b" />
-            <span style={{ fontSize: 12, color: '#f04b4b', fontWeight: 600 }}>
+            <AlertCircle size={13} color="#dc2626" />
+            <span style={{ fontSize: 12, color: '#dc2626', fontWeight: 600 }}>
               ⚠ Violation warning {warnings}/3 — {3 - warnings} more will auto-submit the test
             </span>
           </div>
@@ -563,7 +563,7 @@ export default function CompanyOATests() {
           <div style={{
             width: 220, borderRight: `1px solid ${bord}`,
             padding: '14px 12px', overflowY: 'auto',
-            flexShrink: 0, background: isDark ? '#071525' : card,
+            flexShrink: 0, background: 'var(--bg-input)',
           }}>
             <p style={{
               margin: '0 0 10px', fontSize: 11, fontWeight: 700,
@@ -579,7 +579,7 @@ export default function CompanyOATests() {
                 <div key={sec} style={{ marginBottom: 14 }}>
                   <p style={{
                     margin: '0 0 6px', fontSize: 10,
-                    fontWeight: 700, color: '#7c5cfc',
+                    fontWeight: 700, color: '#4f46e5',
                   }}>
                     {sec}
                   </p>
@@ -595,16 +595,16 @@ export default function CompanyOATests() {
                         <button key={sq.id} onClick={() => setCurrent(gi)} style={{
                           width: 32, height: 32, borderRadius: 7,
                           border: `2px solid ${
-                            isCur ? '#7c5cfc'
-                              : isFl ? '#f5a623'
-                              : isAns ? '#10c98a' : bord
+                            isCur ? '#4f46e5'
+                              : isFl ? '#d97706'
+                              : isAns ? '#16a34a' : bord
                           }`,
-                          background: isCur ? '#7c5cfc'
-                            : isFl ? 'rgba(245,166,35,0.15)'
-                            : isAns ? 'rgba(16,201,138,0.12)' : 'transparent',
+                          background: isCur ? '#4f46e5'
+                            : isFl ? 'rgba(217,119,6,0.15)'
+                            : isAns ? 'rgba(22,163,74,0.12)' : 'transparent',
                           color: isCur ? '#fff'
-                            : isFl ? '#f5a623'
-                            : isAns ? '#10c98a' : txt2,
+                            : isFl ? '#d97706'
+                            : isAns ? '#16a34a' : txt2,
                           fontSize: 11, fontWeight: 700, cursor: 'pointer',
                         }}>
                           {gi + 1}
@@ -621,8 +621,8 @@ export default function CompanyOATests() {
               borderTop: `1px solid ${bord}`,
             }}>
               {[
-                { col: '#10c98a', label: 'Answered' },
-                { col: '#f5a623', label: 'Flagged' },
+                { col: '#16a34a', label: 'Answered' },
+                { col: '#d97706', label: 'Flagged' },
                 { col: bord, label: 'Unanswered' },
               ].map(l => (
                 <div key={l.label} style={{
@@ -649,8 +649,8 @@ export default function CompanyOATests() {
                   gap: 8, marginBottom: 14,
                 }}>
                   <span style={{
-                    fontSize: 11, fontWeight: 700, color: '#7c5cfc',
-                    background: 'rgba(124,92,252,0.1)',
+                    fontSize: 11, fontWeight: 700, color: '#4f46e5',
+                    background: 'rgba(79,70,229,0.1)',
                     padding: '3px 10px', borderRadius: 999,
                   }}>
                     {q.section}
@@ -659,7 +659,7 @@ export default function CompanyOATests() {
                     Question {current + 1} of {questions.length}
                   </span>
                   <span style={{
-                    fontSize: 12, color: '#10c98a', marginLeft: 'auto',
+                    fontSize: 12, color: '#16a34a', marginLeft: 'auto',
                   }}>
                     {q.marks} mark{q.marks > 1 ? 's' : ''}
                   </span>
@@ -668,9 +668,9 @@ export default function CompanyOATests() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
                       padding: '4px 10px', borderRadius: 7,
-                      border: `1px solid ${flagged.has(q.id) ? '#f5a623' : bord}`,
-                      background: flagged.has(q.id) ? 'rgba(245,166,35,0.1)' : 'transparent',
-                      color: flagged.has(q.id) ? '#f5a623' : txt2,
+                      border: `1px solid ${flagged.has(q.id) ? '#d97706' : bord}`,
+                      background: flagged.has(q.id) ? 'rgba(217,119,6,0.1)' : 'transparent',
+                      color: flagged.has(q.id) ? '#d97706' : txt2,
                       fontSize: 11, cursor: 'pointer',
                     }}
                   >
@@ -701,24 +701,24 @@ export default function CompanyOATests() {
                         <button key={oi} onClick={() => answerQ(q.id, oi)} style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           padding: '14px 18px', borderRadius: 10,
-                          border: `2px solid ${sel ? '#7c5cfc' : bord}`,
+                          border: `2px solid ${sel ? '#4f46e5' : bord}`,
                           background: sel
-                            ? (isDark ? 'rgba(124,92,252,0.12)' : '#f5f3ff')
+                            ? (isDark ? 'rgba(79,70,229,0.12)' : '#f5f3ff')
                             : 'transparent',
                           cursor: 'pointer', textAlign: 'left',
                           width: '100%', transition: 'all 0.15s',
                         }}>
                           <div style={{
                             width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                            border: `2px solid ${sel ? '#7c5cfc' : '#64748b'}`,
-                            background: sel ? '#7c5cfc' : 'transparent',
+                            border: `2px solid ${sel ? '#4f46e5' : '#64748b'}`,
+                            background: sel ? '#4f46e5' : 'transparent',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             {sel && <CheckCircle size={13} color="#fff" />}
                           </div>
                           <span style={{
                             fontSize: 11, fontWeight: 700,
-                            color: sel ? '#7c5cfc' : txt2, flexShrink: 0,
+                            color: sel ? '#4f46e5' : txt2, flexShrink: 0,
                           }}>
                             {String.fromCharCode(65 + oi)}.
                           </span>
@@ -786,7 +786,7 @@ export default function CompanyOATests() {
                   {current < questions.length - 1 ? (
                     <button onClick={() => setCurrent(c => c + 1)} style={{
                       display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '10px 20px', background: '#7c5cfc',
+                      padding: '10px 20px', background: '#4f46e5',
                       border: 'none', borderRadius: 9, color: '#fff',
                       fontSize: 13, fontWeight: 700, cursor: 'pointer',
                     }}>
@@ -798,8 +798,8 @@ export default function CompanyOATests() {
                       disabled={submitting}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '10px 20px', background: '#10c98a',
-                        border: 'none', borderRadius: 9, color: '#040c18',
+                        padding: '10px 20px', background: '#16a34a',
+                        border: 'none', borderRadius: 9, color: '#ffffff',
                         fontSize: 13, fontWeight: 700, cursor: 'pointer',
                       }}
                     >
@@ -822,7 +822,7 @@ export default function CompanyOATests() {
   // SCREEN: RESULT
   // ════════════════════════════════════════════════════════════════
   if (screen === 'result' && result) {
-    const gradeCol = GRADE_COLOR[result.grade] || '#94a3b8';
+    const gradeCol = GRADE_COLOR[result.grade] || '#64748b';
     const secs = Object.entries(result.breakdown || {});
     return (
       <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
@@ -866,9 +866,9 @@ export default function CompanyOATests() {
             justifyContent: 'center', marginTop: 12,
           }}>
             {[
-              { label: 'Correct', val: result.correct, col: '#10c98a' },
-              { label: 'Wrong', val: result.wrong, col: '#f04b4b' },
-              { label: 'Skipped', val: result.skipped, col: '#94a3b8' },
+              { label: 'Correct', val: result.correct, col: '#16a34a' },
+              { label: 'Wrong', val: result.wrong, col: '#dc2626' },
+              { label: 'Skipped', val: result.skipped, col: '#64748b' },
             ].map((s, i) => (
               <div key={s.label} style={{
                 flex: 1, padding: '12px', textAlign: 'center',
@@ -887,13 +887,13 @@ export default function CompanyOATests() {
           {/* One attempt notice */}
           <div style={{
             marginTop: 16, padding: '8px 14px',
-            background: 'rgba(245,166,35,0.08)',
-            border: '1px solid rgba(245,166,35,0.2)',
+            background: 'rgba(217,119,6,0.08)',
+            border: '1px solid rgba(217,119,6,0.2)',
             borderRadius: 8, display: 'inline-flex',
             alignItems: 'center', gap: 6,
           }}>
-            <Lock size={12} color="#f5a623" />
-            <span style={{ fontSize: 11, color: '#f5a623', fontWeight: 600 }}>
+            <Lock size={12} color="#d97706" />
+            <span style={{ fontSize: 11, color: '#d97706', fontWeight: 600 }}>
               This was your only attempt — result is final
             </span>
           </div>
@@ -930,12 +930,12 @@ export default function CompanyOATests() {
                   </div>
                   <div style={{
                     height: 8,
-                    background: isDark ? 'rgba(255,255,255,0.05)' : '#e2e8f0',
+                    background: 'var(--bg-card-high)',
                     borderRadius: 999, overflow: 'hidden',
                   }}>
                     <div style={{
                       height: '100%', width: `${pct}%`,
-                      background: pct >= 60 ? '#10c98a' : pct >= 40 ? '#f5a623' : '#f04b4b',
+                      background: pct >= 60 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626',
                       borderRadius: 999, transition: 'width 1s',
                     }} />
                   </div>
@@ -967,21 +967,21 @@ export default function CompanyOATests() {
                 <div key={r.id} style={{
                   padding: '12px 14px', borderRadius: 9, marginBottom: 10,
                   background: r.is_correct === true
-                    ? (isDark ? 'rgba(16,201,138,0.06)' : '#f0fdf4')
+                    ? 'rgba(22,163,74,0.06)'
                     : r.is_correct === false
-                    ? (isDark ? 'rgba(240,75,75,0.06)' : '#fff5f5')
-                    : (isDark ? 'rgba(255,255,255,0.02)' : '#f9fafb'),
+                    ? 'rgba(220,38,38,0.06)'
+                    : 'var(--bg-card-high)',
                   border: `1px solid ${
-                    r.is_correct === true ? '#10c98a33'
-                      : r.is_correct === false ? '#f04b4b33' : bord
+                    r.is_correct === true ? '#16a34a33'
+                      : r.is_correct === false ? '#dc262633' : bord
                   }`,
                 }}>
                   <div style={{
                     display: 'flex', alignItems: 'center',
                     gap: 8, marginBottom: 6,
                   }}>
-                    {r.is_correct === true && <CheckCircle size={14} color="#10c98a" />}
-                    {r.is_correct === false && <XCircle size={14} color="#f04b4b" />}
+                    {r.is_correct === true && <CheckCircle size={14} color="#16a34a" />}
+                    {r.is_correct === false && <XCircle size={14} color="#dc2626" />}
                     {r.is_correct === null && (
                       <span style={{ fontSize: 12, color: txt2 }}>—</span>
                     )}
@@ -996,21 +996,21 @@ export default function CompanyOATests() {
                   {r.type === 'mcq' && qData?.options && (
                     <>
                       <p style={{
-                        margin: '0 0 3px', fontSize: 11, color: '#10c98a',
+                        margin: '0 0 3px', fontSize: 11, color: '#16a34a',
                       }}>
                         ✓ Correct: {qData.options[r.correct_index]}
                       </p>
                       {r.student_answer !== null
                         && r.student_answer !== r.correct_index && (
                         <p style={{
-                          margin: '0 0 3px', fontSize: 11, color: '#f04b4b',
+                          margin: '0 0 3px', fontSize: 11, color: '#dc2626',
                         }}>
                           ✗ Your answer: {qData.options[r.student_answer]}
                         </p>
                       )}
                       {r.student_answer === null && (
                         <p style={{
-                          margin: '0 0 3px', fontSize: 11, color: '#94a3b8',
+                          margin: '0 0 3px', fontSize: 11, color: 'var(--text-secondary)',
                         }}>
                           Skipped
                         </p>
@@ -1018,7 +1018,7 @@ export default function CompanyOATests() {
                       {r.explanation && (
                         <p style={{
                           margin: '6px 0 0', fontSize: 11,
-                          color: '#7c5cfc', fontStyle: 'italic',
+                          color: '#4f46e5', fontStyle: 'italic',
                         }}>
                           💡 {r.explanation}
                         </p>

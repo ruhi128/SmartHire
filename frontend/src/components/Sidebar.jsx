@@ -22,16 +22,15 @@ const NAV = {
       items: [
         { label: 'Dashboard',      icon: LayoutDashboard,  to: '/student/dashboard' },
         { label: 'Job Listings',   icon: Briefcase,        to: '/student/jobs' },
+        { label: 'My Applications',icon: ClipboardList,    to: '/student/applications' },
         { label: 'Announcements',  icon: Megaphone,        to: '/student/announcements' },
       ],
     },
     {
       group: 'Assessments',
       items: [
-        { label: 'Aptitude Test',  icon: Brain,            to: '/student/aptitude' },
-        { label: 'Apt. Analysis',  icon: BarChart3,        to: '/student/aptitude/analysis' },
-        { label: 'DSA Coding',     icon: Code2,            to: '/student/dsa' },
-        { label: 'DSA Performance',icon: Trophy,           to: '/student/dsa/performance' },
+        { label: 'Aptitude',       icon: Brain,            to: '/student/aptitude' },
+        { label: 'DSA Practice',   icon: Code2,            to: '/student/dsa' },
       ],
     },
     {

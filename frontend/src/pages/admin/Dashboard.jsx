@@ -16,11 +16,11 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const AMBER  = '#f5a623';
-const GREEN  = '#10c98a';
-const CYAN   = '#00c8f0';
-const VIOLET = '#7c5cfc';
-const RED    = '#f04b4b';
+const AMBER  = '#d97706';
+const GREEN  = '#16a34a';
+const CYAN   = '#4f46e5';
+const VIOLET = '#4f46e5';
+const RED    = '#dc2626';
 
 const TYPE_COLOR = {
   aptitude: CYAN,
@@ -32,8 +32,8 @@ const Tip = ({ active, payload, label }) =>
   active && payload?.length ? (
     <div
       style={{
-        background: '#0b1a2e',
-        border: '1px solid rgba(245,166,35,0.2)',
+        background: 'var(--bg-card)',
+        border: '1px solid rgba(217,119,6,0.2)',
         borderRadius: 8,
         padding: '8px 12px',
       }}
@@ -157,9 +157,9 @@ function CompanyOAQuickReviewPanel() {
                 borderRadius: 999,
                 fontSize: 11,
                 fontWeight: 800,
-                background: 'rgba(245,166,35,0.18)',
+                background: 'rgba(217,119,6,0.18)',
                 color: AMBER,
-                border: '1px solid rgba(245,166,35,0.35)',
+                border: '1px solid rgba(217,119,6,0.35)',
               }}
             >
               {pendingCount} pending
@@ -175,8 +175,8 @@ function CompanyOAQuickReviewPanel() {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(124,92,252,0.12)',
-              border: '1px solid rgba(124,92,252,0.25)',
+              background: 'rgba(79,70,229,0.12)',
+              border: '1px solid rgba(79,70,229,0.25)',
               color: VIOLET,
               borderRadius: 8,
               padding: '7px 12px',
@@ -262,8 +262,8 @@ function CompanyOAQuickReviewPanel() {
                       padding: '12px 14px',
                       borderRadius: 10,
                       cursor: 'pointer',
-                      border: `1px solid ${isSelected ? color : 'rgba(255,255,255,0.06)'}`,
-                      background: isSelected ? `${color}12` : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${isSelected ? color : 'var(--border)'}`,
+                      background: isSelected ? `${color}12` : 'var(--bg-card-high)',
                       transition: 'all .15s',
                     }}
                   >
@@ -280,7 +280,7 @@ function CompanyOAQuickReviewPanel() {
                           margin: 0,
                           fontSize: 13,
                           fontWeight: 700,
-                          color: '#e2e8f0',
+                          color: 'var(--text-primary)',
                           lineHeight: 1.35,
                           flex: 1,
                         }}
@@ -338,8 +338,8 @@ function CompanyOAQuickReviewPanel() {
               <div
                 style={{
                   flex: 1,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'var(--bg-card-high)',
+                  border: '1px solid var(--border)',
                   borderRadius: 12,
                   padding: 18,
                   display: 'flex',
@@ -362,7 +362,7 @@ function CompanyOAQuickReviewPanel() {
                         margin: 0,
                         fontSize: 16,
                         fontWeight: 800,
-                        color: '#f0f6ff',
+                        color: 'var(--text-primary)',
                         fontFamily: "'Sora',sans-serif",
                       }}
                     >
@@ -397,13 +397,13 @@ function CompanyOAQuickReviewPanel() {
 
                     {selected.description && (
                       <p style={{ margin: '10px 0 0', fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                        <strong style={{ color: '#e2e8f0' }}>Description:</strong> {selected.description}
+                        <strong style={{ color: 'var(--text-primary)' }}>Description:</strong> {selected.description}
                       </p>
                     )}
 
                     {selected.instructions && (
                       <p style={{ margin: '8px 0 0', fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
-                        <strong style={{ color: '#e2e8f0' }}>Instructions:</strong> {selected.instructions}
+                        <strong style={{ color: 'var(--text-primary)' }}>Instructions:</strong> {selected.instructions}
                       </p>
                     )}
                   </div>
@@ -411,8 +411,8 @@ function CompanyOAQuickReviewPanel() {
                   <button
                     onClick={() => setSelected(null)}
                     style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(255,255,255,0.08)',
+                      background: 'var(--bg-card-high)',
+                      border: '1px solid var(--border)',
                       borderRadius: 7,
                       padding: '5px 8px',
                       color: '#64748b',
@@ -470,8 +470,8 @@ function CompanyOAQuickReviewPanel() {
                           <div
                             key={q.id}
                             style={{
-                              background: '#071525',
-                              border: '1px solid rgba(255,255,255,0.05)',
+                              background: 'var(--bg-input)',
+                              border: '1px solid var(--border)',
                               borderRadius: 9,
                               padding: 12,
                             }}
@@ -490,7 +490,7 @@ function CompanyOAQuickReviewPanel() {
                                   fontSize: 10,
                                   fontWeight: 800,
                                   color: VIOLET,
-                                  background: 'rgba(124,92,252,0.12)',
+                                  background: 'rgba(79,70,229,0.12)',
                                   padding: '2px 8px',
                                   borderRadius: 999,
                                 }}
@@ -522,7 +522,7 @@ function CompanyOAQuickReviewPanel() {
                               style={{
                                 margin: '0 0 8px',
                                 fontSize: 13,
-                                color: '#e2e8f0',
+                                color: 'var(--text-primary)',
                                 lineHeight: 1.5,
                               }}
                             >
@@ -552,10 +552,10 @@ function CompanyOAQuickReviewPanel() {
                                     background:
                                       oi === q.correct_index
                                         ? `${GREEN}25`
-                                        : 'rgba(255,255,255,0.04)',
+                                        : 'var(--bg-card-high)',
                                     color: oi === q.correct_index ? GREEN : '#475569',
                                     border: `1px solid ${
-                                      oi === q.correct_index ? GREEN : 'rgba(255,255,255,0.08)'
+                                      oi === q.correct_index ? GREEN : 'var(--border)'
                                     }`,
                                   }}
                                 >
@@ -623,7 +623,7 @@ function CompanyOAQuickReviewPanel() {
                 {/* Action area */}
                 <div
                   style={{
-                    borderTop: '1px solid rgba(255,255,255,0.06)',
+                    borderTop: '1px solid var(--border)',
                     paddingTop: 14,
                   }}
                 >
@@ -649,11 +649,11 @@ function CompanyOAQuickReviewPanel() {
                         width: '100%',
                         minHeight: 80,
                         resize: 'vertical',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        background: 'var(--bg-card-high)',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
                         padding: '10px 12px',
-                        color: '#e2e8f0',
+                        color: 'var(--text-primary)',
                         fontSize: 12,
                         fontFamily: "'Sora',sans-serif",
                         outline: 'none',
@@ -678,7 +678,7 @@ function CompanyOAQuickReviewPanel() {
                         alignItems: 'center',
                         gap: 6,
                         padding: '9px 16px',
-                        background: 'rgba(240,75,75,0.1)',
+                        background: 'rgba(220,38,38,0.1)',
                         border: `1px solid ${RED}44`,
                         borderRadius: 8,
                         color: RED,
@@ -704,7 +704,7 @@ function CompanyOAQuickReviewPanel() {
                         background: GREEN,
                         border: 'none',
                         borderRadius: 8,
-                        color: '#040c18',
+                        color: '#ffffff',
                         fontSize: 13,
                         fontWeight: 700,
                         cursor: 'pointer',
@@ -723,8 +723,8 @@ function CompanyOAQuickReviewPanel() {
                         alignItems: 'center',
                         gap: 6,
                         padding: '9px 16px',
-                        background: 'rgba(124,92,252,0.12)',
-                        border: '1px solid rgba(124,92,252,0.25)',
+                        background: 'rgba(79,70,229,0.12)',
+                        border: '1px solid rgba(79,70,229,0.25)',
                         borderRadius: 8,
                         color: VIOLET,
                         fontSize: 13,
@@ -939,7 +939,7 @@ export default function AdminDashboard() {
                   />
                   <span style={{ fontSize: 12, color: '#64748b' }}>{d.name}</span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                   {d.value}
                 </span>
               </div>
@@ -984,7 +984,7 @@ export default function AdminDashboard() {
             {recentDrives.map((d, i) => (
               <tr key={i}>
                 <td style={s.td}>
-                  <p style={{ margin: 0, fontWeight: 700, color: '#e2e8f0', fontSize: 13 }}>
+                  <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)', fontSize: 13 }}>
                     {d.company}
                   </p>
                 </td>
@@ -1002,8 +1002,8 @@ export default function AdminDashboard() {
                       fontWeight: 700,
                       background:
                         d.status === 'Completed'
-                          ? 'rgba(16,201,138,0.12)'
-                          : 'rgba(245,166,35,0.12)',
+                          ? 'rgba(22,163,74,0.12)'
+                          : 'rgba(217,119,6,0.12)',
                       color: d.status === 'Completed' ? GREEN : AMBER,
                       border: `1px solid ${d.status === 'Completed' ? GREEN : AMBER}33`,
                     }}
@@ -1033,7 +1033,7 @@ const s = {
     margin: 0,
     fontSize: 24,
     fontWeight: 800,
-    color: '#f0f6ff',
+    color: 'var(--text-primary)',
     fontFamily: "'Sora',sans-serif",
   },
   sub: {
@@ -1076,14 +1076,14 @@ const s = {
     color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: '0.07em',
-    borderBottom: '1px solid rgba(255,255,255,0.05)',
+    borderBottom: '1px solid var(--border)',
     textAlign: 'left',
   },
   td: {
     padding: '11px 12px',
     fontSize: 13,
-    color: '#94a3b8',
-    borderBottom: '1px solid rgba(255,255,255,0.03)',
+    color: 'var(--text-secondary)',
+    borderBottom: '1px solid var(--border)',
   },
 };
 
@@ -1094,12 +1094,12 @@ const DEMO_STATS = {
   companies: 38,
   activeDrives: 5,
   byBranch: [
-    { branch: 'CSE', placed: 95, unplaced: 25 },
+    { branch: 'CST', placed: 95, unplaced: 25 },
     { branch: 'IT', placed: 72, unplaced: 18 },
-    { branch: 'ECE', placed: 58, unplaced: 32 },
-    { branch: 'EEE', placed: 42, unplaced: 28 },
-    { branch: 'MECH', placed: 28, unplaced: 40 },
-    { branch: 'CIVIL', placed: 17, unplaced: 35 },
+    { branch: 'ENC', placed: 58, unplaced: 32 },
+    { branch: 'AI', placed: 42, unplaced: 28 },
+    { branch: 'DS', placed: 28, unplaced: 40 },
+    { branch: 'CE', placed: 17, unplaced: 35 },
   ],
   byStatus: [
     { name: 'Placed', value: 312 },

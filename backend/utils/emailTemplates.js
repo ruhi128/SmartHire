@@ -348,6 +348,81 @@ function testResultTemplate({ studentName, testTitle, score, totalMarks, correct
 }
 
 // ════════════════════════════════════════════════════
+//  7. EMAIL VERIFICATION CODE (OTP)
+// ════════════════════════════════════════════════════
+function otpTemplate({ name, code, expiryMinutes = 10 }) {
+  return wrap(`
+    <h2 style="margin:0 0 8px;color:${BRAND.navy};font-size:22px;">
+      Verify your email
+    </h2>
+    <p style="color:${BRAND.gray};margin:0 0 24px;font-size:15px;line-height:1.6;">
+      Hi ${name || 'there'}, use the verification code below to activate your
+      CampusReady account.
+    </p>
+
+    <div style="text-align:center;margin:8px 0 24px;">
+      <div style="display:inline-block;padding:18px 32px;border-radius:12px;
+                  background:${BRAND.navy};color:${BRAND.cyan};
+                  font-size:34px;font-weight:bold;letter-spacing:10px;
+                  font-family:'Courier New',monospace;">
+        ${code}
+      </div>
+    </div>
+
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;
+              padding:14px 16px;background:${BRAND.amber}11;
+              border-left:4px solid ${BRAND.amber};border-radius:0 8px 8px 0;">
+      This code expires in <strong>${expiryMinutes} minutes</strong>. If you did not
+      create this account, you can safely ignore this email.
+    </p>
+
+    <p style="color:${BRAND.gray};font-size:13px;margin:0;">
+      For your security, never share this code with anyone.
+    </p>
+  `);
+}
+
+// ════════════════════════════════════════════════════
+//  8. NEW JOB / COMPANY ON CAMPUS
+// ════════════════════════════════════════════════════
+function jobOpeningTemplate({ studentName, companyName, jobTitle, packageLpa, deadline, driveDate, portalUrl }) {
+  return wrap(`
+    <div style="display:inline-block;background:${BRAND.green}22;color:${BRAND.green};
+                padding:4px 14px;border-radius:999px;font-size:12px;
+                font-weight:bold;margin-bottom:16px;">
+      🏢 New Company on Campus
+    </div>
+
+    <h2 style="margin:0 0 8px;color:${BRAND.navy};font-size:22px;">
+      ${companyName} is hiring!
+    </h2>
+    <p style="color:${BRAND.gray};margin:0 0 20px;font-size:15px;line-height:1.6;">
+      Hi ${studentName || 'there'}, a new opportunity you are eligible for has just
+      been approved on the placement portal.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#F8FAFC;border-radius:8px;padding:20px;margin-bottom:24px;">
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow('Company', `<strong>${companyName}</strong>`)}
+          ${infoRow('Role', jobTitle)}
+          ${packageLpa ? infoRow('Package', `${packageLpa} LPA`) : ''}
+          ${infoRow('Apply Before', deadline || 'See portal')}
+          ${driveDate ? infoRow('Drive Date', driveDate) : ''}
+        </table>
+      </td></tr>
+    </table>
+
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 8px;">
+      Log in and apply before the deadline — seats are limited.
+    </p>
+
+    ${btn('View & Apply', portalUrl || '#', BRAND.green)}
+  `);
+}
+
+// ════════════════════════════════════════════════════
 //  EXPORTS
 // ════════════════════════════════════════════════════
 module.exports = {
@@ -357,4 +432,6 @@ module.exports = {
   welcomeTemplate,
   driveReminderTemplate,
   testResultTemplate,
+  otpTemplate,
+  jobOpeningTemplate,
 };

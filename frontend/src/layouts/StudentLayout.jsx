@@ -2,12 +2,14 @@
 import { Outlet } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import Sidebar from '../components/Sidebar';
+import NotificationBell from '../components/NotificationBell';
 
 export default function StudentLayout() {
   const { isDark } = useTheme();
   return (
-    <div style={{ display:'flex', minHeight:'100vh', background: isDark ? '#040c18' : '#f0f4f8' }}>
+    <div style={{ display:'flex', minHeight:'100vh', background: isDark ? '#040c18' : 'var(--bg-base)' }}>
       <Sidebar />
+      <NotificationBell />
       <main style={{ flex:1, overflowX:'hidden', overflowY:'auto', minWidth:0 }}>
         <Outlet />
       </main>

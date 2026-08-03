@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const TYPE_COLOR = { aptitude:'#00c8f0', technical:'#7c5cfc', behavioural:'#f5a623' };
+const TYPE_COLOR = { aptitude:'#4f46e5', technical:'#4f46e5', behavioural:'#d97706' };
 
 export default function CompanyOAApprovals() {
   const { isDark }   = useTheme();
@@ -22,15 +22,15 @@ export default function CompanyOAApprovals() {
   const [note,     setNote]     = useState('');
   const [tab,      setTab]      = useState('pending'); // pending | all
 
-  const bg   = isDark ? '#040c18' : '#f0f4f8';
-  const card = isDark ? '#0b1a2e' : '#ffffff';
-  const bord = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
-  const txt  = isDark ? '#e2e8f0' : '#0f172a';
+  const bg   = isDark ? 'var(--bg-base)' : '#f0f4f8';
+  const card = isDark ? 'var(--bg-card)' : '#ffffff';
+  const bord = isDark ? 'var(--border)' : 'rgba(0,0,0,0.08)';
+  const txt  = isDark ? 'var(--text-primary)' : '#0f172a';
   const txt2 = isDark ? '#94a3b8' : '#64748b';
   const inputS = {
     width:'100%', boxSizing:'border-box', resize:'vertical',
-    background: isDark?'#071525':'#f8fafc',
-    border:`1px solid ${isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.12)'}`,
+    background: isDark?'var(--bg-input)':'#f8fafc',
+    border:`1px solid ${isDark?'var(--border)':'rgba(0,0,0,0.12)'}`,
     borderRadius:8, padding:'8px 12px', fontSize:13, color:txt,
     outline:'none', fontFamily:"'Sora',sans-serif", minHeight:70,
   };
@@ -76,9 +76,9 @@ export default function CompanyOAApprovals() {
 
   const statusBadge = (status) => {
     const map = {
-      pending:  { col:'#f5a623', bg:'rgba(245,166,35,0.12)',  icon:<Clock size={10}/>,        label:'Pending' },
-      approved: { col:'#10c98a', bg:'rgba(16,201,138,0.12)', icon:<CheckCircle size={10}/>,  label:'Approved' },
-      rejected: { col:'#f04b4b', bg:'rgba(240,75,75,0.12)',  icon:<XCircle size={10}/>,      label:'Rejected' },
+      pending:  { col:'#d97706', bg:'rgba(217,119,6,0.12)',  icon:<Clock size={10}/>,        label:'Pending' },
+      approved: { col:'#16a34a', bg:'rgba(22,163,74,0.12)', icon:<CheckCircle size={10}/>,  label:'Approved' },
+      rejected: { col:'#dc2626', bg:'rgba(220,38,38,0.12)',  icon:<XCircle size={10}/>,      label:'Rejected' },
     };
     const s = map[status] || map.pending;
     return <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 10px',
@@ -99,7 +99,7 @@ export default function CompanyOAApprovals() {
           </p>
         </div>
         <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6,
-          padding:'8px 14px', background:isDark?'rgba(255,255,255,0.05)':'#f1f5f9',
+          padding:'8px 14px', background:isDark?'var(--bg-card-high)':'#f1f5f9',
           border:`1px solid ${bord}`, borderRadius:8, fontSize:12, fontWeight:600,
           color:txt2, cursor:'pointer' }}>
           <RefreshCw size={13}/> Refresh
@@ -107,26 +107,26 @@ export default function CompanyOAApprovals() {
       </div>
 
       {/* Info banner */}
-      <div style={{ padding:'10px 14px', marginBottom:18, background:'rgba(124,92,252,0.07)',
-        border:'1px solid rgba(124,92,252,0.2)', borderRadius:10,
+      <div style={{ padding:'10px 14px', marginBottom:18, background:'rgba(79,70,229,0.07)',
+        border:'1px solid rgba(79,70,229,0.2)', borderRadius:10,
         display:'flex', gap:10, alignItems:'flex-start' }}>
-        <AlertCircle size={15} color="#7c5cfc" style={{ flexShrink:0, marginTop:1 }}/>
+        <AlertCircle size={15} color="#4f46e5" style={{ flexShrink:0, marginTop:1 }}/>
         <p style={{ margin:0, fontSize:12, color:txt2, lineHeight:1.6 }}>
-          <strong style={{ color:'#7c5cfc' }}>Workflow:</strong> Company recruiter submits test with questions and answer key →
+          <strong style={{ color:'#4f46e5' }}>Workflow:</strong> Company recruiter submits test with questions and answer key →
           You review every question and correct answer here → Approve to publish to students
           (auto-announcement sent) or Reject with a note to the company.
         </p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:0, marginBottom:20, background:isDark?'#071525':'#f1f5f9',
+      <div style={{ display:'flex', gap:0, marginBottom:20, background:isDark?'var(--bg-input)':'#f1f5f9',
         borderRadius:10, padding:4, width:'fit-content' }}>
         {[['pending','Pending Review'], ['all','All Submissions']].map(([key,label]) => (
           <button key={key} onClick={() => setTab(key)} style={{
             padding:'8px 20px', borderRadius:8, border:'none', cursor:'pointer',
             fontSize:13, fontWeight:700, fontFamily:"'Sora',sans-serif",
-            background: tab===key ? (isDark?'#0b1a2e':'#ffffff') : 'transparent',
-            color: tab===key ? '#7c5cfc' : txt2,
+            background: tab===key ? (isDark?'var(--bg-card)':'#ffffff') : 'transparent',
+            color: tab===key ? '#4f46e5' : txt2,
             boxShadow: tab===key ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
           }}>{label}</button>
         ))}
@@ -135,12 +135,12 @@ export default function CompanyOAApprovals() {
       {/* Content */}
       {loading ? (
         <div style={{ textAlign:'center', padding:'60px 0' }}>
-          <Loader2 size={28} color="#7c5cfc" style={{ animation:'spin 1s linear infinite', display:'inline-block' }}/>
+          <Loader2 size={28} color="#4f46e5" style={{ animation:'spin 1s linear infinite', display:'inline-block' }}/>
           <p style={{ margin:'12px 0 0', color:txt2 }}>Loading tests...</p>
         </div>
       ) : tests.length === 0 ? (
         <div style={{ textAlign:'center', padding:'60px 0' }}>
-          <CheckCircle size={40} color="#10c98a" style={{ marginBottom:12 }}/>
+          <CheckCircle size={40} color="#16a34a" style={{ marginBottom:12 }}/>
           <h3 style={{ margin:0, color:txt2, fontWeight:600 }}>
             {tab === 'pending' ? 'No pending tests!' : 'No submissions yet.'}
           </h3>
@@ -192,12 +192,12 @@ export default function CompanyOAApprovals() {
                         <Users size={12}/>
                         {test.target_branches?.length ? test.target_branches.join(', ') : 'All branches'}
                       </span>
-                      <span style={{ fontSize:11, color:isDark?'#334155':'#cbd5e1' }}>
+                      <span style={{ fontSize:11, color:'var(--text-muted)' }}>
                         Submitted {new Date(test.created_at).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}
                       </span>
                     </div>
                     {test.approval_note && (
-                      <p style={{ margin:'6px 0 0', fontSize:12, color:'#f04b4b', fontStyle:'italic' }}>
+                      <p style={{ margin:'6px 0 0', fontSize:12, color:'#dc2626', fontStyle:'italic' }}>
                         Note: {test.approval_note}
                       </p>
                     )}
@@ -207,7 +207,7 @@ export default function CompanyOAApprovals() {
                   <div style={{ display:'flex', gap:8, flexShrink:0, alignItems:'center' }}>
                     <button onClick={() => loadQuestions(test.id)} style={{
                       display:'flex', alignItems:'center', gap:5, padding:'6px 12px',
-                      background:isDark?'rgba(255,255,255,0.04)':'#f1f5f9',
+                      background:isDark?'var(--bg-card-high)':'#f1f5f9',
                       border:`1px solid ${bord}`, borderRadius:7, fontSize:12, color:txt2, cursor:'pointer' }}>
                       {loadingQ === test.id
                         ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>
@@ -216,16 +216,16 @@ export default function CompanyOAApprovals() {
                     </button>
                     {test.approval_status === 'pending' && <>
                       <button onClick={() => act(test.id, 'reject')} disabled={acting===test.id}
-                        style={{ padding:'6px 14px', background:'rgba(240,75,75,0.1)',
-                          border:'1px solid rgba(240,75,75,0.3)', borderRadius:7,
-                          fontSize:12, fontWeight:700, color:'#f04b4b', cursor:'pointer',
+                        style={{ padding:'6px 14px', background:'rgba(220,38,38,0.1)',
+                          border:'1px solid rgba(220,38,38,0.3)', borderRadius:7,
+                          fontSize:12, fontWeight:700, color:'#dc2626', cursor:'pointer',
                           display:'flex', alignItems:'center', gap:4 }}>
                         <XCircle size={13}/> Reject
                       </button>
                       <button onClick={() => act(test.id, 'approve')} disabled={acting===test.id}
-                        style={{ padding:'6px 14px', background:'rgba(16,201,138,0.12)',
-                          border:'1px solid rgba(16,201,138,0.3)', borderRadius:7,
-                          fontSize:12, fontWeight:700, color:'#10c98a', cursor:'pointer',
+                        style={{ padding:'6px 14px', background:'rgba(22,163,74,0.12)',
+                          border:'1px solid rgba(22,163,74,0.3)', borderRadius:7,
+                          fontSize:12, fontWeight:700, color:'#16a34a', cursor:'pointer',
                           display:'flex', alignItems:'center', gap:4 }}>
                         {acting===test.id
                           ? <Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/>
@@ -263,12 +263,12 @@ export default function CompanyOAApprovals() {
                         <div key={q.id} style={{ padding:'12px 14px', background:card,
                           border:`1px solid ${bord}`, borderRadius:9 }}>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:q.question_type==='mcq'?10:0 }}>
-                            <span style={{ fontSize:11, fontWeight:800, color:'#7c5cfc',
-                              background:'rgba(124,92,252,0.1)', padding:'2px 8px', borderRadius:999 }}>Q{i+1}</span>
+                            <span style={{ fontSize:11, fontWeight:800, color:'#4f46e5',
+                              background:'rgba(79,70,229,0.1)', padding:'2px 8px', borderRadius:999 }}>Q{i+1}</span>
                             <span style={{ fontSize:10, color:txt2,
-                              background:isDark?'rgba(255,255,255,0.04)':'#f1f5f9',
+                              background:isDark?'var(--bg-card-high)':'#f1f5f9',
                               padding:'2px 8px', borderRadius:5 }}>{q.section}</span>
-                            <span style={{ fontSize:10, color:'#10c98a' }}>{q.marks} mk</span>
+                            <span style={{ fontSize:10, color:'#16a34a' }}>{q.marks} mk</span>
                             <span style={{ fontSize:10, color:txt2, marginLeft:'auto',
                               textTransform:'capitalize', fontStyle:'italic' }}>{q.question_type}</span>
                           </div>
@@ -281,12 +281,12 @@ export default function CompanyOAApprovals() {
                                 <div key={oi} style={{ display:'flex', alignItems:'center', gap:7,
                                   padding:'6px 10px', borderRadius:7, fontSize:12,
                                   background: oi===q.correct_index
-                                    ? (isDark?'rgba(16,201,138,0.12)':'#f0fdf4')
-                                    : (isDark?'rgba(255,255,255,0.02)':'#f8f9fa'),
-                                  border:`1px solid ${oi===q.correct_index?'#10c98a':bord}`,
-                                  color: oi===q.correct_index ? '#10c98a' : txt2 }}>
+                                    ? (isDark?'rgba(22,163,74,0.12)':'#f0fdf4')
+                                    : (isDark?'var(--bg-card-high)':'#f8f9fa'),
+                                  border:`1px solid ${oi===q.correct_index?'#16a34a':bord}`,
+                                  color: oi===q.correct_index ? '#16a34a' : txt2 }}>
                                   {oi===q.correct_index
-                                    ? <CheckCircle size={13} color="#10c98a"/>
+                                    ? <CheckCircle size={13} color="#16a34a"/>
                                     : <span style={{ width:13, height:13, borderRadius:'50%',
                                         border:`1.5px solid ${isDark?'#334155':'#d1d5db'}`,
                                         display:'inline-block' }}/>}
@@ -298,7 +298,7 @@ export default function CompanyOAApprovals() {
                             </div>
                           )}
                           {q.explanation && (
-                            <p style={{ margin:'8px 0 0', fontSize:11, color:'#7c5cfc',
+                            <p style={{ margin:'8px 0 0', fontSize:11, color:'#4f46e5',
                               fontStyle:'italic', lineHeight:1.5 }}>
                               💡 {q.explanation}
                             </p>
@@ -318,15 +318,15 @@ export default function CompanyOAApprovals() {
                           placeholder="e.g. Some questions need clearer wording. Please revise Q3 and Q7."/>
                         <div style={{ display:'flex', gap:10, marginTop:12, justifyContent:'flex-end' }}>
                           <button onClick={() => act(test.id,'reject')} disabled={acting===test.id}
-                            style={{ padding:'9px 20px', background:'rgba(240,75,75,0.1)',
-                              border:'1px solid rgba(240,75,75,0.3)', borderRadius:8,
-                              fontSize:13, fontWeight:700, color:'#f04b4b', cursor:'pointer',
+                            style={{ padding:'9px 20px', background:'rgba(220,38,38,0.1)',
+                              border:'1px solid rgba(220,38,38,0.3)', borderRadius:8,
+                              fontSize:13, fontWeight:700, color:'#dc2626', cursor:'pointer',
                               display:'flex', alignItems:'center', gap:6 }}>
                             <XCircle size={14}/> Reject Test
                           </button>
                           <button onClick={() => act(test.id,'approve')} disabled={acting===test.id}
-                            style={{ padding:'9px 22px', background:'#10c98a', border:'none',
-                              borderRadius:8, fontSize:13, fontWeight:700, color:'#040c18',
+                            style={{ padding:'9px 22px', background:'#16a34a', border:'none',
+                              borderRadius:8, fontSize:13, fontWeight:700, color:'#ffffff',
                               cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}>
                             {acting===test.id
                               ? <Loader2 size={14} style={{ animation:'spin 1s linear infinite' }}/>

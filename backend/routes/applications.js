@@ -3,7 +3,26 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
 const supabase = require('../config/supabase');
-const { sendShortlistEmail, sendSelectionEmail, sendRejectionEmail } = require('../utils/emailTemplates');
+const { sendShortlistEmail, sendSelectionEmail, sendRejectionEmail } = require('../config/email');
+const { notify } = require('../utils/notify');
+
+// Ordered recruitment pipeline stages + display metadata
+const STAGE_ORDER = ['applied', 'oa_cleared', 'interview_1_cleared', 'interview_2_cleared', 'selected', 'rejected'];
+const STAGE_LABEL = {
+  applied:              'Application submitted',
+  oa_cleared:           'Cleared Online Assessment',
+  interview_1_cleared:  'Cleared Interview Round 1',
+  interview_2_cleared:  'Cleared Interview Round 2',
+  selected:             'Selected 🎉',
+  rejected:             'Not selected',
+};
+// Map a pipeline stage to the coarse application status
+function stageToStatus(stage) {
+  if (stage === 'selected') return 'selected';
+  if (stage === 'rejected') return 'rejected';
+  if (stage === 'applied')  return 'applied';
+  return 'shortlisted';
+}
 
 // ────────────────────────────────────────────────
 // POST /api/applications
@@ -67,7 +86,7 @@ router.get('/my', auth, roles('student'), async (req, res) => {
   const { data, error } = await supabase
     .from('applications')
     .select(`
-      id, status, applied_at, updated_at,
+      id, job_id, status, stage, stage_history, applied_at, updated_at,
       job_postings(id, title, package_lpa, drive_date, companies(name, logo_url))
     `)
     .eq('student_id', req.user.id)
@@ -87,7 +106,7 @@ router.get('/job/:jobId', auth, roles('recruiter', 'admin'), async (req, res) =>
   let query = supabase
     .from('applications')
     .select(`
-      id, status, applied_at,
+      id, status, stage, stage_history, applied_at,
       student_profiles(
         full_name, roll_number, branch, cgpa, backlogs,
         skills, resume_url, linkedin_url, github_url, phone,
@@ -164,7 +183,82 @@ router.patch('/:id/status', auth, roles('recruiter', 'admin'), async (req, res) 
       .eq('id', app.student_id);
   }
 
+  // In-app notification for the student
+  notify(app.student_id, {
+    title: `${companyName || 'Company'} — application ${status}`,
+    body: `Your application for ${jobTitle || 'the role'} is now: ${status}.`,
+    type: status === 'selected' ? 'selected' : status === 'rejected' ? 'rejected' : 'stage_advanced',
+    link: '/student/jobs',
+    metadata: { applicationId: app.id, status },
+  });
+
   res.json({ message: `Status updated to ${status}.`, application: data });
+});
+
+// ────────────────────────────────────────────────
+// PATCH /api/applications/:id/stage
+// Recruiter / admin: advance a candidate through the recruitment pipeline
+// Body: { stage }  — one of STAGE_ORDER
+// ────────────────────────────────────────────────
+router.patch('/:id/stage', auth, roles('recruiter', 'admin'), async (req, res) => {
+  const { stage } = req.body;
+  if (!STAGE_ORDER.includes(stage))
+    return res.status(400).json({ error: `Invalid stage. Must be one of: ${STAGE_ORDER.join(', ')}` });
+
+  // Load application + context for notification/email
+  const { data: app } = await supabase
+    .from('applications')
+    .select(`
+      id, student_id, stage, stage_history,
+      student_profiles(full_name, users(email)),
+      job_postings(title, companies(name))
+    `)
+    .eq('id', req.params.id)
+    .single();
+
+  if (!app) return res.status(404).json({ error: 'Application not found.' });
+
+  const now = new Date().toISOString();
+  const history = Array.isArray(app.stage_history) ? app.stage_history : [];
+  history.push({ stage, at: now });
+
+  const { data, error } = await supabase
+    .from('applications')
+    .update({ stage, status: stageToStatus(stage), stage_history: history, updated_at: now })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+
+  if (error) return res.status(400).json({ error: error.message });
+
+  const companyName = app.job_postings?.companies?.name || 'The company';
+  const jobTitle    = app.job_postings?.title || 'the role';
+  const studentName = app.student_profiles?.full_name;
+  const studentEmail = app.student_profiles?.users?.email;
+
+  // In-app notification for the student
+  notify(app.student_id, {
+    title: `${companyName} — ${STAGE_LABEL[stage]}`,
+    body: `Your application for ${jobTitle} moved to: ${STAGE_LABEL[stage]}.`,
+    type: stage === 'selected' ? 'selected' : stage === 'rejected' ? 'rejected' : 'stage_advanced',
+    link: '/student/jobs',
+    metadata: { applicationId: app.id, stage },
+  });
+
+  // Emails only on terminal stages to avoid spam
+  try {
+    if (stage === 'selected')      await sendSelectionEmail(studentEmail, studentName, companyName, jobTitle);
+    else if (stage === 'rejected') await sendRejectionEmail(studentEmail, studentName, companyName, jobTitle);
+  } catch (e) {
+    console.error('Stage email failed:', e.message);
+  }
+
+  // Keep placement status in sync on selection
+  if (stage === 'selected') {
+    await supabase.from('student_profiles').update({ placement_status: 'placed' }).eq('id', app.student_id);
+  }
+
+  res.json({ message: `Stage updated to ${STAGE_LABEL[stage]}.`, application: data });
 });
 
 // ────────────────────────────────────────────────

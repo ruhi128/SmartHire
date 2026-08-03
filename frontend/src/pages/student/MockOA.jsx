@@ -182,10 +182,10 @@ const COMPANIES = [...new Set(HARDCODED_CATALOG.map(t => t.company))].sort();
 
 // ── Colors ────────────────────────────────────────────────────────────────
 const C = {
-  bg: '#040c18', card: '#0b1a2e', cardB: '#0d1f3c',
-  cyan: '#00c8f0', green: '#10c98a', amber: '#f5a623',
-  red: '#f04b4b', violet: '#7c5cfc',
-  gray: '#475569', light: '#94a3b8', white: '#e2e8f0',
+  bg: 'var(--bg-base)', card: 'var(--bg-card)', cardB: 'var(--bg-card-raised)',
+  cyan: '#4f46e5', green: '#16a34a', amber: '#d97706',
+  red: '#dc2626', violet: '#4f46e5',
+  gray: '#475569', light: 'var(--text-secondary)', white: 'var(--text-primary)',
 };
 const TYPE_COLOR = { aptitude: C.cyan, technical: C.violet, behavioural: C.amber };
 const TYPE_ICON  = { aptitude: Brain, technical: Cpu, behavioural: BookOpen };
@@ -230,14 +230,14 @@ function calcScore(test, answers, questions) {
 
 // ── Pill filter button ─────────────────────────────────────────────────────
 const Pill = ({ label, active, color, onClick }) => (
-  <button onClick={onClick} style={{ padding:'6px 16px', borderRadius:999, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", background:active?`${color}18`:'rgba(255,255,255,0.04)', border:`1px solid ${active?color+'44':'rgba(255,255,255,0.08)'}`, color:active?color:'#64748b', transition:'all .2s' }}>
+  <button onClick={onClick} style={{ padding:'6px 16px', borderRadius:999, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", background:active?`${color}18`:'var(--bg-card-high)', border:`1px solid ${active?color+'44':'var(--border)'}`, color:active?color:'#64748b', transition:'all .2s' }}>
     {label}
   </button>
 );
 
 // ── Company Tag Badge ──────────────────────────────────────────────────────
 const CompanyTag = () => (
-  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px', borderRadius:999, fontSize:10, fontWeight:800, background:'linear-gradient(135deg,rgba(16,201,138,0.18),rgba(0,200,240,0.12))', color:C.green, border:'1px solid rgba(16,201,138,0.35)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>
+  <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 9px', borderRadius:999, fontSize:10, fontWeight:800, background:'linear-gradient(135deg,rgba(22,163,74,0.18),rgba(79,70,229,0.12))', color:C.green, border:'1px solid rgba(22,163,74,0.35)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>
     <Building2 size={9}/> COMPANY PROVIDED
   </span>
 );
@@ -453,7 +453,7 @@ export default function MockOA() {
 
       {/* Header */}
       <div style={{ marginBottom:24 }}>
-        <h1 style={{ margin:0, fontSize:26, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" }}>Mock OA Tests</h1>
+        <h1 style={{ margin:0, fontSize:26, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" }}>Mock OA Tests</h1>
         <p style={{ margin:'6px 0 0', fontSize:13, color:C.gray }}>
           Practice real company questions — platform tests + company-uploaded OAs
         </p>
@@ -461,12 +461,12 @@ export default function MockOA() {
 
       {/* Company OA banner (only when there are company tests) */}
       {companyTestCount > 0 && (
-        <div style={{ background:'linear-gradient(135deg,rgba(16,201,138,0.1),rgba(0,200,240,0.07))', border:'1px solid rgba(16,201,138,0.25)', borderRadius:14, padding:'14px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:14 }}>
-          <div style={{ width:40, height:40, borderRadius:10, background:'rgba(16,201,138,0.15)', border:'1px solid rgba(16,201,138,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+        <div style={{ background:'linear-gradient(135deg,rgba(22,163,74,0.1),rgba(79,70,229,0.07))', border:'1px solid rgba(22,163,74,0.25)', borderRadius:14, padding:'14px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:14 }}>
+          <div style={{ width:40, height:40, borderRadius:10, background:'rgba(22,163,74,0.15)', border:'1px solid rgba(22,163,74,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
             <Building2 size={20} color={C.green}/>
           </div>
           <div>
-            <p style={{ margin:0, fontSize:14, fontWeight:800, color:'#e2e8f0' }}>
+            <p style={{ margin:0, fontSize:14, fontWeight:800, color:'var(--text-primary)' }}>
               {companyTestCount} Company-Provided OA Test{companyTestCount !== 1 ? 's' : ''} Available!
             </p>
             <p style={{ margin:'3px 0 0', fontSize:12, color:'#64748b' }}>
@@ -474,7 +474,7 @@ export default function MockOA() {
             </p>
           </div>
           <button onClick={() => setActiveSource('company')}
-            style={{ marginLeft:'auto', padding:'8px 16px', background:C.green, color:'#040c18', border:'none', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", whiteSpace:'nowrap', flexShrink:0 }}>
+            style={{ marginLeft:'auto', padding:'8px 16px', background:C.green, color:'#ffffff', border:'none', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", whiteSpace:'nowrap', flexShrink:0 }}>
             View These →
           </button>
         </div>
@@ -482,7 +482,7 @@ export default function MockOA() {
 
       {/* Search */}
       <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, background:'#071525', border:'1px solid rgba(255,255,255,0.08)', borderRadius:10, padding:'9px 14px', flex:'1', maxWidth:340 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:10, padding:'9px 14px', flex:'1', maxWidth:340 }}>
           <Search size={14} color={C.gray}/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search company or test name..."
             style={{ background:'none', border:'none', outline:'none', fontSize:13, color:C.white, flex:1, fontFamily:"'Sora',sans-serif" }}/>
@@ -493,7 +493,7 @@ export default function MockOA() {
       {/* Source filter */}
       <div style={{ display:'flex', gap:8, marginBottom:10, flexWrap:'wrap' }}>
         <span style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', alignSelf:'center', marginRight:4 }}>Source:</span>
-        <Pill label="All Tests" active={activeSource==='all'} color={C.white} onClick={()=>setActiveSource('all')}/>
+        <Pill label="All Tests" active={activeSource==='all'} color={C.cyan} onClick={()=>setActiveSource('all')}/>
         <Pill label={`🏢 Company Provided (${companyTestCount})`} active={activeSource==='company'} color={C.green} onClick={()=>setActiveSource('company')}/>
         <Pill label="📚 Platform Tests" active={activeSource==='platform'} color={C.violet} onClick={()=>setActiveSource('platform')}/>
       </div>
@@ -519,7 +519,7 @@ export default function MockOA() {
       {dbLoading && (
         <div style={{ display:'flex', gap:10, marginBottom:16 }}>
           {[1,2,3].map(i => (
-            <div key={i} style={{ flex:1, height:60, background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:12, animation:'pulse 1.5s infinite' }}/>
+            <div key={i} style={{ flex:1, height:60, background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:12, animation:'pulse 1.5s infinite' }}/>
           ))}
         </div>
       )}
@@ -540,13 +540,13 @@ export default function MockOA() {
 
           return (
             <div key={t.id}
-              style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:`1px solid ${isCompany ? 'rgba(16,201,138,0.25)' : color+'20'}`, borderRadius:16, padding:22, display:'flex', flexDirection:'column', gap:14, transition:'border-color .2s, transform .2s', cursor:'default', position:'relative', overflow:'hidden' }}
-              onMouseEnter={e=>{ e.currentTarget.style.borderColor=isCompany?'rgba(16,201,138,0.5)':color+'55'; e.currentTarget.style.transform='translateY(-2px)'; }}
-              onMouseLeave={e=>{ e.currentTarget.style.borderColor=isCompany?'rgba(16,201,138,0.25)':color+'20'; e.currentTarget.style.transform='translateY(0)'; }}>
+              style={{ background:'var(--bg-card)', border:`1px solid ${isCompany ? 'rgba(22,163,74,0.25)' : color+'20'}`, borderRadius:16, padding:22, display:'flex', flexDirection:'column', gap:14, transition:'border-color .2s, transform .2s', cursor:'default', position:'relative', overflow:'hidden' }}
+              onMouseEnter={e=>{ e.currentTarget.style.borderColor=isCompany?'rgba(22,163,74,0.5)':color+'55'; e.currentTarget.style.transform='translateY(-2px)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.borderColor=isCompany?'rgba(22,163,74,0.25)':color+'20'; e.currentTarget.style.transform='translateY(0)'; }}>
 
               {/* Subtle glow for company tests */}
               {isCompany && (
-                <div style={{ position:'absolute', top:0, right:0, width:120, height:120, background:'radial-gradient(circle at top right, rgba(16,201,138,0.08), transparent 70%)', pointerEvents:'none' }}/>
+                <div style={{ position:'absolute', top:0, right:0, width:120, height:120, background:'radial-gradient(circle at top right, rgba(22,163,74,0.08), transparent 70%)', pointerEvents:'none' }}/>
               )}
 
               {/* Card Header */}
@@ -576,7 +576,7 @@ export default function MockOA() {
               {t.sections?.length > 0 && (
                 <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                   {t.sections.map(s => (
-                    <span key={s} style={{ fontSize:10, padding:'2px 8px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:5, color:C.light }}>{s}</span>
+                    <span key={s} style={{ fontSize:10, padding:'2px 8px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:5, color:C.light }}>{s}</span>
                   ))}
                 </div>
               )}
@@ -588,7 +588,7 @@ export default function MockOA() {
 
               {/* CTA */}
               <button onClick={() => startTest(t)}
-                style={{ width:'100%', padding:'11px 0', background:att?`${color}15`:isCompany?`linear-gradient(135deg,${C.green},#00a878)`:color, border:`1px solid ${isCompany?C.green:color}`, borderRadius:10, fontSize:13, fontWeight:700, color:att?color:isCompany?'#040c18':'#040c18', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all .2s' }}>
+                style={{ width:'100%', padding:'11px 0', background:att?`${color}15`:isCompany?`linear-gradient(135deg,${C.green},#15803d)`:color, border:`1px solid ${isCompany?C.green:color}`, borderRadius:10, fontSize:13, fontWeight:700, color:att?color:isCompany?'#ffffff':'#ffffff', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all .2s' }}>
                 {att ? <><RefreshCw size={14}/> Retake Test</> : isCompany ? <><Building2 size={14}/> Start Company OA</> : <>Start Test →</>}
               </button>
             </div>
@@ -615,7 +615,7 @@ export default function MockOA() {
       <div style={{ minHeight:'100vh', background:C.bg, display:'flex', flexDirection:'column' }}>
 
         {/* Top bar */}
-        <div style={{ background:'#071525', borderBottom:'1px solid rgba(255,255,255,0.06)', padding:'12px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100 }}>
+        <div style={{ background:'var(--bg-input)', borderBottom:'1px solid var(--border)', padding:'12px 24px', display:'flex', alignItems:'center', justifyContent:'space-between', position:'sticky', top:0, zIndex:100 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
               <p style={{ margin:0, fontSize:13, fontWeight:700, color:C.white }}>{test.title}</p>
@@ -633,7 +633,7 @@ export default function MockOA() {
               <span style={{ fontSize:20, fontWeight:800, color:tc, fontFamily:'monospace' }}>{fmt(timeLeft)}</span>
             </div>
             <button onClick={() => { if(window.confirm('Submit test now?')) handleSubmit(false); }} disabled={submitting}
-              style={{ padding:'9px 18px', background:C.green, border:'none', borderRadius:9, fontSize:13, fontWeight:700, color:'#040c18', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:7 }}>
+              style={{ padding:'9px 18px', background:C.green, border:'none', borderRadius:9, fontSize:13, fontWeight:700, color:'#ffffff', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:7 }}>
               <Send size={13}/>{submitting?'Submitting...':'Submit'}
             </button>
           </div>
@@ -649,7 +649,7 @@ export default function MockOA() {
         <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
 
           {/* Question palette */}
-          <div style={{ width:220, background:'#071525', borderRight:'1px solid rgba(255,255,255,0.05)', padding:16, overflowY:'auto', flexShrink:0 }}>
+          <div style={{ width:220, background:'var(--bg-input)', borderRight:'1px solid var(--border)', padding:16, overflowY:'auto', flexShrink:0 }}>
             <p style={{ margin:'0 0 12px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Question Palette</p>
             {sections.map(sec => {
               const sqs = questions.filter(q => q.section === sec);
@@ -662,10 +662,10 @@ export default function MockOA() {
                       const isAns = answers[pq.id] !== undefined && answers[pq.id] !== '';
                       const isFl  = flagged.has(pq.id);
                       const isCur = globalIdx === current;
-                      const bgc   = isCur ? C.cyan : isFl ? C.amber : isAns ? C.green : 'rgba(255,255,255,0.06)';
+                      const bgc   = isCur ? C.cyan : isFl ? C.amber : isAns ? C.green : 'var(--bg-card-high)';
                       return (
                         <button key={pq.id} onClick={() => setCurrent(globalIdx)}
-                          style={{ width:32, height:32, borderRadius:6, background:bgc, border:`1px solid ${isCur?C.cyan:isAns?C.green:isFl?C.amber:'rgba(255,255,255,0.08)'}`, color:isCur||isAns||isFl?'#040c18':C.light, fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          style={{ width:32, height:32, borderRadius:6, background:bgc, border:`1px solid ${isCur?C.cyan:isAns?C.green:isFl?C.amber:'var(--border)'}`, color:isCur||isAns||isFl?'#ffffff':C.light, fontSize:11, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           {globalIdx+1}
                         </button>
                       );
@@ -675,8 +675,8 @@ export default function MockOA() {
               );
             })}
             {/* Legend */}
-            <div style={{ marginTop:16, borderTop:'1px solid rgba(255,255,255,0.06)', paddingTop:12 }}>
-              {[{c:C.green,l:'Answered'},{c:C.amber,l:'Flagged'},{c:C.cyan,l:'Current'},{c:'rgba(255,255,255,0.06)',l:'Not visited'}].map(x=>(
+            <div style={{ marginTop:16, borderTop:'1px solid var(--border)', paddingTop:12 }}>
+              {[{c:C.green,l:'Answered'},{c:C.amber,l:'Flagged'},{c:C.cyan,l:'Current'},{c:'var(--bg-card-high)',l:'Not visited'}].map(x=>(
                 <div key={x.l} style={{ display:'flex', alignItems:'center', gap:7, marginBottom:5 }}>
                   <div style={{ width:12, height:12, borderRadius:3, background:x.c }}/>
                   <span style={{ fontSize:10, color:C.gray }}>{x.l}</span>
@@ -693,7 +693,7 @@ export default function MockOA() {
                 {/* Q header */}
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-                    <span style={{ background:'rgba(255,255,255,0.06)', borderRadius:8, padding:'4px 12px', fontSize:12, fontWeight:700, color:C.white }}>Q {current+1} of {questions.length}</span>
+                    <span style={{ background:'var(--bg-card-high)', borderRadius:8, padding:'4px 12px', fontSize:12, fontWeight:700, color:C.white }}>Q {current+1} of {questions.length}</span>
                     <span style={{ background:`${TYPE_COLOR[test.type]||C.violet}18`, borderRadius:6, padding:'3px 10px', fontSize:11, fontWeight:700, color:TYPE_COLOR[test.type]||C.violet, textTransform:'capitalize' }}>
                       {q.type === 'text' ? 'Descriptive' : 'MCQ'}
                     </span>
@@ -702,13 +702,13 @@ export default function MockOA() {
                     {isCompanyTest && <CompanyTag />}
                   </div>
                   <button onClick={() => setFlagged(f => { const n = new Set(f); n.has(q.id)?n.delete(q.id):n.add(q.id); return n; })}
-                    style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', background:flagged.has(q.id)?`${C.amber}18`:'transparent', border:`1px solid ${flagged.has(q.id)?C.amber:'rgba(255,255,255,0.1)'}`, borderRadius:8, color:flagged.has(q.id)?C.amber:C.gray, fontSize:12, cursor:'pointer' }}>
+                    style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', background:flagged.has(q.id)?`${C.amber}18`:'transparent', border:`1px solid ${flagged.has(q.id)?C.amber:'var(--border)'}`, borderRadius:8, color:flagged.has(q.id)?C.amber:C.gray, fontSize:12, cursor:'pointer' }}>
                     <Flag size={12}/>{flagged.has(q.id)?'Flagged':'Flag'}
                   </button>
                 </div>
 
                 {/* Question text */}
-                <div style={{ background:'#071525', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:24, marginBottom:20 }}>
+                <div style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:14, padding:24, marginBottom:20 }}>
                   <p style={{ margin:0, fontSize:15, color:C.white, lineHeight:1.7 }}>{q.text}</p>
                 </div>
 
@@ -719,8 +719,8 @@ export default function MockOA() {
                       const sel = parseInt(answers[q.id]) === i;
                       return (
                         <button key={i} onClick={() => setAnswers(a => ({...a, [q.id]: i}))}
-                          style={{ textAlign:'left', padding:'14px 18px', background:sel?`${C.violet}18`:'rgba(255,255,255,0.03)', border:`1px solid ${sel?C.violet:'rgba(255,255,255,0.08)'}`, borderRadius:10, color:sel?C.white:C.light, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', gap:12, fontFamily:"'Sora',sans-serif", transition:'all .15s' }}>
-                          <span style={{ width:28, height:28, borderRadius:7, background:sel?C.violet:'rgba(255,255,255,0.06)', border:`1px solid ${sel?C.violet:'rgba(255,255,255,0.12)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:sel?'#fff':C.gray, flexShrink:0 }}>
+                          style={{ textAlign:'left', padding:'14px 18px', background:sel?`${C.violet}18`:'var(--bg-card-high)', border:`1px solid ${sel?C.violet:'var(--border)'}`, borderRadius:10, color:sel?C.white:C.light, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', gap:12, fontFamily:"'Sora',sans-serif", transition:'all .15s' }}>
+                          <span style={{ width:28, height:28, borderRadius:7, background:sel?C.violet:'var(--bg-card-high)', border:`1px solid ${sel?C.violet:'var(--border)'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:sel?'#fff':C.gray, flexShrink:0 }}>
                             {['A','B','C','D'][i]}
                           </span>
                           {opt}
@@ -736,14 +736,14 @@ export default function MockOA() {
                     {q.wordLimit && <p style={{ fontSize:11, color:C.gray, marginBottom:8 }}>Recommended: {q.wordLimit} words | Written: {(answers[q.id]||'').trim().split(/\s+/).filter(Boolean).length} words</p>}
                     <textarea value={answers[q.id] || ''} onChange={e => setAnswers(a => ({...a, [q.id]: e.target.value}))}
                       placeholder={q.placeholder || 'Write your answer here...'} rows={10}
-                      style={{ width:'100%', background:'#071525', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:16, fontSize:13, color:C.white, resize:'vertical', outline:'none', lineHeight:1.7, fontFamily:"'Sora',sans-serif", boxSizing:'border-box' }}/>
+                      style={{ width:'100%', background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:10, padding:16, fontSize:13, color:C.white, resize:'vertical', outline:'none', lineHeight:1.7, fontFamily:"'Sora',sans-serif", boxSizing:'border-box' }}/>
                   </div>
                 )}
 
                 {/* Navigation */}
                 <div style={{ display:'flex', justifyContent:'space-between', marginTop:24 }}>
                   <button onClick={() => setCurrent(c => Math.max(0,c-1))} disabled={current===0}
-                    style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 20px', background:'transparent', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, color:current===0?C.gray:C.white, fontSize:13, cursor:current===0?'not-allowed':'pointer', fontFamily:"'Sora',sans-serif" }}>
+                    style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 20px', background:'transparent', border:'1px solid var(--border)', borderRadius:9, color:current===0?C.gray:C.white, fontSize:13, cursor:current===0?'not-allowed':'pointer', fontFamily:"'Sora',sans-serif" }}>
                     <ChevronLeft size={15}/> Previous
                   </button>
                   <button onClick={() => setAnswers(a => ({...a,[q.id]:undefined}))}
@@ -751,7 +751,7 @@ export default function MockOA() {
                     Clear
                   </button>
                   <button onClick={() => setCurrent(c => Math.min(questions.length-1,c+1))} disabled={current===questions.length-1}
-                    style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 20px', background:C.cyan, border:'none', borderRadius:9, color:'#040c18', fontSize:13, fontWeight:700, cursor:current===questions.length-1?'not-allowed':'pointer', fontFamily:"'Sora',sans-serif" }}>
+                    style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 20px', background:C.cyan, border:'none', borderRadius:9, color:'#ffffff', fontSize:13, fontWeight:700, cursor:current===questions.length-1?'not-allowed':'pointer', fontFamily:"'Sora',sans-serif" }}>
                     Next <ChevronRight size={15}/>
                   </button>
                 </div>
@@ -783,7 +783,7 @@ export default function MockOA() {
     }));
 
     const CustomTooltip = ({active,payload,label}) => active&&payload?.length
-      ? <div style={{background:'#0b1a2e',border:'1px solid rgba(255,255,255,0.1)',borderRadius:8,padding:'8px 12px'}}>
+      ? <div style={{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px'}}>
           <p style={{margin:0,fontSize:11,color:C.gray}}>{label}</p>
           {payload.map((p,i)=><p key={i} style={{margin:'3px 0 0',fontSize:13,fontWeight:700,color:p.color||C.cyan}}>{p.name}: {p.value}</p>)}
         </div> : null;
@@ -795,14 +795,14 @@ export default function MockOA() {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:28 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-              <h1 style={{ margin:0, fontSize:24, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" }}>OA Analysis Dashboard</h1>
+              <h1 style={{ margin:0, fontSize:24, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" }}>OA Analysis Dashboard</h1>
               {isCompanyTest && <CompanyTag />}
             </div>
             <p style={{ margin:0, fontSize:13, color:C.gray }}>{test.title} · {test.company}</p>
             {result.autoSubmitted && <span style={{ fontSize:11, color:C.amber, fontWeight:700 }}>⚡ Auto-submitted (timer expired)</span>}
           </div>
           <button onClick={() => setScreen('list')}
-            style={{ padding:'9px 18px', background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:9, color:C.white, fontSize:13, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
+            style={{ padding:'9px 18px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:9, color:C.white, fontSize:13, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
             ← Back to Tests
           </button>
         </div>
@@ -815,7 +815,7 @@ export default function MockOA() {
             { label:'Correct / Wrong', value:`${result.correct} / ${result.wrong}`, sub:`${result.skipped} skipped`, color:C.green },
             { label:'Time Taken',      value:timeTakenFmt,                       sub:`of ${test.duration}m allowed`, color:C.cyan },
           ].map((m,i) => (
-            <div key={i} style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:`1px solid ${m.color}22`, borderRadius:14, padding:20, textAlign:'center' }}>
+            <div key={i} style={{ background:'var(--bg-card)', border:`1px solid ${m.color}22`, borderRadius:14, padding:20, textAlign:'center' }}>
               <p style={{ margin:0, fontSize:12, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em' }}>{m.label}</p>
               <p style={{ margin:'8px 0 2px', fontSize:26, fontWeight:800, color:m.color, fontFamily:"'Sora',sans-serif", lineHeight:1 }}>{m.value}</p>
               <p style={{ margin:0, fontSize:11, color:C.gray }}>{m.sub}</p>
@@ -825,7 +825,7 @@ export default function MockOA() {
 
         {/* Charts */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
-          <div style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:20 }}>
+          <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20 }}>
             <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white }}>Marks by Section</p>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={barData} margin={{top:4,right:4,bottom:0,left:-20}}>
@@ -838,17 +838,17 @@ export default function MockOA() {
                     return <Cell key={i} fill={pct>=75?C.green:pct>=50?C.amber:C.red}/>;
                   })}
                 </Bar>
-                <Bar dataKey="total" name="Total" fill="rgba(255,255,255,0.06)" radius={[4,4,0,0]} maxBarSize={28}/>
+                <Bar dataKey="total" name="Total" fill="rgba(15,23,42,0.08)" radius={[4,4,0,0]} maxBarSize={28}/>
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {radarData.length >= 3 ? (
-            <div style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:20 }}>
+            <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20 }}>
               <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white }}>Section Radar</p>
               <ResponsiveContainer width="100%" height={200}>
                 <RadarChart data={radarData}>
-                  <PolarGrid stroke="rgba(255,255,255,0.08)"/>
+                  <PolarGrid stroke="rgba(15,23,42,0.10)"/>
                   <PolarAngleAxis dataKey="subject" tick={{fill:C.gray,fontSize:10}}/>
                   <Radar name="Score %" dataKey="score" stroke={gradeColor} fill={gradeColor} fillOpacity={0.2} strokeWidth={2}/>
                   <Tooltip content={<CustomTooltip/>}/>
@@ -856,7 +856,7 @@ export default function MockOA() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:20 }}>
+            <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20 }}>
               <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white }}>MCQ Breakdown</p>
               <div style={{ display:'flex', gap:12, marginBottom:14 }}>
                 {[{l:'Correct',v:result.correct,c:C.green},{l:'Wrong',v:result.wrong,c:C.red},{l:'Skipped',v:result.skipped,c:C.gray}].map(x=>(
@@ -871,11 +871,11 @@ export default function MockOA() {
         </div>
 
         {/* Section table */}
-        <div style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:20, marginBottom:20 }}>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20, marginBottom:20 }}>
           <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white }}>Section-wise Performance</p>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead><tr>{['Section','Questions','Correct','Marks Earned','Total','Score %'].map(h=>(
-              <th key={h} style={{ padding:'8px 12px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid rgba(255,255,255,0.05)', textAlign:'left' }}>{h}</th>
+              <th key={h} style={{ padding:'8px 12px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid var(--border)', textAlign:'left' }}>{h}</th>
             ))}</tr></thead>
             <tbody>
               {Object.entries(result.breakdown).map(([sec, b]) => {
@@ -883,14 +883,14 @@ export default function MockOA() {
                 const col = pct>=75?C.green:pct>=50?C.amber:C.red;
                 return (
                   <tr key={sec}>
-                    <td style={{ padding:'12px', fontSize:13, color:C.white, borderBottom:'1px solid rgba(255,255,255,0.03)', fontWeight:600 }}>{sec}</td>
-                    <td style={{ padding:'12px', fontSize:13, color:C.light, borderBottom:'1px solid rgba(255,255,255,0.03)' }}>{b.total}</td>
-                    <td style={{ padding:'12px', fontSize:13, color:C.green, borderBottom:'1px solid rgba(255,255,255,0.03)', fontWeight:700 }}>{b.correct}</td>
-                    <td style={{ padding:'12px', fontSize:13, color:col, borderBottom:'1px solid rgba(255,255,255,0.03)', fontWeight:700 }}>{b.earned}</td>
-                    <td style={{ padding:'12px', fontSize:13, color:C.light, borderBottom:'1px solid rgba(255,255,255,0.03)' }}>{b.marks}</td>
-                    <td style={{ padding:'12px', borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
+                    <td style={{ padding:'12px', fontSize:13, color:C.white, borderBottom:'1px solid var(--border)', fontWeight:600 }}>{sec}</td>
+                    <td style={{ padding:'12px', fontSize:13, color:C.light, borderBottom:'1px solid var(--border)' }}>{b.total}</td>
+                    <td style={{ padding:'12px', fontSize:13, color:C.green, borderBottom:'1px solid var(--border)', fontWeight:700 }}>{b.correct}</td>
+                    <td style={{ padding:'12px', fontSize:13, color:col, borderBottom:'1px solid var(--border)', fontWeight:700 }}>{b.earned}</td>
+                    <td style={{ padding:'12px', fontSize:13, color:C.light, borderBottom:'1px solid var(--border)' }}>{b.marks}</td>
+                    <td style={{ padding:'12px', borderBottom:'1px solid var(--border)' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ flex:1, height:6, background:'rgba(255,255,255,0.05)', borderRadius:999 }}>
+                        <div style={{ flex:1, height:6, background:'var(--bg-card-high)', borderRadius:999 }}>
                           <div style={{ width:`${pct}%`, height:'100%', background:col, borderRadius:999, transition:'width .6s' }}/>
                         </div>
                         <span style={{ fontSize:12, fontWeight:700, color:col, minWidth:36 }}>{pct}%</span>
@@ -905,7 +905,7 @@ export default function MockOA() {
 
         {/* Q-by-Q review (platform tests only — company tests don't expose correct_answer during test) */}
         {!isCompanyTest && (
-          <div style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:20, marginBottom:24 }}>
+          <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20, marginBottom:24 }}>
             <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white }}>Question-by-Question Review</p>
             {result.questions.filter(q=>q.type==='mcq').map((q,i) => {
               const userAns = answers[q.id];
@@ -917,7 +917,7 @@ export default function MockOA() {
               return (
                 <div key={q.id} style={{ marginBottom:12, padding:16, background:`${statusColor}08`, border:`1px solid ${statusColor}20`, borderRadius:10 }}>
                   <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                    <span style={{ width:26, height:26, borderRadius:7, background:statusColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#040c18', flexShrink:0 }}>{statusIcon}</span>
+                    <span style={{ width:26, height:26, borderRadius:7, background:statusColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#ffffff', flexShrink:0 }}>{statusIcon}</span>
                     <div style={{ flex:1 }}>
                       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
                         <p style={{ margin:0, fontSize:13, color:C.white, lineHeight:1.5, flex:1 }}><strong>Q{i+1}.</strong> {q.text}</p>
@@ -927,7 +927,7 @@ export default function MockOA() {
                         <span style={{ color:C.gray }}>Your answer: <strong style={{ color:isSkipped?C.gray:isCorrect?C.green:C.red }}>{isSkipped?'Not attempted':(q.opts||q.options||[])[parseInt(userAns)]||'N/A'}</strong></span>
                         <span style={{ color:C.gray }}>Correct: <strong style={{ color:C.green }}>{(q.opts||q.options||[])[correctIdx]}</strong></span>
                       </div>
-                      {q.explanation && <p style={{ margin:0, fontSize:12, color:C.light, background:'rgba(255,255,255,0.03)', borderRadius:6, padding:'8px 10px' }}>💡 {q.explanation}</p>}
+                      {q.explanation && <p style={{ margin:0, fontSize:12, color:C.light, background:'var(--bg-card-high)', borderRadius:6, padding:'8px 10px' }}>💡 {q.explanation}</p>}
                     </div>
                   </div>
                 </div>
@@ -938,8 +938,8 @@ export default function MockOA() {
 
         {/* Company test note */}
         {isCompanyTest && (
-          <div style={{ background:'rgba(16,201,138,0.06)', border:'1px solid rgba(16,201,138,0.2)', borderRadius:12, padding:16, marginBottom:24 }}>
-            <p style={{ margin:0, fontSize:13, color:'#94a3b8' }}>
+          <div style={{ background:'rgba(22,163,74,0.06)', border:'1px solid rgba(22,163,74,0.2)', borderRadius:12, padding:16, marginBottom:24 }}>
+            <p style={{ margin:0, fontSize:13, color:'var(--text-secondary)' }}>
               <span style={{ color:C.green, fontWeight:700 }}>📋 Company Test Note: </span>
               Detailed question-by-question review is not shown for company-uploaded tests to maintain integrity. Your score has been recorded.
             </p>
@@ -953,7 +953,7 @@ export default function MockOA() {
             <RefreshCw size={15}/> Retake Test
           </button>
           <button onClick={() => setScreen('list')}
-            style={{ padding:'12px 28px', background:'transparent', border:'1px solid rgba(255,255,255,0.15)', borderRadius:10, fontSize:14, fontWeight:700, color:C.white, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
+            style={{ padding:'12px 28px', background:'transparent', border:'1px solid var(--border)', borderRadius:10, fontSize:14, fontWeight:700, color:C.white, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
             All Tests
           </button>
         </div>

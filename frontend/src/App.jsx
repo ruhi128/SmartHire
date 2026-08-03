@@ -7,6 +7,7 @@ import { Loader2 } from 'lucide-react';
 
 import Login             from './pages/Login';
 import Register          from './pages/Register';
+import VerifyEmail       from './pages/VerifyEmail';
 import StudentLayout     from './layouts/StudentLayout';
 import RecruiterLayout   from './layouts/RecruiterLayout';
 import AdminLayout       from './layouts/AdminLayout';
@@ -15,6 +16,8 @@ import AptitudeTest      from './pages/student/AptitudeTest';
 import AptitudeAnalysis  from './pages/student/AptitudeAnalysis';
 import DSACoding         from './pages/student/DSACoding';
 import DSAPerformance    from './pages/student/DSAPerformance';
+import AptitudeHub       from './pages/student/AptitudeHub';
+import DSAHub            from './pages/student/DSAHub';
 import MockInterview     from './pages/student/MockInterview';
 import MockOA            from './pages/student/MockOA';
 import ResumeBuilder     from './pages/student/ResumeBuilder';
@@ -22,6 +25,7 @@ import ATSScoring        from './pages/student/ATSScoring';
 import Announcements     from './pages/student/Announcements';
 import Profile           from './pages/student/Profile';
 import Jobs              from './pages/student/Jobs';
+import MyApplications    from './pages/student/MyApplications';
 import RecruiterDashboard from './pages/recruiter/Dashboard';
 import PostJob           from './pages/recruiter/PostJob';
 import Applicants        from './pages/recruiter/Applicants';
@@ -53,8 +57,8 @@ if (BAD_IMPORTS.length > 0) {
 
 function PageLoader() {
   return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'#040c18' }}>
-      <Loader2 style={{ width:36, height:36, color:'#00c8f0', animation:'spin 1s linear infinite' }}/>
+    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-base)' }}>
+      <Loader2 style={{ width:36, height:36, color:'var(--primary, #4f46e5)', animation:'spin 1s linear infinite' }}/>
     </div>
   );
 }
@@ -105,15 +109,21 @@ export default function App() {
           <Route path="/"         element={<RootRedirect />} />
           <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify"   element={<VerifyEmail />} />
 
           <Route path="/student" element={<ProtectedRoute requiredRole="student"><StudentLayout /></ProtectedRoute>}>
             <Route index                    element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"         element={<StudentDashboard />} />
             <Route path="jobs"              element={<Jobs />} />
-            <Route path="aptitude"          element={<AptitudeTest />} />
-            <Route path="aptitude/analysis" element={<AptitudeAnalysis />} />
-            <Route path="dsa"               element={<DSACoding />} />
-            <Route path="dsa/performance"   element={<DSAPerformance />} />
+            <Route path="applications"      element={<MyApplications />} />
+            <Route path="aptitude" element={<AptitudeHub />}>
+              <Route index            element={<AptitudeTest />} />
+              <Route path="analysis"  element={<AptitudeAnalysis />} />
+            </Route>
+            <Route path="dsa" element={<DSAHub />}>
+              <Route index              element={<DSACoding />} />
+              <Route path="performance" element={<DSAPerformance />} />
+            </Route>
             <Route path="interview"         element={<MockInterview />} />
             <Route path="mockoa"            element={<MockOA />} />
             <Route path="resume"            element={<ResumeBuilder />} />
@@ -147,9 +157,9 @@ export default function App() {
 
         <Toaster position="top-right" toastOptions={{
           duration: 4000,
-          style: { background:'#0f2040', color:'#e2e8f0', border:'1px solid #1e3a5f', borderRadius:'10px', fontSize:'14px' },
-          success: { iconTheme: { primary:'#10c98a', secondary:'#0f2040' } },
-          error:   { iconTheme: { primary:'#f04b4b', secondary:'#0f2040' } },
+          style: { background:'#ffffff', color:'#0f172a', border:'1px solid #e5e7eb', borderRadius:'10px', fontSize:'14px', boxShadow:'0 10px 30px rgba(15,23,42,0.10)' },
+          success: { iconTheme: { primary:'#16a34a', secondary:'#ffffff' } },
+          error:   { iconTheme: { primary:'#dc2626', secondary:'#ffffff' } },
         }}/>
       </BrowserRouter>
     </AuthProvider>

@@ -6,10 +6,10 @@ import StatCard from '../../components/StatCard';
 import { AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Brain, Target, TrendingUp, Clock } from 'lucide-react';
 
-const CYAN='#00c8f0', GREEN='#10c98a', AMBER='#f5a623', RED='#f04b4b', VIOLET='#7c5cfc';
+const CYAN='#4f46e5', GREEN='#16a34a', AMBER='#d97706', RED='#dc2626', VIOLET='#4f46e5';
 
 const Tip = ({ active, payload, label }) => active && payload?.length
-  ? <div style={{ background: '#0b1a2e', border: '1px solid rgba(0,200,240,0.2)', borderRadius: 8, padding: '8px 12px' }}>
+  ? <div style={{ background: 'var(--bg-card)', border: '1px solid rgba(79,70,229,0.2)', borderRadius: 8, padding: '8px 12px' }}>
       <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>{label}</p>
       {payload.map((p,i) => <p key={i} style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: p.color }}>{p.name}: {p.value}</p>)}
     </div>
@@ -83,7 +83,7 @@ export default function AptitudeAnalysis() {
         <GlowCard title="Topic Coverage" accent={VIOLET} style={{ flex:1 }}>
           <ResponsiveContainer width="100%" height={200}>
             <RadarChart data={radarData} margin={{top:0,right:20,bottom:0,left:20}}>
-              <PolarGrid stroke="rgba(255,255,255,0.06)"/>
+              <PolarGrid stroke="rgba(15,23,42,0.08)"/>
               <PolarAngleAxis dataKey="subject" tick={{fill:'#64748b',fontSize:10}}/>
               <Radar dataKey="score" stroke={VIOLET} fill={VIOLET} fillOpacity={0.25} strokeWidth={2}/>
             </RadarChart>
@@ -107,7 +107,7 @@ export default function AptitudeAnalysis() {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr>{['Topic','Correct','Wrong','Unattempted','Accuracy','Avg Time','Strength'].map(h=>(
-                <th key={h} style={{padding:'8px 12px',fontSize:11,fontWeight:700,color:'#475569',textTransform:'uppercase',letterSpacing:'0.07em',borderBottom:'1px solid rgba(255,255,255,0.05)',textAlign:'left'}}>{h}</th>
+                <th key={h} style={{padding:'8px 12px',fontSize:11,fontWeight:700,color:'#475569',textTransform:'uppercase',letterSpacing:'0.07em',borderBottom:'1px solid var(--border)',textAlign:'left'}}>{h}</th>
               ))}</tr>
             </thead>
             <tbody>
@@ -121,7 +121,7 @@ export default function AptitudeAnalysis() {
                     <td style={{...td,color:'#64748b'}}>{t.unattempted}</td>
                     <td style={td}>
                       <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <div style={{flex:1,height:5,background:'#0f2040',borderRadius:3}}>
+                        <div style={{flex:1,height:5,background:'var(--bg-card-high)',borderRadius:3}}>
                           <div style={{width:`${t.accuracy}%`,height:'100%',background:s.color,borderRadius:3}}/>
                         </div>
                         <span style={{fontSize:12,fontWeight:700,color:s.color,minWidth:36}}>{t.accuracy}%</span>
@@ -141,6 +141,6 @@ export default function AptitudeAnalysis() {
 }
 
 const pg  = { padding:24, maxWidth:1100, margin:'0 auto', display:'flex', flexDirection:'column', gap:20 };
-const h1  = { margin:0, fontSize:24, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" };
+const h1  = { margin:0, fontSize:24, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" };
 const sub = { margin:'6px 0 0', fontSize:13, color:'#475569' };
-const td  = { padding:'11px 12px', fontSize:13, color:'#94a3b8', borderBottom:'1px solid rgba(255,255,255,0.03)' };
+const td  = { padding:'11px 12px', fontSize:13, color:'var(--text-secondary)', borderBottom:'1px solid var(--border)' };

@@ -13,17 +13,17 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const VIOLET = '#7c5cfc', GREEN = '#10c98a', AMBER = '#f5a623',
-      RED = '#f04b4b', CYAN = '#00c8f0';
+const VIOLET = '#4f46e5', GREEN = '#16a34a', AMBER = '#d97706',
+      RED = '#dc2626', CYAN = '#4f46e5';
 
 const STATUS_COLOR = {
   applied: CYAN, shortlisted: AMBER, selected: GREEN, rejected: RED,
 };
 
 const STATUS_BADGE = {
-  pending:  { color: AMBER,  bg: 'rgba(245,166,35,0.12)',  label: '⏳ Pending Review' },
-  approved: { color: GREEN,  bg: 'rgba(16,201,138,0.12)',  label: '✅ Approved & Live' },
-  rejected: { color: RED,    bg: 'rgba(240,75,75,0.12)',   label: '❌ Rejected' },
+  pending:  { color: AMBER,  bg: 'rgba(217,119,6,0.12)',   label: '⏳ Pending Review' },
+  approved: { color: GREEN,  bg: 'rgba(22,163,74,0.12)',   label: '✅ Approved & Live' },
+  rejected: { color: RED,    bg: 'rgba(220,38,38,0.12)',    label: '❌ Rejected' },
 };
 
 const emptyQuestion = () => ({
@@ -113,7 +113,7 @@ function UploadOAModal({ companyId, onClose, onSuccess }) {
         </div>
 
         {/* Step tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.07)', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: 20 }}>
           {[{ n: 1, l: 'Test Details' }, { n: 2, l: `Questions (${questions.length})` }].map(({ n, l }) => (
             <button key={n} onClick={() => setStep(n)} style={{
               padding: '10px 20px', background: 'none', border: 'none',
@@ -148,8 +148,8 @@ function UploadOAModal({ companyId, onClose, onSuccess }) {
                     onChange={e => setDuration(Number(e.target.value))} min={10} max={180} />
                 </div>
               </div>
-              <div style={{ background: 'rgba(124,92,252,0.08)', border: '1px solid rgba(124,92,252,0.2)', borderRadius: 10, padding: 14 }}>
-                <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.6 }}>
+              <div style={{ background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(79,70,229,0.2)', borderRadius: 10, padding: 14 }}>
+                <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   <span style={{ color: VIOLET, fontWeight: 700 }}>📋 Review Process: </span>
                   After submission, the placement officer will review your questions. Once approved, the test automatically becomes available to all students on the platform.
                 </p>
@@ -179,7 +179,7 @@ function UploadOAModal({ companyId, onClose, onSuccess }) {
                       <span style={{ fontSize: 11, color: '#475569' }}>marks</span>
                       {questions.length > 1 && (
                         <button onClick={() => setQuestions(qs => qs.filter((_, i) => i !== qi))}
-                          style={{ background: 'rgba(240,75,75,0.1)', border: '1px solid rgba(240,75,75,0.2)', borderRadius: 6, padding: '4px 8px', color: RED, cursor: 'pointer' }}>
+                          style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 6, padding: '4px 8px', color: RED, cursor: 'pointer' }}>
                           <X size={12} />
                         </button>
                       )}
@@ -219,7 +219,7 @@ function UploadOAModal({ companyId, onClose, onSuccess }) {
               ))}
 
               <button onClick={() => setQuestions(qs => [...qs, emptyQuestion()])}
-                style={{ width: '100%', padding: '11px', background: 'rgba(124,92,252,0.06)', border: '1px dashed rgba(124,92,252,0.3)', borderRadius: 10, color: VIOLET, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", marginBottom: 16 }}>
+                style={{ width: '100%', padding: '11px', background: 'rgba(79,70,229,0.06)', border: '1px dashed rgba(79,70,229,0.3)', borderRadius: 10, color: VIOLET, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", marginBottom: 16 }}>
                 + Add Question
               </button>
             </div>
@@ -227,7 +227,7 @@ function UploadOAModal({ companyId, onClose, onSuccess }) {
         </div>
 
         {/* Footer */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 16, marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 12, color: '#475569' }}>{questions.length} question{questions.length !== 1 ? 's' : ''} · {questions.reduce((s, q) => s + q.marks, 0)} total marks</span>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={onClose} style={m.secondaryBtn}>Cancel</button>
@@ -360,7 +360,7 @@ const approvedOAs = myUploads.filter(t => t.approval_status === 'approved').leng
             <FileQuestion size={16} color={AMBER} />
             <span>My OA Test Uploads</span>
             {pendingOAs > 0 && (
-              <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(245,166,35,0.15)', color: AMBER, border: '1px solid rgba(245,166,35,0.3)' }}>
+              <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(217,119,6,0.15)', color: AMBER, border: '1px solid rgba(217,119,6,0.3)' }}>
                 {pendingOAs} awaiting review
               </span>
             )}
@@ -403,7 +403,7 @@ const approvedOAs = myUploads.filter(t => t.approval_status === 'approved').leng
   return (
     <tr key={test.id}>
       <td style={s.td}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
           {test.title}
         </p>
         <p style={{ margin: '2px 0 0', fontSize: 11, color: '#475569' }}>
@@ -469,7 +469,7 @@ const approvedOAs = myUploads.filter(t => t.approval_status === 'approved').leng
             {jobs.map(job => (
               <tr key={job.id}>
                 <td style={s.td}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{job.title}</p>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{job.title}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 11, color: '#475569' }}>{job.package_lpa} LPA</p>
                 </td>
                 <td style={s.td}>{new Date(job.created_at || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</td>
@@ -481,7 +481,7 @@ const approvedOAs = myUploads.filter(t => t.approval_status === 'approved').leng
                 </td>
                 <td style={s.td}>
                   <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
-                    background: job.status === 'active' ? 'rgba(16,201,138,0.12)' : 'rgba(100,116,139,0.12)',
+                    background: job.status === 'active' ? 'rgba(22,163,74,0.12)' : 'rgba(100,116,139,0.12)',
                     color: job.status === 'active' ? GREEN : '#64748b',
                     border: `1px solid ${job.status === 'active' ? GREEN : '#64748b'}33`,
                   }}>{job.status}</span>
@@ -511,28 +511,28 @@ const approvedOAs = myUploads.filter(t => t.approval_status === 'approved').leng
 const s = {
   page:      { padding: 24, maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 },
   header:    { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
-  h1:        { margin: 0, fontSize: 24, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" },
+  h1:        { margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" },
   sub:       { margin: '6px 0 0', fontSize: 13, color: '#475569' },
-  postBtn:   { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: VIOLET, color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", boxShadow: `0 4px 14px ${VIOLET}44` },
+  postBtn:   { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: VIOLET, color: '#ffffff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", boxShadow: `0 4px 14px ${VIOLET}44` },
   uploadBtn: { display: 'flex', alignItems: 'center', gap: 6, padding: '9px 16px', background: `${AMBER}18`, color: AMBER, border: `1px solid ${AMBER}33`, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
   linkBtn:   { background: 'none', border: 'none', color: VIOLET, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
-  th:        { padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' },
-  td:        { padding: '12px 12px', fontSize: 13, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.03)' },
-  viewBtn:   { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(124,92,252,0.1)', border: '1px solid rgba(124,92,252,0.25)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: VIOLET, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
+  th:        { padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid var(--border)', textAlign: 'left' },
+  td:        { padding: '12px 12px', fontSize: 13, color: '#94a3b8', borderBottom: '1px solid var(--border)' },
+  viewBtn:   { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: 'rgba(79,70,229,0.1)', border: '1px solid rgba(79,70,229,0.25)', borderRadius: 7, fontSize: 12, fontWeight: 600, color: VIOLET, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
 };
 
 const m = {
-  overlay:      { position: 'fixed', inset: 0, background: 'rgba(4,12,24,0.85)', backdropFilter: 'blur(6px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  modal:        { background: '#0b1a2e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 18, width: '100%', maxWidth: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 28 },
+  overlay:      { position: 'fixed', inset: 0, background: 'var(--bg-overlay)', backdropFilter: 'blur(6px)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  modal:        { background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 18, width: '100%', maxWidth: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 28 },
   mHeader:      { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
-  mTitle:       { margin: 0, fontSize: 20, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" },
+  mTitle:       { margin: 0, fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" },
   mSub:         { margin: '4px 0 0', fontSize: 12, color: '#475569' },
-  closeBtn:     { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: 6, color: '#94a3b8', cursor: 'pointer', display: 'flex' },
+  closeBtn:     { background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 8, padding: 6, color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex' },
   label:        { display: 'block', marginBottom: 6, fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' },
-  input:        { width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, padding: '10px 14px', color: '#e2e8f0', fontSize: 13, fontFamily: "'Sora',sans-serif", outline: 'none', boxSizing: 'border-box' },
-  questionCard: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 16, marginBottom: 12 },
-  primaryBtn:   { display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', background: VIOLET, color: '#fff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
-  secondaryBtn: { padding: '10px 18px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, color: '#94a3b8', fontSize: 13, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
+  input:        { width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 9, padding: '10px 14px', color: 'var(--text-primary)', fontSize: 13, fontFamily: "'Sora',sans-serif", outline: 'none', boxSizing: 'border-box' },
+  questionCard: { background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 12 },
+  primaryBtn:   { display: 'flex', alignItems: 'center', gap: 7, padding: '10px 20px', background: VIOLET, color: '#ffffff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
+  secondaryBtn: { padding: '10px 18px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 9, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
 };
 
 const DEMO_JOBS = [

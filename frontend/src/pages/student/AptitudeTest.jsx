@@ -6,7 +6,7 @@ import GlowCard from '../../components/GlowCard';
 import { Flag, ChevronLeft, ChevronRight, Clock, AlertTriangle, CheckCircle, Loader2, BarChart2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const CYAN = '#00c8f0';
+const CYAN = '#4f46e5';
 
 export default function AptitudeTest() {
   const navigate = useNavigate();
@@ -84,7 +84,7 @@ export default function AptitudeTest() {
   const flaggedCnt = Object.values(flagged).filter(Boolean).length;
 
   const fmt = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  const timerColor = timeLeft < 60 ? '#f04b4b' : timeLeft < 180 ? '#f5a623' : CYAN;
+  const timerColor = timeLeft < 60 ? '#dc2626' : timeLeft < 180 ? '#d97706' : CYAN;
 
   /* ═══ TEST LIST ═══ */
   if (screen === 'list') return (
@@ -98,7 +98,7 @@ export default function AptitudeTest() {
           <GlowCard key={t.id} accent={CYAN} hoverable>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
               <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#e2e8f0' }}>{t.title}</p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>{t.title}</p>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: '#475569' }}>{t.total_questions} questions</p>
               </div>
               <span style={pg.timerBadge}><Clock size={12} />{t.duration_minutes} min</span>
@@ -124,7 +124,7 @@ export default function AptitudeTest() {
         <h1 style={pg.h1}>Test Result</h1>
       </div>
       <div style={{ maxWidth: 560, margin: '0 auto' }}>
-        <GlowCard accent={result?.percentage >= 70 ? '#10c98a' : result?.percentage >= 40 ? '#f5a623' : '#f04b4b'}>
+        <GlowCard accent={result?.percentage >= 70 ? '#16a34a' : result?.percentage >= 40 ? '#d97706' : '#dc2626'}>
           <div style={{ textAlign: 'center', padding: '20px 0' }}>
             <div style={pg.scoreCircle(result?.percentage)}>
               <span style={{ fontSize: 32, fontWeight: 900, lineHeight: 1 }}>{result?.percentage ?? 0}%</span>
@@ -132,8 +132,8 @@ export default function AptitudeTest() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginTop: 24 }}>
               {[
-                { label: 'Correct',     val: result?.correct,     color: '#10c98a' },
-                { label: 'Wrong',       val: result?.wrong,       color: '#f04b4b' },
+                { label: 'Correct',     val: result?.correct,     color: '#16a34a' },
+                { label: 'Wrong',       val: result?.wrong,       color: '#dc2626' },
                 { label: 'Unattempted', val: result?.skipped,     color: '#64748b' },
               ].map(item => (
                 <div key={item.label} style={pg.resultItem(item.color)}>
@@ -142,13 +142,13 @@ export default function AptitudeTest() {
                 </div>
               ))}
             </div>
-            <p style={{ margin: '16px 0 0', fontSize: 14, color: '#94a3b8' }}>
-              Score: <strong style={{ color: '#f0f6ff' }}>{result?.score ?? 0}</strong> / {result?.totalPossible ?? 0} marks
+            <p style={{ margin: '16px 0 0', fontSize: 14, color: 'var(--text-secondary)' }}>
+              Score: <strong style={{ color: 'var(--text-primary)' }}>{result?.score ?? 0}</strong> / {result?.totalPossible ?? 0} marks
             </p>
           </div>
           <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
             <button style={{ ...pg.startBtn, flex: 1 }} onClick={() => setScreen('list')}>Try Another</button>
-            <button style={{ ...pg.startBtn, flex: 1, background: 'rgba(0,200,240,0.1)', color: CYAN }}
+            <button style={{ ...pg.startBtn, flex: 1, background: 'rgba(79,70,229,0.1)', color: CYAN }}
               onClick={() => navigate('/student/aptitude/analysis')}>
               <BarChart2 size={15} /> View Analysis
             </button>
@@ -165,12 +165,12 @@ export default function AptitudeTest() {
       {/* Top bar */}
       <div style={pg.topBar}>
         <div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>{test?.title}</p>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{test?.title}</p>
           <p style={{ margin: '2px 0 0', fontSize: 11, color: '#475569' }}>Q {current + 1} of {questions.length}</p>
         </div>
         <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <span style={pg.stat}><CheckCircle size={13} color="#10c98a" /> {answered} answered</span>
-          <span style={pg.stat}><Flag size={13} color="#f5a623" /> {flaggedCnt} flagged</span>
+          <span style={pg.stat}><CheckCircle size={13} color="#16a34a" /> {answered} answered</span>
+          <span style={pg.stat}><Flag size={13} color="#d97706" /> {flaggedCnt} flagged</span>
           <div style={pg.timer(timerColor)}>
             <Clock size={14} color={timerColor} />
             <span style={{ fontSize: 16, fontWeight: 800, color: timerColor, fontFamily: 'monospace' }}>{fmt(timeLeft)}</span>
@@ -181,7 +181,7 @@ export default function AptitudeTest() {
       <div style={{ display: 'flex', gap: 16 }}>
         {/* Question panel */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <GlowCard accent={flagged[q.id] ? '#f5a623' : CYAN}>
+          <GlowCard accent={flagged[q.id] ? '#d97706' : CYAN}>
             {/* Question header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div style={pg.qNum}>{current + 1}</div>
@@ -192,7 +192,7 @@ export default function AptitudeTest() {
             </div>
 
             {/* Question text */}
-            <p style={{ fontSize: 16, color: '#e2e8f0', lineHeight: 1.7, marginBottom: 24, fontWeight: 500 }}>
+            <p style={{ fontSize: 16, color: 'var(--text-primary)', lineHeight: 1.7, marginBottom: 24, fontWeight: 500 }}>
               {q.question_text}
             </p>
 
@@ -203,7 +203,7 @@ export default function AptitudeTest() {
                 return (
                   <button key={i} style={pg.option(selected)} onClick={() => setAnswer(q.id, i)}>
                     <span style={pg.optLetter(selected)}>{String.fromCharCode(65 + i)}</span>
-                    <span style={{ fontSize: 14, color: selected ? '#040c18' : '#cbd5e1', fontWeight: selected ? 600 : 400 }}>{opt}</span>
+                    <span style={{ fontSize: 14, color: selected ? '#ffffff' : 'var(--text-primary)', fontWeight: selected ? 600 : 400 }}>{opt}</span>
                   </button>
                 );
               })}
@@ -215,10 +215,10 @@ export default function AptitudeTest() {
                 <ChevronLeft size={16} /> Previous
               </button>
               {current < questions.length - 1
-                ? <button style={{ ...pg.navBtn, background: CYAN, color: '#040c18', border: 'none' }} onClick={() => setCurrent(c => c + 1)}>
+                ? <button style={{ ...pg.navBtn, background: CYAN, color: '#ffffff', border: 'none' }} onClick={() => setCurrent(c => c + 1)}>
                     Next <ChevronRight size={16} />
                   </button>
-                : <button style={{ ...pg.navBtn, background: '#10c98a', color: '#040c18', border: 'none' }} onClick={() => submitTest()}>
+                : <button style={{ ...pg.navBtn, background: '#16a34a', color: '#ffffff', border: 'none' }} onClick={() => submitTest()}>
                     {loading ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : 'Submit Test'}
                   </button>
               }
@@ -247,20 +247,20 @@ export default function AptitudeTest() {
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[
               { color: CYAN,       label: 'Answered' },
-              { color: '#f5a623',  label: 'Flagged'  },
-              { color: '#0b1a2e',  label: 'Not Visited' },
+              { color: '#d97706',  label: 'Flagged'  },
+              { color: 'var(--bg-card-high)',  label: 'Not Visited' },
             ].map(l => (
               <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <div style={{ width: 12, height: 12, borderRadius: 3, background: l.color, border: '1px solid rgba(255,255,255,0.1)' }} />
+                <div style={{ width: 12, height: 12, borderRadius: 3, background: l.color, border: '1px solid var(--border)' }} />
                 <span style={{ fontSize: 11, color: '#475569' }}>{l.label}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: 16, padding: '10px', background: 'rgba(0,200,240,0.05)', borderRadius: 8, border: '1px solid rgba(0,200,240,0.1)' }}>
+          <div style={{ marginTop: 16, padding: '10px', background: 'rgba(79,70,229,0.05)', borderRadius: 8, border: '1px solid rgba(79,70,229,0.1)' }}>
             <p style={{ margin: 0, fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Marking Scheme</p>
-            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#10c98a' }}>+4 Correct</p>
-            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#f04b4b' }}>−1 Wrong</p>
+            <p style={{ margin: '6px 0 0', fontSize: 12, color: '#16a34a' }}>+4 Correct</p>
+            <p style={{ margin: '3px 0 0', fontSize: 12, color: '#dc2626' }}>−1 Wrong</p>
             <p style={{ margin: '3px 0 0', fontSize: 12, color: '#64748b' }}>0 Skipped</p>
           </div>
 
@@ -277,23 +277,23 @@ export default function AptitudeTest() {
 const pg = {
   page:          { padding: 24, maxWidth: 1100, margin: '0 auto' },
   header:        { marginBottom: 24 },
-  h1:            { margin: 0, fontSize: 24, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" },
+  h1:            { margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" },
   sub:           { margin: '6px 0 0', fontSize: 13, color: '#475569' },
-  timerBadge:    { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'rgba(0,200,240,0.1)', border: '1px solid rgba(0,200,240,0.2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#00c8f0' },
-  tag:           { padding: '2px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, fontSize: 11, color: '#64748b' },
-  startBtn:      { width: '100%', padding: '11px', background: CYAN, color: '#040c18', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  topBar:        { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, background: '#0b1a2e', border: '1px solid rgba(0,200,240,0.12)', borderRadius: 12, padding: '14px 20px' },
+  timerBadge:    { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'rgba(79,70,229,0.1)', border: '1px solid rgba(79,70,229,0.2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: '#4f46e5' },
+  tag:           { padding: '2px 8px', background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: '#64748b' },
+  startBtn:      { width: '100%', padding: '11px', background: CYAN, color: '#ffffff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  topBar:        { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, background: 'var(--bg-card)', border: '1px solid rgba(79,70,229,0.12)', borderRadius: 12, padding: '14px 20px' },
   stat:          { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13, color: '#64748b', fontWeight: 600 },
   timer:         (c) => ({ display: 'flex', alignItems: 'center', gap: 6, background: `${c}12`, border: `1px solid ${c}33`, borderRadius: 8, padding: '6px 12px' }),
-  qNum:          { width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,200,240,0.1)', border: '2px solid rgba(0,200,240,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: CYAN },
-  flagBtn:       (f) => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: f ? 'rgba(245,166,35,0.15)' : 'transparent', border: `1px solid ${f ? '#f5a623' : 'rgba(255,255,255,0.08)'}`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: f ? '#f5a623' : '#475569', cursor: 'pointer', fontFamily: "'Sora',sans-serif" }),
-  option:        (sel) => ({ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: sel ? CYAN : 'rgba(255,255,255,0.02)', border: `1px solid ${sel ? CYAN : 'rgba(255,255,255,0.07)'}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s', width: '100%', textAlign: 'left' }),
-  optLetter:     (sel) => ({ width: 26, height: 26, borderRadius: '50%', background: sel ? 'rgba(4,12,24,0.3)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: sel ? '#040c18' : '#64748b', flexShrink: 0 }),
-  navBtn:        { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
-  palette:       { width: 200, flexShrink: 0, background: '#0b1a2e', border: '1px solid rgba(0,200,240,0.1)', borderRadius: 14, padding: 16, height: 'fit-content', position: 'sticky', top: 24 },
-  palletBtn:     (active, ans, flag) => ({ width: 34, height: 34, borderRadius: 7, background: flag ? 'rgba(245,166,35,0.2)' : ans ? CYAN : '#0f2040', border: `1px solid ${flag ? '#f5a623' : ans ? CYAN : '#1e3a5f'}`, color: flag ? '#f5a623' : ans ? '#040c18' : '#475569', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: "'Sora',sans-serif', outline: active ? `2px solid ${CYAN}` : 'none", outline: active ? `2px solid ${CYAN}` : 'none', outlineOffset: 2 }),
-  submitSideBtn: { marginTop: 16, width: '100%', padding: '10px', background: '#10c98a', color: '#040c18', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  scoreCircle:   (pct) => ({ width: 120, height: 120, borderRadius: '50%', background: `conic-gradient(${pct >= 70 ? '#10c98a' : pct >= 40 ? '#f5a623' : '#f04b4b'} ${pct * 3.6}deg, #0b1a2e 0)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: `0 0 30px ${pct >= 70 ? '#10c98a' : pct >= 40 ? '#f5a623' : '#f04b4b'}44` }),
+  qNum:          { width: 36, height: 36, borderRadius: '50%', background: 'rgba(79,70,229,0.1)', border: '2px solid rgba(79,70,229,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: CYAN },
+  flagBtn:       (f) => ({ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', background: f ? 'rgba(217,119,6,0.15)' : 'transparent', border: `1px solid ${f ? '#d97706' : 'var(--border)'}`, borderRadius: 7, fontSize: 12, fontWeight: 600, color: f ? '#d97706' : '#475569', cursor: 'pointer', fontFamily: "'Sora',sans-serif" }),
+  option:        (sel) => ({ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', background: sel ? CYAN : 'var(--bg-card-high)', border: `1px solid ${sel ? CYAN : 'var(--border)'}`, borderRadius: 10, cursor: 'pointer', transition: 'all 0.15s', width: '100%', textAlign: 'left' }),
+  optLetter:     (sel) => ({ width: 26, height: 26, borderRadius: '50%', background: sel ? 'rgba(255,255,255,0.2)' : 'var(--bg-card-high)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: sel ? '#ffffff' : '#64748b', flexShrink: 0 }),
+  navBtn:        { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#64748b', cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
+  palette:       { width: 200, flexShrink: 0, background: 'var(--bg-card)', border: '1px solid rgba(79,70,229,0.1)', borderRadius: 14, padding: 16, height: 'fit-content', position: 'sticky', top: 24 },
+  palletBtn:     (active, ans, flag) => ({ width: 34, height: 34, borderRadius: 7, background: flag ? 'rgba(217,119,6,0.2)' : ans ? CYAN : 'var(--bg-card-high)', border: `1px solid ${flag ? '#d97706' : ans ? CYAN : 'var(--border)'}`, color: flag ? '#d97706' : ans ? '#ffffff' : '#475569', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: "'Sora',sans-serif', outline: active ? `2px solid ${CYAN}` : 'none", outline: active ? `2px solid ${CYAN}` : 'none', outlineOffset: 2 }),
+  submitSideBtn: { marginTop: 16, width: '100%', padding: '10px', background: '#16a34a', color: '#ffffff', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  scoreCircle:   (pct) => ({ width: 120, height: 120, borderRadius: '50%', background: `conic-gradient(${pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'} ${pct * 3.6}deg, var(--bg-card-high) 0)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', margin: '0 auto', boxShadow: `0 0 30px ${pct >= 70 ? '#16a34a' : pct >= 40 ? '#d97706' : '#dc2626'}44` }),
   resultItem:    (c) => ({ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: 12, background: `${c}0a`, border: `1px solid ${c}22`, borderRadius: 10 }),
 };
 

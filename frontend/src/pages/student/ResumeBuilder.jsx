@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 // Add this import at top of ResumeBuilder.jsx
 import { supabase } from '../../supabaseClient';
 
-const CYAN = '#00c8f0', GREEN = '#10c98a', VIOLET = '#7c5cfc', AMBER = '#f5a623';
+const CYAN = '#4f46e5', GREEN = '#16a34a', VIOLET = '#4f46e5', AMBER = '#d97706';
 
 const INIT = {
   name: '', email: '', phone: '', linkedin: '', github: '', location: '',
@@ -32,7 +32,7 @@ const TEMPLATES = [
   {
     id: 'modern',
     name: 'Modern Sidebar',
-    accent: '#7c5cfc',
+    accent: '#4f46e5',
     preview: '🟣',
     desc: 'Two-column with colored sidebar',
   },
@@ -46,7 +46,7 @@ const TEMPLATES = [
   {
     id: 'bold',
     name: 'Bold Impact',
-    accent: '#00c8f0',
+    accent: '#4f46e5',
     preview: '🔷',
     desc: 'Strong header with modern typography',
   },
@@ -832,25 +832,25 @@ function ResumePreview({ data, template }) {
     <div style={{ fontFamily: 'Arial, sans-serif', display: 'flex', background: '#fff', minHeight: 400 }}>
       {/* Sidebar */}
       <div style={{ width: 140, background: '#1e143c', padding: '14px 10px', flexShrink: 0 }}>
-        <div style={{ background: '#7c5cfc', margin: '-14px -10px 10px', padding: '14px 10px', textAlign: 'center' }}>
+        <div style={{ background: '#4f46e5', margin: '-14px -10px 10px', padding: '14px 10px', textAlign: 'center' }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: '#fff', lineHeight: 1.3 }}>{data.name || 'Your Name'}</div>
           {data.degree && <div style={{ fontSize: 8, color: '#c4b5fd', marginTop: 3 }}>{data.degree}</div>}
           {data.branch && <div style={{ fontSize: 8, color: '#c4b5fd' }}>{data.branch}</div>}
         </div>
-        <SBSection title="CONTACT" color="#7c5cfc">
+        <SBSection title="CONTACT" color="#4f46e5">
           {[data.email, data.phone, data.location, data.linkedin, data.github].filter(Boolean).map((c, i) => (
             <div key={i} style={{ fontSize: 7.5, color: '#c0b8e0', marginBottom: 3, wordBreak: 'break-all' }}>{c}</div>
           ))}
         </SBSection>
         {skills.length > 0 && (
-          <SBSection title="SKILLS" color="#7c5cfc">
+          <SBSection title="SKILLS" color="#4f46e5">
             {skills.map((s, i) => (
-              <div key={i} style={{ fontSize: 7.5, color: '#c0b8e0', border: '1px solid #7c5cfc', borderRadius: 3, padding: '1px 5px', marginBottom: 3, textAlign: 'center' }}>{s}</div>
+              <div key={i} style={{ fontSize: 7.5, color: '#c0b8e0', border: '1px solid #4f46e5', borderRadius: 3, padding: '1px 5px', marginBottom: 3, textAlign: 'center' }}>{s}</div>
             ))}
           </SBSection>
         )}
         {data.college && (
-          <SBSection title="EDUCATION" color="#7c5cfc">
+          <SBSection title="EDUCATION" color="#4f46e5">
             <div style={{ fontSize: 7.5, color: '#c0b8e0' }}>{data.college}</div>
             {data.cgpa && <div style={{ fontSize: 7.5, color: '#c0b8e0' }}>CGPA: {data.cgpa}</div>}
             {data.gradYear && <div style={{ fontSize: 7.5, color: '#c0b8e0' }}>{data.gradYear}</div>}
@@ -859,10 +859,10 @@ function ResumePreview({ data, template }) {
       </div>
       {/* Main */}
       <div style={{ flex: 1, padding: '14px 14px' }}>
-        {data.summary && <PreviewSection title="ABOUT ME" color="#7c5cfc"><p style={{ margin: 0, fontSize: 9.5, color: '#444' }}>{data.summary}</p></PreviewSection>}
-        {data.experience && <PreviewSection title="EXPERIENCE" color="#7c5cfc"><PreviewLines text={data.experience} ac="#7c5cfc" /></PreviewSection>}
-        {data.projects && <PreviewSection title="PROJECTS" color="#7c5cfc"><PreviewLines text={data.projects} ac="#7c5cfc" /></PreviewSection>}
-        {data.achievements && <PreviewSection title="ACHIEVEMENTS" color="#7c5cfc"><PreviewBullets text={data.achievements} prefix="★" /></PreviewSection>}
+        {data.summary && <PreviewSection title="ABOUT ME" color="#4f46e5"><p style={{ margin: 0, fontSize: 9.5, color: '#444' }}>{data.summary}</p></PreviewSection>}
+        {data.experience && <PreviewSection title="EXPERIENCE" color="#4f46e5"><PreviewLines text={data.experience} ac="#4f46e5" /></PreviewSection>}
+        {data.projects && <PreviewSection title="PROJECTS" color="#4f46e5"><PreviewLines text={data.projects} ac="#4f46e5" /></PreviewSection>}
+        {data.achievements && <PreviewSection title="ACHIEVEMENTS" color="#4f46e5"><PreviewBullets text={data.achievements} prefix="★" /></PreviewSection>}
       </div>
     </div>
   );
@@ -872,7 +872,7 @@ function ResumePreview({ data, template }) {
       <div style={{ fontSize: 22, fontWeight: 900, color: '#1a1a2e', letterSpacing: 2, textTransform: 'uppercase' }}>{data.name || 'Your Name'}</div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 0 8px' }}>
         <div style={{ width: 40, height: 2, background: '#2d3748' }} />
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
       </div>
       <div style={{ fontSize: 8.5, color: '#888', marginBottom: 10 }}>
         {[data.email, data.phone, data.location, data.linkedin, data.github].filter(Boolean).join('   ·   ')}
@@ -889,17 +889,17 @@ function ResumePreview({ data, template }) {
 
   if (template === 'bold') return (
     <div style={{ fontFamily: 'Arial, sans-serif', background: '#fff', color: '#111' }}>
-      <div style={{ background: '#001224', padding: '16px 20px', textAlign: 'center', borderBottom: '3px solid #00c8f0' }}>
+      <div style={{ background: 'var(--bg-card)', padding: '16px 20px', textAlign: 'center', borderBottom: '3px solid #4f46e5' }}>
         <div style={{ fontSize: 22, fontWeight: 900, color: '#fff', letterSpacing: 3, textTransform: 'uppercase' }}>{data.name || 'YOUR NAME'}</div>
-        {(data.degree || data.branch) && <div style={{ fontSize: 10, color: '#00c8f0', marginTop: 4 }}>{[data.degree, data.branch].filter(Boolean).join(' | ')}</div>}
+        {(data.degree || data.branch) && <div style={{ fontSize: 10, color: '#4f46e5', marginTop: 4 }}>{[data.degree, data.branch].filter(Boolean).join(' | ')}</div>}
         <div style={{ fontSize: 8, color: '#a0c4e0', marginTop: 5 }}>{[data.email, data.phone, data.location].filter(Boolean).join('   |   ')}</div>
       </div>
       <div style={{ padding: '12px 16px' }}>
         {data.summary && <BoldSection title="PROFESSIONAL SUMMARY"><p style={{ margin: 0, fontSize: 9.5, color: '#444' }}>{data.summary}</p></BoldSection>}
         {data.college && <BoldSection title="EDUCATION"><div style={{ fontSize: 10 }}><strong>{data.college}</strong> {data.gradYear && <span style={{ color: '#888', float: 'right' }}>{data.gradYear}</span>}</div><div style={{ fontSize: 9, color: '#666' }}>{[data.degree, data.branch, data.cgpa && `CGPA: ${data.cgpa}`].filter(Boolean).join(' • ')}</div></BoldSection>}
-        {skills.length > 0 && <BoldSection title="TECHNICAL SKILLS"><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 20px' }}>{skills.map((s, i) => <div key={i} style={{ fontSize: 9.5, color: '#333', display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#00c8f0', display: 'inline-block', flexShrink: 0 }} />{s}</div>)}</div></BoldSection>}
-        {data.experience && <BoldSection title="EXPERIENCE"><PreviewLines text={data.experience} ac="#00c8f0" /></BoldSection>}
-        {data.projects && <BoldSection title="PROJECTS"><PreviewLines text={data.projects} ac="#00c8f0" /></BoldSection>}
+        {skills.length > 0 && <BoldSection title="TECHNICAL SKILLS"><div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 20px' }}>{skills.map((s, i) => <div key={i} style={{ fontSize: 9.5, color: '#333', display: 'flex', alignItems: 'center', gap: 5 }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#4f46e5', display: 'inline-block', flexShrink: 0 }} />{s}</div>)}</div></BoldSection>}
+        {data.experience && <BoldSection title="EXPERIENCE"><PreviewLines text={data.experience} ac="#4f46e5" /></BoldSection>}
+        {data.projects && <BoldSection title="PROJECTS"><PreviewLines text={data.projects} ac="#4f46e5" /></BoldSection>}
         {data.certifications && <BoldSection title="CERTIFICATIONS"><PreviewBullets text={data.certifications} prefix="✓" /></BoldSection>}
         {data.achievements && <BoldSection title="ACHIEVEMENTS"><PreviewBullets text={data.achievements} prefix="★" /></BoldSection>}
       </div>
@@ -934,7 +934,7 @@ function MinSection({ title, children }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ fontSize: 8.5, fontWeight: 800, color: '#2d3748', letterSpacing: 1.5, marginBottom: 4 }}>{title}</div>
-      <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 5 }}>{children}</div>
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 5 }}>{children}</div>
     </div>
   );
 }
@@ -943,9 +943,9 @@ function BoldSection({ title, children }) {
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-        <div style={{ width: 3, height: 14, background: '#00c8f0', borderRadius: 2 }} />
-        <span style={{ fontSize: 9.5, fontWeight: 800, color: '#001224', letterSpacing: 1 }}>{title}</span>
-        <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+        <div style={{ width: 3, height: 14, background: '#4f46e5', borderRadius: 2 }} />
+        <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: 1 }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
       </div>
       {children}
     </div>
@@ -1080,7 +1080,7 @@ const saveToProfile = async () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" }}>Resume Builder</h1>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" }}>Resume Builder</h1>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: '#475569' }}>Build a professional ATS-friendly resume with 4 templates</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -1090,7 +1090,7 @@ const saveToProfile = async () => {
           <button style={BTN2} onClick={saveToProfile} disabled={saving}>
             <Save size={14} />{saving ? 'Saving...' : 'Save to Profile'}
           </button>
-          <button style={{ ...BTN2, background: CYAN, color: '#040c18', border: 'none' }} onClick={generate}>
+          <button style={{ ...BTN2, background: CYAN, color: '#ffffff', border: 'none' }} onClick={generate}>
             <Download size={14} />Download PDF
           </button>
         </div>
@@ -1103,12 +1103,12 @@ const saveToProfile = async () => {
           {TEMPLATES.map(t => (
             <button key={t.id} onClick={() => setTemplate(t.id)} style={{
               padding: '12px 14px', borderRadius: 12, cursor: 'pointer', textAlign: 'left',
-              background: template === t.id ? `${t.accent}18` : 'rgba(255,255,255,0.02)',
-              border: `2px solid ${template === t.id ? t.accent : 'rgba(255,255,255,0.06)'}`,
+              background: template === t.id ? `${t.accent}18` : 'var(--bg-card-high)',
+              border: `2px solid ${template === t.id ? t.accent : 'var(--border)'}`,
               transition: 'all 0.2s',
             }}>
               <div style={{ fontSize: 22, marginBottom: 4 }}>{t.preview}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: template === t.id ? t.accent : '#e2e8f0', marginBottom: 3 }}>{t.name}</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: template === t.id ? t.accent : 'var(--text-primary)', marginBottom: 3 }}>{t.name}</div>
               <div style={{ fontSize: 11, color: '#64748b' }}>{t.desc}</div>
               {template === t.id && (
                 <div style={{ marginTop: 6, fontSize: 10, fontWeight: 700, color: t.accent }}>✓ Selected</div>
@@ -1128,8 +1128,8 @@ const saveToProfile = async () => {
               <button key={s.id} onClick={() => setActiveSection(s.id)} style={{
                 padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', border: 'none', fontFamily: "'Sora',sans-serif",
-                background: activeSection === s.id ? CYAN : 'rgba(255,255,255,0.05)',
-                color: activeSection === s.id ? '#040c18' : '#64748b',
+                background: activeSection === s.id ? CYAN : 'var(--bg-card-high)',
+                color: activeSection === s.id ? '#ffffff' : '#64748b',
               }}>
                 {s.label}
               </button>
@@ -1180,7 +1180,7 @@ const saveToProfile = async () => {
                   <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Preview Tags</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {data.skills.split(',').map(s => s.trim()).filter(Boolean).map((s, i) => (
-                      <span key={i} style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, background: 'rgba(0,200,240,0.1)', border: '1px solid rgba(0,200,240,0.25)', color: CYAN }}>
+                      <span key={i} style={{ padding: '3px 10px', borderRadius: 20, fontSize: 11, background: 'rgba(79,70,229,0.1)', border: '1px solid rgba(79,70,229,0.25)', color: CYAN }}>
                         {s}
                       </span>
                     ))}
@@ -1193,7 +1193,7 @@ const saveToProfile = async () => {
           {/* Experience */}
           {activeSection === 'experience' && (
             <GlowCard title="Work Experience" accent={CYAN}>
-              <div style={{ padding: '10px 14px', marginBottom: 14, background: 'rgba(0,200,240,0.05)', border: '1px solid rgba(0,200,240,0.15)', borderRadius: 10 }}>
+              <div style={{ padding: '10px 14px', marginBottom: 14, background: 'rgba(79,70,229,0.05)', border: '1px solid var(--border)', borderRadius: 10 }}>
                 <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
                   <strong style={{ color: CYAN }}>Format tip:</strong> Add company/role on its own line, then bullet points starting with • or -<br />
                   <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
@@ -1211,7 +1211,7 @@ const saveToProfile = async () => {
           {/* Projects */}
           {activeSection === 'projects' && (
             <GlowCard title="Projects" accent={CYAN}>
-              <div style={{ padding: '10px 14px', marginBottom: 14, background: 'rgba(0,200,240,0.05)', border: '1px solid rgba(0,200,240,0.15)', borderRadius: 10 }}>
+              <div style={{ padding: '10px 14px', marginBottom: 14, background: 'rgba(79,70,229,0.05)', border: '1px solid var(--border)', borderRadius: 10 }}>
                 <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
                   <strong style={{ color: CYAN }}>Format tip:</strong> Project name | Tech stack on own line, then bullets<br />
                   <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
@@ -1252,16 +1252,16 @@ const saveToProfile = async () => {
                 <div style={{ display: 'flex', gap: 8 }}>
                   {TEMPLATES.map(t => (
                     <button key={t.id} onClick={() => setTemplate(t.id)} title={t.name} style={{
-                      width: 24, height: 24, borderRadius: 6, border: `2px solid ${template === t.id ? t.accent : 'rgba(255,255,255,0.1)'}`,
+                      width: 24, height: 24, borderRadius: 6, border: `2px solid ${template === t.id ? t.accent : 'var(--border)'}`,
                       background: template === t.id ? `${t.accent}22` : 'transparent', cursor: 'pointer', fontSize: 12,
                     }}>{t.preview}</button>
                   ))}
                 </div>
               </div>
-              <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.1)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: '80vh', overflowY: 'auto', transform: 'scale(1)', transformOrigin: 'top center' }}>
+              <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', border: '2px solid var(--border)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', maxHeight: '80vh', overflowY: 'auto', transform: 'scale(1)', transformOrigin: 'top center' }}>
                 <ResumePreview data={data} template={template} />
               </div>
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#334155', textAlign: 'center' }}>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
                 ↑ Live preview (actual PDF may vary slightly in spacing)
               </p>
             </div>
@@ -1273,12 +1273,12 @@ const saveToProfile = async () => {
 }
 
 const INP = {
-  background: '#071525',
-  border: '1px solid rgba(0,200,240,0.15)',
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border)',
   borderRadius: 9,
   padding: '10px 12px',
   fontSize: 13,
-  color: '#e2e8f0',
+  color: 'var(--text-primary)',
   outline: 'none',
   width: '100%',
   fontFamily: "'Sora',sans-serif",
@@ -1291,8 +1291,8 @@ const BTN2 = {
   alignItems: 'center',
   gap: 7,
   padding: '10px 16px',
-  background: 'rgba(0,200,240,0.1)',
-  border: '1px solid rgba(0,200,240,0.25)',
+  background: 'rgba(79,70,229,0.1)',
+  border: '1px solid rgba(79,70,229,0.25)',
   borderRadius: 9,
   color: CYAN,
   fontSize: 13,

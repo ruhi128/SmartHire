@@ -51,8 +51,8 @@ export default function StatCard({
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 12px 40px ${accent}22`; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = `0 2px 20px ${accent}11`; }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; }}
     >
       {/* Top row */}
       <div style={styles.topRow}>
@@ -93,13 +93,13 @@ export default function StatCard({
 const styles = {
   card: (accent) => ({
     position:       'relative',
-    background:     'linear-gradient(135deg, #0b1a2e 0%, #0f2040 100%)',
-    border:         `1px solid ${accent}22`,
+    background:     'var(--bg-card)',
+    border:         '1px solid var(--border)',
     borderRadius:   14,
     padding:        '22px 24px 20px',
     cursor:         'default',
     transition:     'transform 0.2s ease, box-shadow 0.2s ease',
-    boxShadow:      `0 2px 20px ${accent}11`,
+    boxShadow:      'var(--shadow-card)',
     overflow:       'hidden',
     minWidth:       0,
   }),
@@ -134,7 +134,7 @@ const styles = {
     margin:         '4px 0 2px',
     fontSize:       28,
     fontWeight:     800,
-    color:          '#f0f6ff',
+    color:          'var(--text-primary)',
     letterSpacing:  '-0.02em',
     lineHeight:     1.1,
     fontFamily:     "'Sora', sans-serif",

@@ -5,7 +5,7 @@ import GlowCard from '../../components/GlowCard';
 import { Search, Download, Filter, Users, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const AMBER='#f5a623', GREEN='#10c98a', CYAN='#00c8f0', RED='#f04b4b';
+const AMBER='#d97706', GREEN='#16a34a', CYAN='#4f46e5', RED='#dc2626';
 const STATUS_COLOR = { placed:GREEN, unplaced:AMBER, opted_out:'#64748b' };
 
 export default function AdminStudents() {
@@ -57,9 +57,9 @@ export default function AdminStudents() {
       </div>
 
       <div style={{display:'flex',gap:10,marginBottom:16,flexWrap:'wrap'}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,background:'#071525',border:'1px solid rgba(255,255,255,0.08)',borderRadius:9,padding:'8px 12px',flex:1,maxWidth:300}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:9,padding:'8px 12px',flex:1,maxWidth:300}}>
           <Search size={13} color="#475569"/>
-          <input style={{background:'none',border:'none',outline:'none',fontSize:13,color:'#e2e8f0',flex:1,fontFamily:"'Sora',sans-serif"}} placeholder="Search name or roll number..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          <input style={{background:'none',border:'none',outline:'none',fontSize:13,color:'var(--text-primary)',flex:1,fontFamily:"'Sora',sans-serif"}} placeholder="Search name or roll number..." value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
         <select style={s.sel} value={filter.branch} onChange={e=>setFilter(f=>({...f,branch:e.target.value}))}>
           <option value="">All Branches</option>
@@ -82,7 +82,7 @@ export default function AdminStudents() {
                 {filtered.map(st=>(
                   <tr key={st.id}>
                     <td style={s.td}>
-                      <p style={{margin:0,fontSize:13,fontWeight:600,color:'#e2e8f0'}}>{st.full_name}</p>
+                      <p style={{margin:0,fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>{st.full_name}</p>
                       <p style={{margin:'2px 0 0',fontSize:11,color:'#475569'}}>{st.email}</p>
                     </td>
                     <td style={s.td}>{st.roll_number||'—'}</td>
@@ -112,21 +112,21 @@ export default function AdminStudents() {
 
 const s = {
   page:  { padding:24, maxWidth:1200, margin:'0 auto' },
-  h1:    { margin:0, fontSize:24, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" },
+  h1:    { margin:0, fontSize:24, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" },
   sub:   { margin:'6px 0 0', fontSize:13, color:'#475569' },
   dlBtn: { display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:`${AMBER}14`, border:`1px solid ${AMBER}33`, borderRadius:9, color:AMBER, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif" },
-  sel:   { background:'#071525', border:'1px solid rgba(255,255,255,0.08)', borderRadius:9, padding:'8px 10px', fontSize:12, color:'#e2e8f0', outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer' },
-  th:    { padding:'10px 14px', fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid rgba(255,255,255,0.05)', textAlign:'left' },
-  td:    { padding:'12px 14px', fontSize:13, color:'#94a3b8', borderBottom:'1px solid rgba(255,255,255,0.03)' },
+  sel:   { background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:9, padding:'8px 10px', fontSize:12, color:'var(--text-primary)', outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer' },
+  th:    { padding:'10px 14px', fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid var(--border)', textAlign:'left' },
+  td:    { padding:'12px 14px', fontSize:13, color:'var(--text-secondary)', borderBottom:'1px solid var(--border)' },
 };
 
 const DEMO_STUDENTS = [
-  {id:'s1',full_name:'Aarav Kumar',   roll_number:'21CS001',branch:'CSE', cgpa:'8.5',backlogs:0,email:'aarav@demo.com',  placement_status:'placed'},
+  {id:'s1',full_name:'Aarav Kumar',   roll_number:'21CS001',branch:'CST', cgpa:'8.5',backlogs:0,email:'aarav@demo.com',  placement_status:'placed'},
   {id:'s2',full_name:'Priya Sharma',  roll_number:'21CS042',branch:'IT',  cgpa:'7.8',backlogs:0,email:'priya@demo.com',  placement_status:'placed'},
-  {id:'s3',full_name:'Rahul Verma',   roll_number:'21CS018',branch:'CSE', cgpa:'9.1',backlogs:0,email:'rahul@demo.com',  placement_status:'placed'},
+  {id:'s3',full_name:'Rahul Verma',   roll_number:'21CS018',branch:'CST', cgpa:'9.1',backlogs:0,email:'rahul@demo.com',  placement_status:'placed'},
   {id:'s4',full_name:'Ankit Singh',   roll_number:'21IT005',branch:'IT',  cgpa:'6.2',backlogs:2,email:'ankit@demo.com',  placement_status:'unplaced'},
-  {id:'s5',full_name:'Sneha Patel',   roll_number:'21ECE12',branch:'ECE', cgpa:'7.4',backlogs:1,email:'sneha@demo.com',  placement_status:'unplaced'},
-  {id:'s6',full_name:'Kiran Reddy',   roll_number:'21CS029',branch:'CSE', cgpa:'8.9',backlogs:0,email:'kiran@demo.com',  placement_status:'placed'},
+  {id:'s5',full_name:'Sneha Patel',   roll_number:'21ECE12',branch:'ENC', cgpa:'7.4',backlogs:1,email:'sneha@demo.com',  placement_status:'unplaced'},
+  {id:'s6',full_name:'Kiran Reddy',   roll_number:'21CS029',branch:'CST', cgpa:'8.9',backlogs:0,email:'kiran@demo.com',  placement_status:'placed'},
   {id:'s7',full_name:'Meena Iyer',    roll_number:'21IT018',branch:'IT',  cgpa:'7.1',backlogs:0,email:'meena@demo.com',  placement_status:'unplaced'},
-  {id:'s8',full_name:'Arjun Nair',    roll_number:'21CS055',branch:'CSE', cgpa:'6.8',backlogs:1,email:'arjun@demo.com',  placement_status:'opted_out'},
+  {id:'s8',full_name:'Arjun Nair',    roll_number:'21CS055',branch:'DS', cgpa:'6.8',backlogs:1,email:'arjun@demo.com',  placement_status:'opted_out'},
 ];

@@ -9,10 +9,10 @@ import {
 import toast from 'react-hot-toast';
 
 const C = {
-  bg:'#040c18', card:'#0b1a2e', cardB:'#0d1f3c',
-  cyan:'#00c8f0', green:'#10c98a', amber:'#f5a623',
-  red:'#f04b4b', violet:'#7c5cfc', gray:'#475569',
-  light:'#94a3b8', white:'#e2e8f0',
+  bg:'var(--bg-base)', card:'var(--bg-card)', cardB:'var(--bg-card-raised)',
+  cyan:'#4f46e5', green:'#16a34a', amber:'#d97706',
+  red:'#dc2626', violet:'#4f46e5', gray:'#475569',
+  light:'var(--text-secondary)', white:'var(--text-primary)',
 };
 const DC = { Easy: C.green, Medium: C.amber, Hard: C.red };
 const LANGS = ['python','javascript','java','cpp','c'];
@@ -853,13 +853,13 @@ export default function DSACoding() {
       {/* Header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
         <div>
-          <h1 style={{ margin:0, fontSize:26, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" }}>DSA Practice</h1>
+          <h1 style={{ margin:0, fontSize:26, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" }}>DSA Practice</h1>
           <p style={{ margin:'6px 0 0', fontSize:13, color:C.gray }}>
             {PROBLEMS.length} problems — Arrays, Strings, Trees, Graphs, DP, and more
           </p>
         </div>
         {/* Judge0 status badge */}
-        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background: judge0OK===true?'rgba(16,201,138,0.1)':judge0OK===false?'rgba(240,75,75,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${judge0OK===true?C.green:judge0OK===false?C.red:C.gray}33`, borderRadius:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background: judge0OK===true?'rgba(22,163,74,0.1)':judge0OK===false?'rgba(220,38,38,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${judge0OK===true?C.green:judge0OK===false?C.red:C.gray}33`, borderRadius:10 }}>
           <div style={{ width:8, height:8, borderRadius:'50%', background: judge0OK===true?C.green:judge0OK===false?C.red:C.gray, animation: judge0OK===null?'pulse 1.5s ease-in-out infinite':undefined }}/>
           <span style={{ fontSize:12, fontWeight:600, color: judge0OK===true?C.green:judge0OK===false?C.red:C.light }}>
             {judge0OK===null ? 'Checking Judge0...' : judge0OK ? 'Judge0 Running ✓' : 'Judge0 Offline'}
@@ -883,7 +883,7 @@ export default function DSACoding() {
           </div>
         ))}
         <div style={{ marginLeft:'auto', display:'flex', alignItems:'center' }}>
-          <div style={{ height:8, width:200, background:'rgba(255,255,255,0.05)', borderRadius:999, overflow:'hidden' }}>
+          <div style={{ height:8, width:200, background:'var(--bg-card-high)', borderRadius:999, overflow:'hidden' }}>
             <div style={{ height:'100%', width:`${(stats.solved/stats.total)*100}%`, background:`linear-gradient(90deg,${C.green},${C.cyan})`, borderRadius:999, transition:'width 1s' }}/>
           </div>
           <span style={{ marginLeft:10, fontSize:12, color:C.green, fontWeight:700 }}>{Math.round((stats.solved/stats.total)*100)}%</span>
@@ -892,7 +892,7 @@ export default function DSACoding() {
 
       {/* Filters */}
       <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, background:'#071525', border:`1px solid ${C.cyan}20`, borderRadius:9, padding:'8px 12px', flex:1, maxWidth:340 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg-input)', border:`1px solid ${C.cyan}20`, borderRadius:9, padding:'8px 12px', flex:1, maxWidth:340 }}>
           <Search size={14} color={C.gray}/>
           <input value={filter.search} onChange={e=>setFilter(f=>({...f,search:e.target.value}))} placeholder="Search problems or topics..."
             style={{ background:'none', border:'none', outline:'none', fontSize:13, color:C.white, flex:1, fontFamily:"'Sora',sans-serif" }}/>
@@ -906,19 +906,19 @@ export default function DSACoding() {
           {ALL_TAGS.map(t=><option key={t}>{t}</option>)}
         </select>
         {(filter.difficulty||filter.tag||filter.search) && (
-          <button onClick={()=>setFilter({difficulty:'',tag:'',search:''})} style={{ padding:'8px 14px', background:'rgba(240,75,75,0.1)', border:`1px solid ${C.red}33`, borderRadius:9, color:C.red, fontSize:12, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>Clear filters</button>
+          <button onClick={()=>setFilter({difficulty:'',tag:'',search:''})} style={{ padding:'8px 14px', background:'rgba(220,38,38,0.1)', border:`1px solid ${C.red}33`, borderRadius:9, color:C.red, fontSize:12, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>Clear filters</button>
         )}
       </div>
 
       <p style={{ fontSize:12, color:C.gray, marginBottom:10 }}>{filtered.length} problem{filtered.length!==1?'s':''} found</p>
 
       {/* Problem table */}
-      <div style={{ background:'linear-gradient(145deg,#0b1a2e,#0d1f3c)', border:`1px solid ${C.cyan}15`, borderRadius:16, overflow:'hidden' }}>
+      <div style={{ background:'var(--bg-card)', border:`1px solid ${C.cyan}15`, borderRadius:16, overflow:'hidden' }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
-            <tr style={{ background:'rgba(0,200,240,0.04)' }}>
+            <tr style={{ background:'rgba(79,70,229,0.04)' }}>
               {['#','Title','Difficulty','Topics','Status'].map(h=>(
-                <th key={h} style={{ padding:'12px 16px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', textAlign:'left', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>{h}</th>
+                <th key={h} style={{ padding:'12px 16px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', textAlign:'left', borderBottom:'1px solid var(--border)' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -927,7 +927,7 @@ export default function DSACoding() {
               const isSolved = !!solvedMap[p.id];
               return (
                 <tr key={p.id} onClick={()=>openProblem(p)} style={{ cursor:'pointer', transition:'background 0.15s' }}
-                  onMouseEnter={e=>e.currentTarget.style.background='rgba(0,200,240,0.04)'}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(79,70,229,0.04)'}
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                   <td style={{ padding:'14px 16px', fontSize:12, color:C.gray, width:50 }}>{p.no}</td>
                   <td style={{ padding:'14px 16px' }}>
@@ -939,14 +939,14 @@ export default function DSACoding() {
                   <td style={{ padding:'14px 16px' }}>
                     <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
                       {p.tags.slice(0,3).map(t=>(
-                        <span key={t} style={{ padding:'2px 7px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:5, fontSize:10, color:C.light }}>{t}</span>
+                        <span key={t} style={{ padding:'2px 7px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:5, fontSize:10, color:C.light }}>{t}</span>
                       ))}
                     </div>
                   </td>
                   <td style={{ padding:'14px 16px' }}>
                     {isSolved
                       ? <span style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:12, color:C.green, fontWeight:700 }}><CheckCircle size={13}/>Solved</span>
-                      : <span style={{ fontSize:12, color:'#2d3f55' }}>—</span>
+                      : <span style={{ fontSize:12, color:'var(--text-muted)' }}>—</span>
                     }
                   </td>
                 </tr>
@@ -965,11 +965,11 @@ export default function DSACoding() {
   return (
     <div style={{ height:'100vh', display:'flex', flexDirection:'column', background:C.bg, overflow:'hidden' }}>
       {/* Top bar */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'#071525', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--bg-input)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
         <button onClick={()=>setScreen('list')} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'none', color:C.gray, cursor:'pointer', fontSize:13, fontFamily:"'Sora',sans-serif" }}>
           <ChevronLeft size={16}/> Problems
         </button>
-        <div style={{ width:1, height:20, background:'rgba(255,255,255,0.1)' }}/>
+        <div style={{ width:1, height:20, background:'var(--border)' }}/>
         <span style={{ fontSize:14, fontWeight:700, color:C.white }}>{selected?.no}. {selected?.title}</span>
         <span style={{ padding:'2px 10px', borderRadius:999, fontSize:11, fontWeight:700, background:`${DC[selected?.difficulty]}18`, color:DC[selected?.difficulty] }}>{selected?.difficulty}</span>
         {isSolved && <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:C.green, fontWeight:700 }}><CheckCircle size={12}/>Solved</span>}
@@ -983,9 +983,9 @@ export default function DSACoding() {
       <div style={{ display:'flex', flex:1, gap:0, minHeight:0, overflow:'hidden' }}>
 
         {/* LEFT: problem description */}
-        <div style={{ width:'42%', display:'flex', flexDirection:'column', borderRight:'1px solid rgba(255,255,255,0.06)', minWidth:0 }}>
+        <div style={{ width:'42%', display:'flex', flexDirection:'column', borderRight:'1px solid var(--border)', minWidth:0 }}>
           {/* Tabs */}
-          <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+          <div style={{ display:'flex', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
             {[['problem','Description',BookOpen],['hints','Hints',Lightbulb],['submissions','Submissions',History]].map(([key,label,Icon])=>(
               <button key={key} onClick={()=>setTab(key)} style={{ display:'flex', alignItems:'center', gap:6, padding:'11px 18px', background:'none', border:'none', borderBottom:`2px solid ${tab===key?C.cyan:'transparent'}`, color:tab===key?C.cyan:C.gray, fontSize:13, fontWeight:tab===key?700:500, cursor:'pointer', fontFamily:"'Sora',sans-serif", transition:'all 0.15s' }}>
                 <Icon size={14}/>{label}
@@ -1005,11 +1005,11 @@ export default function DSACoding() {
         {/* RIGHT: editor */}
         <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden' }}>
           {/* Editor toolbar */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', background:'#071525', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', background:'var(--bg-input)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
             <select value={lang} onChange={e=>changeLang(e.target.value)} style={st.sel}>
               {LANGS.map(l=><option key={l} value={l}>{LANG_LABELS[l]}</option>)}
             </select>
-            <button onClick={resetCode} title="Reset to starter code" style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:7, color:C.gray, fontSize:12, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
+            <button onClick={resetCode} title="Reset to starter code" style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:7, color:C.gray, fontSize:12, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
               <RotateCcw size={12}/> Reset
             </button>
             <span style={{ marginLeft:'auto', fontSize:11, color:C.gray }}>
@@ -1031,24 +1031,24 @@ export default function DSACoding() {
           </div>
 
           {/* Bottom panel */}
-          <div style={{ flexShrink:0, padding:'10px 16px', background:'#071525', borderTop:'1px solid rgba(255,255,255,0.06)', display:'flex', flexDirection:'column', gap:8 }}>
+          <div style={{ flexShrink:0, padding:'10px 16px', background:'var(--bg-input)', borderTop:'1px solid var(--border)', display:'flex', flexDirection:'column', gap:8 }}>
             {/* Custom input */}
             <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
               <div style={{ flex:1 }}>
                 <p style={{ margin:'0 0 4px', fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Custom Input (for Run)</p>
                 <textarea value={customInput} onChange={e=>setCustomInput(e.target.value)} rows={2}
-                  style={{ width:'100%', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(0,200,240,0.12)', borderRadius:7, padding:'6px 10px', fontSize:12, color:C.white, outline:'none', fontFamily:'monospace', resize:'vertical', boxSizing:'border-box' }}
+                  style={{ width:'100%', background:'var(--bg-card-high)', border:'1px solid rgba(79,70,229,0.12)', borderRadius:7, padding:'6px 10px', fontSize:12, color:C.white, outline:'none', fontFamily:'monospace', resize:'vertical', boxSizing:'border-box' }}
                   placeholder="Enter test input..."/>
               </div>
             </div>
 
             {/* Action buttons */}
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={runCode} disabled={running} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:'rgba(0,200,240,0.1)', border:`1px solid ${C.cyan}40`, borderRadius:9, color:C.cyan, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", opacity:running?0.7:1 }}>
+              <button onClick={runCode} disabled={running} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:'rgba(79,70,229,0.1)', border:`1px solid ${C.cyan}40`, borderRadius:9, color:C.cyan, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", opacity:running?0.7:1 }}>
                 {running ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Play size={15}/>}
                 {running ? 'Running...' : 'Run Code'}
               </button>
-              <button onClick={submitCode} disabled={submitting} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:submitting?'rgba(16,201,138,0.1)':C.green, border:'none', borderRadius:9, color:submitting?C.green:'#040c18', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", opacity:submitting?0.7:1 }}>
+              <button onClick={submitCode} disabled={submitting} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:submitting?'rgba(22,163,74,0.1)':C.green, border:'none', borderRadius:9, color:submitting?C.green:'#ffffff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", opacity:submitting?0.7:1 }}>
                 {submitting ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
@@ -1070,10 +1070,10 @@ function ProblemTab({ problem }) {
     <div style={{ color:C.light, lineHeight:1.8, fontSize:14 }}>
       <p style={{ marginTop:0 }}>{problem.description}</p>
       {(problem.examples||[]).map((ex,i) => (
-        <div key={i} style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
+        <div key={i} style={{ background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
           <p style={{ margin:'0 0 6px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Example {i+1}</p>
-          <p style={{ margin:'0 0 4px', fontSize:13 }}><span style={{ color:C.gray }}>Input: </span><code style={{ color:C.cyan, fontFamily:'monospace', background:'rgba(0,200,240,0.06)', padding:'1px 6px', borderRadius:4 }}>{ex.input}</code></p>
-          <p style={{ margin:'0 0 4px', fontSize:13 }}><span style={{ color:C.gray }}>Output: </span><code style={{ color:C.green, fontFamily:'monospace', background:'rgba(16,201,138,0.06)', padding:'1px 6px', borderRadius:4 }}>{ex.output}</code></p>
+          <p style={{ margin:'0 0 4px', fontSize:13 }}><span style={{ color:C.gray }}>Input: </span><code style={{ color:C.cyan, fontFamily:'monospace', background:'rgba(79,70,229,0.06)', padding:'1px 6px', borderRadius:4 }}>{ex.input}</code></p>
+          <p style={{ margin:'0 0 4px', fontSize:13 }}><span style={{ color:C.gray }}>Output: </span><code style={{ color:C.green, fontFamily:'monospace', background:'rgba(22,163,74,0.06)', padding:'1px 6px', borderRadius:4 }}>{ex.output}</code></p>
           {ex.explanation && <p style={{ margin:'6px 0 0', fontSize:12, color:C.gray, fontStyle:'italic' }}>💬 {ex.explanation}</p>}
         </div>
       ))}
@@ -1100,12 +1100,12 @@ function HintsTab({ hints }) {
       {all.map((h,i) => (
         <div key={i} style={{ marginBottom:10 }}>
           {revealed.includes(i) ? (
-            <div style={{ display:'flex', gap:10, padding:'12px 14px', background:'rgba(124,92,252,0.06)', border:'1px solid rgba(124,92,252,0.2)', borderRadius:9 }}>
-              <span style={{ fontSize:12, fontWeight:800, color:'#7c5cfc', flexShrink:0 }}>#{i+1}</span>
+            <div style={{ display:'flex', gap:10, padding:'12px 14px', background:'rgba(79,70,229,0.06)', border:'1px solid rgba(79,70,229,0.2)', borderRadius:9 }}>
+              <span style={{ fontSize:12, fontWeight:800, color:'#4f46e5', flexShrink:0 }}>#{i+1}</span>
               <p style={{ margin:0, fontSize:13, color:C.light, lineHeight:1.6 }}>{h}</p>
             </div>
           ) : (
-            <button onClick={()=>setRevealed([...revealed,i])} style={{ width:'100%', padding:'10px 14px', background:'rgba(124,92,252,0.04)', border:'1px solid rgba(124,92,252,0.15)', borderRadius:9, color:'#7c5cfc', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={()=>setRevealed([...revealed,i])} style={{ width:'100%', padding:'10px 14px', background:'rgba(79,70,229,0.04)', border:'1px solid rgba(79,70,229,0.15)', borderRadius:9, color:'#4f46e5', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
               <Lightbulb size={14}/> Reveal Hint {i+1}
               {i > 0 && !revealed.includes(i-1) && <Lock size={12} style={{ marginLeft:'auto', opacity:0.5 }}/>}
             </button>
@@ -1129,7 +1129,7 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
           </div>
           {/* Per test case results */}
           {submitOutput.results?.map((r,i) => (
-            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:'rgba(255,255,255,0.02)', borderRadius:6, marginBottom:4 }}>
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:'var(--bg-card-high)', borderRadius:6, marginBottom:4 }}>
               {r.passed ? <CheckCircle size={12} color={C.green}/> : <XCircle size={12} color={C.red}/>}
               <span style={{ fontSize:12, color:r.passed?C.green:C.red, fontWeight:600 }}>Test {i+1}</span>
               {!r.passed && <span style={{ fontSize:11, color:C.gray }}>Expected: <code style={{ color:C.amber }}>{r.expected}</code> Got: <code style={{ color:C.red }}>{r.got || 'error'}</code></span>}
@@ -1141,7 +1141,7 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
 
       {/* Run output */}
       {runOutput && (
-        <div style={{ marginBottom:16, padding:12, background:'rgba(0,200,240,0.04)', border:'1px solid rgba(0,200,240,0.15)', borderRadius:10 }}>
+        <div style={{ marginBottom:16, padding:12, background:'rgba(79,70,229,0.04)', border:'1px solid rgba(79,70,229,0.15)', borderRadius:10 }}>
           <p style={{ margin:'0 0 6px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Last Run</p>
           <div style={{ display:'flex', gap:10, marginBottom:4 }}>
             <span style={{ fontSize:12, fontWeight:700, color:runOutput.verdict==='Accepted'?C.green:C.cyan }}>{runOutput.verdict}</span>
@@ -1158,9 +1158,9 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
         <>
           <p style={{ margin:'0 0 10px', fontSize:12, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>History</p>
           {list.map((s,i) => (
-            <div key={i} style={{ padding:'10px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:8, marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
+            <div key={i} style={{ padding:'10px 14px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:8, marginBottom:8, display:'flex', alignItems:'center', gap:12 }}>
               <span style={{ fontSize:13, fontWeight:700, color:s.status==='Accepted'?C.green:C.red }}>{s.status==='Accepted'?'✅':'❌'} {s.status}</span>
-              <span style={{ fontSize:12, color:C.light, padding:'1px 8px', background:'rgba(255,255,255,0.05)', borderRadius:5 }}>{s.lang}</span>
+              <span style={{ fontSize:12, color:C.light, padding:'1px 8px', background:'var(--bg-card-high)', borderRadius:5 }}>{s.lang}</span>
               <span style={{ fontSize:11, color:C.gray }}>{s.passed}/{s.total} tests</span>
               <span style={{ fontSize:11, color:C.gray, marginLeft:'auto' }}>{s.time}</span>
             </div>
@@ -1172,7 +1172,7 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
         <div style={{ textAlign:'center', padding:'40px 20px' }}>
           <History size={32} color={C.gray} style={{ marginBottom:12 }}/>
           <p style={{ color:C.gray, fontSize:13 }}>No submissions yet.</p>
-          <p style={{ color:'#2d3f55', fontSize:12 }}>Submit your solution to see results here.</p>
+          <p style={{ color:'var(--text-muted)', fontSize:12 }}>Submit your solution to see results here.</p>
         </div>
       )}
     </div>
@@ -1183,7 +1183,7 @@ function OutputPanel({ output }) {
   if (!output) return null;
   const color = output.verdict==='Accepted' ? C.green : output.type==='run' ? C.cyan : C.red;
   return (
-    <div style={{ background:'#020c18', border:`1px solid ${color}33`, borderRadius:9, padding:'10px 14px', maxHeight:130, overflowY:'auto' }}>
+    <div style={{ background:'var(--bg-card-high)', border:`1px solid ${color}33`, borderRadius:9, padding:'10px 14px', maxHeight:130, overflowY:'auto' }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
         {output.verdict==='Accepted' ? <CheckCircle size={13} color={C.green}/> : <AlertCircle size={13} color={color}/>}
         <span style={{ fontSize:12, fontWeight:700, color }}>{output.verdict || output.status || 'Output'}</span>
@@ -1197,5 +1197,5 @@ function OutputPanel({ output }) {
 }
 
 const st = {
-  sel: { background:'#071525', border:'1px solid rgba(0,200,240,0.15)', borderRadius:8, padding:'7px 10px', fontSize:12, color:C.white, outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer' },
+  sel: { background:'var(--bg-input)', border:'1px solid rgba(79,70,229,0.15)', borderRadius:8, padding:'7px 10px', fontSize:12, color:C.white, outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer' },
 };

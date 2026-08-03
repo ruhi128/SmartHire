@@ -14,16 +14,16 @@ import {
   Trophy, TrendingUp, Target, Zap, ChevronRight,Building2
 } from 'lucide-react';
 
-const CYAN   = '#00c8f0';
-const VIOLET = '#7c5cfc';
-const GREEN  = '#10c98a';
-const AMBER  = '#f5a623';
+const CYAN   = '#4f46e5';
+const VIOLET = '#4f46e5';
+const GREEN  = '#16a34a';
+const AMBER  = '#d97706';
 
 // Custom tooltip
 const CustomTip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0b1a2e', border: '1px solid rgba(0,200,240,0.2)', borderRadius: 8, padding: '8px 12px' }}>
+    <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-md)', borderRadius: 8, padding: '8px 12px' }}>
       <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ margin: '3px 0 0', fontSize: 13, fontWeight: 700, color: p.color }}>{p.name}: {p.value}</p>
@@ -78,9 +78,9 @@ export default function Dashboard() {
     { label: 'DSA Coding',     icon: Code2,     to: '/student/dsa',        color: VIOLET },
     { label: 'Mock Interview', icon: Video,     to: '/student/interview',  color: GREEN  },
     { label: 'Mock OA',        icon: Zap,       to: '/student/mockoa',     color: AMBER  },
-    { label: 'Company OA', icon: Building2, to: '/student/companyoa', color: '#7c5cfc' },
-    { label: 'Resume Builder', icon: FileText,  to: '/student/resume',     color: '#f04b4b' },
-    { label: 'Browse Jobs',    icon: Briefcase, to: '/student/jobs',       color: '#10b981' },
+    { label: 'Company OA', icon: Building2, to: '/student/companyoa', color: '#4f46e5' },
+    { label: 'Resume Builder', icon: FileText,  to: '/student/resume',     color: '#dc2626' },
+    { label: 'Browse Jobs',    icon: Briefcase, to: '/student/jobs',       color: '#16a34a' },
   ];
 
   const placedCount  = apps.filter(a => a.status === 'selected').length;
@@ -137,7 +137,7 @@ export default function Dashboard() {
         <GlowCard title="Skill Radar" subtitle="Aptitude topic coverage" accent={VIOLET} style={{ flex: 1 }}>
           <ResponsiveContainer width="100%" height={180}>
             <RadarChart data={radarData} margin={{ top: 0, right: 20, bottom: 0, left: 20 }}>
-              <PolarGrid stroke="rgba(255,255,255,0.06)" />
+              <PolarGrid stroke="rgba(15,23,42,0.10)" />
               <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 10 }} />
               <Radar dataKey="score" stroke={VIOLET} fill={VIOLET} fillOpacity={0.2} strokeWidth={2} />
             </RadarChart>
@@ -168,8 +168,8 @@ export default function Dashboard() {
               return (
                 <button key={link.to} style={s.quickLink(link.color)} onClick={() => navigate(link.to)}>
                   <div style={s.quickIcon(link.color)}><Icon size={15} color={link.color} /></div>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#cbd5e1', textAlign: 'left' }}>{link.label}</span>
-                  <ChevronRight size={14} color="#334155" />
+                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', textAlign: 'left' }}>{link.label}</span>
+                  <ChevronRight size={14} color="var(--text-muted)" />
                 </button>
               );
             })}
@@ -213,11 +213,11 @@ export default function Dashboard() {
       )}
 
       {/* ── Placement tip ── */}
-      <GlowCard accent="#7c5cfc" style={{ background: 'linear-gradient(135deg, #0d1a3a, #150d2e)' }}>
+      <GlowCard accent="#4f46e5" style={{ background: 'linear-gradient(135deg, #eef2ff, #f5f3ff)', border: '1px solid var(--cyan-border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{ fontSize: 32 }}>💡</div>
           <div>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>Today's Tip</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Today's Tip</p>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
               Solve at least 2 DSA problems daily. Companies like TCS and Infosys heavily test on Arrays, Strings, and basic DP. Consistency beats cramming.
             </p>
@@ -236,21 +236,21 @@ function getGreeting() {
   return 'evening';
 }
 
-const STATUS_COLORS = { applied: '#00c8f0', shortlisted: '#f5a623', selected: '#10c98a', rejected: '#f04b4b' };
+const STATUS_COLORS = { applied: '#4f46e5', shortlisted: '#d97706', selected: '#16a34a', rejected: '#dc2626' };
 
 const s = {
   page:       { padding: 28, maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 },
   header:     { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 },
-  h1:         { margin: 0, fontSize: 26, fontWeight: 800, color: '#f0f6ff', letterSpacing: '-0.02em', fontFamily: "'Sora',sans-serif" },
+  h1:         { margin: 0, fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: "'Sora',sans-serif" },
   sub:        { margin: '6px 0 0', fontSize: 13, color: '#475569' },
-  cgpaChip:   { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'rgba(0,200,240,0.08)', border: '1px solid rgba(0,200,240,0.2)', borderRadius: 12, padding: '12px 20px', flexShrink: 0 },
+  cgpaChip:   { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, background: 'var(--cyan-dim)', border: '1px solid var(--cyan-border)', borderRadius: 12, padding: '12px 20px', flexShrink: 0 },
   statsGrid:  { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16 },
   chartsRow:  { display: 'flex', gap: 16, flexWrap: 'wrap' },
   quickLink:  (c) => ({ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: `${c}0a`, border: `1px solid ${c}18`, borderRadius: 9, cursor: 'pointer', transition: 'all 0.15s', width: '100%' }),
   quickIcon:  (c) => ({ width: 30, height: 30, borderRadius: 8, background: `${c}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }),
-  viewAll:    { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#00c8f0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Sora',sans-serif", fontWeight: 600 },
-  th:         { padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'left' },
-  td:         { padding: '10px 12px', fontSize: 13, color: '#94a3b8', borderBottom: '1px solid rgba(255,255,255,0.03)' },
+  viewAll:    { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#4f46e5', background: 'none', border: 'none', cursor: 'pointer', fontFamily: "'Sora',sans-serif", fontWeight: 600 },
+  th:         { padding: '8px 12px', fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '1px solid var(--border)', textAlign: 'left' },
+  td:         { padding: '10px 12px', fontSize: 13, color: '#94a3b8', borderBottom: '1px solid var(--border)' },
   badge:      (st) => ({ display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${STATUS_COLORS[st] || '#475569'}18`, color: STATUS_COLORS[st] || '#475569', textTransform: 'capitalize', border: `1px solid ${STATUS_COLORS[st] || '#475569'}33` }),
-  tipBtn:     { flexShrink: 0, padding: '8px 16px', background: 'rgba(124,92,252,0.2)', border: '1px solid rgba(124,92,252,0.4)', borderRadius: 8, color: '#7c5cfc', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", whiteSpace: 'nowrap' },
+  tipBtn:     { flexShrink: 0, padding: '8px 16px', background: 'var(--cyan-dim)', border: '1px solid var(--cyan-border)', borderRadius: 8, color: '#4f46e5', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Sora',sans-serif", whiteSpace: 'nowrap' },
 };

@@ -5,16 +5,16 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
+    const saved = localStorage.getItem('ui-theme');
     if (saved) return saved === 'dark';
-    return !window.matchMedia('(prefers-color-scheme: light)').matches;
+    return false; // default to professional light theme
   });
 
   useEffect(() => {
     const root = document.documentElement;
     const theme = isDark ? 'dark' : 'light';
     root.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('ui-theme', theme);
   }, [isDark]);
 
   const toggle = () => setIsDark(prev => !prev);

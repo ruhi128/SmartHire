@@ -101,7 +101,12 @@ export function AuthProvider({ children }) {
     toast.success(`Welcome back${name ? ', ' + name : ''}!`);
     return { success: true, role };
   } catch (err) {
-    const msg = err.response?.data?.error || 'Invalid email or password';
+    const data = err.response?.data;
+    if (data?.needsVerification) {
+      toast('Please verify your email to continue.', { icon: '📧' });
+      return { success: false, needsVerification: true, email: data.email || email };
+    }
+    const msg = data?.error || 'Invalid email or password';
     toast.error(msg);
     return { success: false, error: msg };
   }
@@ -110,7 +115,11 @@ export function AuthProvider({ children }) {
   // ── REGISTER ──
   const register = useCallback(async (formData) => {
     try {
-      await authAPI.register(formData);
+      const { data } = await authAPI.register(formData);
+      if (data?.needsVerification) {
+        toast.success('Account created! Check your email for a verification code.');
+        return { success: true, needsVerification: true, email: data.email || formData.email };
+      }
       toast.success('Account created! You can now log in.');
       return { success: true };
     } catch (err) {

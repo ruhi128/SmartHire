@@ -4,6 +4,66 @@ const { body, validationResult } = require('express-validator');
 const auth     = require('../middleware/auth');
 const roles    = require('../middleware/roles');
 const supabase = require('../config/supabase');
+const { sendJobOpeningEmail } = require('../config/email');
+const { notifyMany } = require('../utils/notify');
+
+// Find students eligible for a job (branch + cgpa + backlogs) with their email.
+async function findEligibleStudents(job) {
+  const { data: students } = await supabase
+    .from('student_profiles')
+    .select('id, full_name, branch, cgpa, backlogs, users(email, is_active)')
+    .gte('cgpa', job.min_cgpa || 0);
+
+  const branches = job.eligible_branches || [];
+  return (students || []).filter((s) => {
+    if (s.users?.is_active === false) return false;
+    const branchOk = !branches.length || branches.includes(s.branch);
+    const backlogOk = (s.backlogs ?? 0) <= (job.max_backlogs ?? 99);
+    return branchOk && backlogOk;
+  });
+}
+
+// Notify + email eligible students that a company is on campus (job approved).
+async function announceJobToStudents(job) {
+  try {
+    const eligible = await findEligibleStudents(job);
+    if (!eligible.length) return;
+
+    const companyName = job.companies?.name || 'A company';
+    const deadline = job.deadline
+      ? new Date(job.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      : null;
+
+    // In-app notifications (bulk)
+    await notifyMany(
+      eligible.map((s) => s.id),
+      {
+        title: `🏢 ${companyName} is hiring — ${job.title}`,
+        body: `${job.package_lpa ? job.package_lpa + ' LPA. ' : ''}Apply before ${deadline || 'the deadline'}.`,
+        type: 'job_posted',
+        link: '/student/jobs',
+        metadata: { jobId: job.id },
+      }
+    );
+
+    // Emails (fire-and-forget, throttled sequentially to be gentle on SMTP)
+    for (const s of eligible) {
+      if (!s.users?.email) continue;
+      sendJobOpeningEmail(s.users.email, {
+        studentName: s.full_name,
+        companyName,
+        jobTitle: job.title,
+        packageLpa: job.package_lpa,
+        deadline,
+        driveDate: job.drive_date
+          ? new Date(job.drive_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+          : null,
+      }).catch((e) => console.error('Job email failed:', e.message));
+    }
+  } catch (err) {
+    console.error('announceJobToStudents error:', err.message);
+  }
+}
 
 // ── GET /api/jobs — students see approved jobs only ──────────────────────────
 router.get('/', auth, async (req, res) => {
@@ -149,6 +209,9 @@ router.patch('/:id/approve', auth, roles('admin'), async (req, res) => {
       type: 'job_approved',
       job_id: job.id,
     }).catch(() => {});
+
+    // Email + in-app notify all eligible students (company on campus)
+    announceJobToStudents(job); // fire-and-forget
   }
 
   res.json({ message: `Job ${newStatus}.`, job });

@@ -174,14 +174,23 @@ router.get('/announcements', auth, async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('announcements')
       .select(`
-        id, title, content, priority, created_at,
+        id, title, content, priority, type, created_at,
         companies(name, logo_url),
         users(email)
       `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    res.json({ announcements: data || [] });
+
+    // Admin-only announcement types (e.g. "OA pending approval") must never
+    // reach students/recruiters — they should only learn about an OA once it
+    // has been approved.
+    const ADMIN_ONLY_TYPES = ['oa_pending'];
+    const visible = req.user.role === 'admin'
+      ? (data || [])
+      : (data || []).filter(a => !ADMIN_ONLY_TYPES.includes(a.type));
+
+    res.json({ announcements: visible });
   } catch (err) {
     console.error('GET /admin/announcements error:', err);
     res.status(500).json({ error: 'Failed to fetch announcements' });

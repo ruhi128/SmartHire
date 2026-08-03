@@ -38,7 +38,7 @@ router.get('/profile', auth, roles('student'), async (req, res) => {
       if (error.code === 'PGRST116') {
         const { data: newProfile, error: insertErr } = await supabase
           .from('student_profiles')
-          .insert({ id: req.user.id, full_name: req.user.name || '', email: req.user.email || '' })
+          .insert({ id: req.user.id, full_name: req.user.name || '' })
           .select()
           .single();
         if (insertErr) return res.status(500).json({ error: insertErr.message });

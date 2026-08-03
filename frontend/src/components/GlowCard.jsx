@@ -39,10 +39,10 @@ export default function GlowCard({
       className={className}
       style={{
         position:      'relative',
-        background:    'linear-gradient(145deg, #0b1a2e 0%, #0d1f3c 50%, #0b1a2e 100%)',
-        border:        `1px solid ${accent}20`,
+        background:    'var(--bg-card)',
+        border:        `1px solid var(--border)`,
         borderRadius:  16,
-        boxShadow:     `0 4px 24px ${accent}0d`,
+        boxShadow:     'var(--shadow-card)',
         overflow:      'hidden',
         transition:    isClickable ? 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' : 'none',
         cursor:        onClick ? 'pointer' : 'default',
@@ -53,13 +53,13 @@ export default function GlowCard({
       tabIndex={onClick ? 0 : undefined}
       onMouseEnter={isClickable ? (e) => {
         e.currentTarget.style.transform    = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow    = `0 12px 40px ${accent}1a`;
-        e.currentTarget.style.borderColor  = `${accent}44`;
+        e.currentTarget.style.boxShadow    = 'var(--shadow-lg)';
+        e.currentTarget.style.borderColor  = 'var(--border-strong)';
       } : undefined}
       onMouseLeave={isClickable ? (e) => {
         e.currentTarget.style.transform    = 'translateY(0)';
-        e.currentTarget.style.boxShadow    = `0 4px 24px ${accent}0d`;
-        e.currentTarget.style.borderColor  = `${accent}20`;
+        e.currentTarget.style.boxShadow    = 'var(--shadow-card)';
+        e.currentTarget.style.borderColor  = 'var(--border)';
       } : undefined}
     >
       {/* Ambient top glow */}
@@ -81,7 +81,7 @@ export default function GlowCard({
           alignItems:     'center',
           justifyContent: 'space-between',
           padding:        noPadding ? '20px 24px 16px' : `${typeof padding === 'number' ? padding + 'px' : padding} ${typeof padding === 'number' ? padding + 'px' : padding} 16px`,
-          borderBottom:   `1px solid ${accent}12`,
+          borderBottom:   `1px solid var(--border)`,
           gap:            12,
         }}>
           <div>
@@ -90,7 +90,7 @@ export default function GlowCard({
                 margin:        0,
                 fontSize:      15,
                 fontWeight:    700,
-                color:         '#e2e8f0',
+                color:         'var(--text-primary)',
                 letterSpacing: '-0.01em',
                 fontFamily:    "'Sora', sans-serif",
               }}>
@@ -101,7 +101,7 @@ export default function GlowCard({
               <p style={{
                 margin:     '3px 0 0',
                 fontSize:   12,
-                color:      '#475569',
+                color:      'var(--text-secondary)',
                 lineHeight: 1.4,
               }}>
                 {subtitle}

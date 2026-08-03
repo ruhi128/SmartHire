@@ -47,6 +47,7 @@ app.use('/api/code',         require('./routes/code'));
 app.use('/api/companyoa', require('./routes/companyoa'));
 app.use('/api/companies', require('./routes/companies'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // ── Health Check ──
 app.get('/health', (req, res) =>

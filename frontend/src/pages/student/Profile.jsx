@@ -10,9 +10,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const CYAN = '#00c8f0', GREEN = '#10c98a', AMBER = '#f5a623', VIOLET = '#7c5cfc', RED = '#f04b4b';
+const CYAN = '#4f46e5', GREEN = '#16a34a', AMBER = '#d97706', VIOLET = '#4f46e5', RED = '#dc2626';
 
-const BRANCHES = ['CSE', 'CE', 'IT', 'EEE', 'ECE', 'MECH', 'CIVIL', 'AI', 'DS', 'Other'];
+const BRANCHES = ['CE', 'CST', 'ENC', 'DS', 'AI', 'IT'];
 const SEMESTERS = [1, 2, 3, 4, 5, 6, 7, 8];
 const PLACEMENT_STATUSES = [
   { value: 'unplaced',  label: 'Unplaced',  color: AMBER },
@@ -165,7 +165,7 @@ export default function Profile() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" }}>
             My Profile
           </h1>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: '#475569' }}>
@@ -183,7 +183,7 @@ export default function Profile() {
                 <X size={14} /> Cancel
               </button>
               <button
-                style={{ ...BTN(GREEN), background: GREEN, color: '#040c18', border: 'none' }}
+                style={{ ...BTN(GREEN), background: GREEN, color: '#ffffff', border: 'none' }}
                 onClick={save}
                 disabled={saving}
               >
@@ -216,7 +216,7 @@ export default function Profile() {
                 placeholder="Full Name *"
               />
             ) : (
-              <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" }}>
+              <h2 style={{ margin: '0 0 6px', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" }}>
                 {F.full_name || '—'}
               </h2>
             )}
@@ -287,7 +287,7 @@ export default function Profile() {
 
         {/* Resume */}
         {F.resume_url && (
-          <div style={{ marginTop: 16, padding: '10px 14px', background: 'rgba(16,201,138,0.08)', border: '1px solid rgba(16,201,138,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ marginTop: 16, padding: '10px 14px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <CheckCircle size={14} color={GREEN} />
               <span style={{ fontSize: 13, color: GREEN, fontWeight: 600 }}>Resume uploaded</span>
@@ -301,12 +301,12 @@ export default function Profile() {
       </GlowCard>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--bg-card-high)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
         {TABS.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
             padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
             fontSize: 13, fontWeight: 700, fontFamily: "'Sora',sans-serif",
-            background: activeTab === tab.id ? '#0b1a2e' : 'transparent',
+            background: activeTab === tab.id ? 'var(--bg-card)' : 'transparent',
             color: activeTab === tab.id ? CYAN : '#64748b',
             boxShadow: activeTab === tab.id ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
           }}>
@@ -321,13 +321,13 @@ export default function Profile() {
           <GlowCard title="Quick Stats" accent={CYAN}>
             {[
               { label: 'CGPA',      value: F.cgpa    || '—',                     color: cgpaColor,        suffix: F.cgpa ? '/ 10' : '' },
-              { label: '10th %',    value: F.tenth_percent   ? `${F.tenth_percent}%`   : '—', color: '#e2e8f0' },
-              { label: '12th %',    value: F.twelfth_percent ? `${F.twelfth_percent}%` : '—', color: '#e2e8f0' },
+              { label: '10th %',    value: F.tenth_percent   ? `${F.tenth_percent}%`   : '—', color: 'var(--text-primary)' },
+              { label: '12th %',    value: F.twelfth_percent ? `${F.twelfth_percent}%` : '—', color: 'var(--text-primary)' },
               { label: 'Backlogs',  value: F.backlogs ?? '0',                    color: F.backlogs > 0 ? RED : GREEN },
-              { label: 'Semester',  value: F.semester ? `Sem ${F.semester}` : '—', color: '#e2e8f0' },
+              { label: 'Semester',  value: F.semester ? `Sem ${F.semester}` : '—', color: 'var(--text-primary)' },
               { label: 'Placement', value: statusInfo.label,                     color: statusInfo.color },
             ].map(({ label, value, color, suffix }) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 13, color: '#64748b' }}>{label}</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color }}>
                   {value} {suffix && <span style={{ fontSize: 11, color: '#475569', fontWeight: 400 }}>{suffix}</span>}
@@ -340,11 +340,11 @@ export default function Profile() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
               {(F.skills || []).length > 0
                 ? (F.skills || []).map((sk, i) => (
-                    <span key={i} style={{ padding: '4px 12px', background: 'rgba(16,201,138,0.1)', border: '1px solid rgba(16,201,138,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: GREEN }}>
+                    <span key={i} style={{ padding: '4px 12px', background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: GREEN }}>
                       {sk}
                     </span>
                   ))
-                : <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>No skills added. Go to Skills tab.</p>
+                : <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>No skills added. Go to Skills tab.</p>
               }
             </div>
           </GlowCard>
@@ -353,11 +353,11 @@ export default function Profile() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {(F.certifications || []).length > 0
                 ? (F.certifications || []).map((c, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: AMBER }}>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 600, color: AMBER }}>
                       <Award size={12} /> {c}
                     </span>
                   ))
-                : <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>No certifications added yet.</p>
+                : <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>No certifications added yet.</p>
               }
             </div>
           </GlowCard>
@@ -381,7 +381,7 @@ export default function Profile() {
               <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</label>
                 {!editing || disabled ? (
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: disabled ? '#475569' : '#e2e8f0', padding: '8px 0' }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: disabled ? '#475569' : 'var(--text-primary)', padding: '8px 0' }}>
                     {key === 'placement_status' ? statusInfo.label
                      : key === 'semester' ? (F[key] ? `Semester ${F[key]}` : '—')
                      : F[key] ?? '—'}
@@ -423,7 +423,7 @@ export default function Profile() {
               { icon: Github,   label: 'GitHub URL',    key: 'github_url',  type: 'url',   disabled: false, placeholder: 'https://github.com/yourname' },
               { icon: MapPin,   label: 'Location',      key: 'location',    type: 'text',  disabled: false, placeholder: 'Mumbai, Maharashtra' },
             ].map(({ icon: Icon, label, key, type, disabled, placeholder }) => (
-              <div key={key} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <div key={key} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: `${CYAN}10`, border: `1px solid ${CYAN}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                   <Icon size={16} color={CYAN} />
                 </div>
@@ -433,8 +433,8 @@ export default function Profile() {
                     <input type={type} value={F[key] || ''} onChange={e => set(key, e.target.value)}
                       style={INPUT} placeholder={placeholder} />
                   ) : (
-                    <p style={{ margin: 0, fontSize: 14, color: F[key] ? '#e2e8f0' : '#334155', wordBreak: 'break-all' }}>
-                      {F[key] || (disabled ? '—' : <span style={{ fontStyle: 'italic', color: '#334155' }}>Not added yet</span>)}
+                    <p style={{ margin: 0, fontSize: 14, color: F[key] ? 'var(--text-primary)' : 'var(--text-muted)', wordBreak: 'break-all' }}>
+                      {F[key] || (disabled ? '—' : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>Not added yet</span>)}
                     </p>
                   )}
                 </div>
@@ -452,7 +452,7 @@ export default function Profile() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: editing ? 14 : 0 }}>
               {(F.skills || []).length > 0
                 ? (F.skills || []).map((sk, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'rgba(16,201,138,0.1)', border: '1px solid rgba(16,201,138,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: GREEN }}>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: GREEN }}>
                       {sk}
                       {editing && (
                         <button onClick={() => removeSkill(i)}
@@ -462,7 +462,7 @@ export default function Profile() {
                       )}
                     </span>
                   ))
-                : <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>
+                : <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
                     {editing ? 'Add your first skill below' : 'No skills added yet. Click Edit Profile to add skills.'}
                   </p>
               }
@@ -473,7 +473,7 @@ export default function Profile() {
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                   style={INPUT} placeholder="e.g. React.js, Python, AWS — press Enter to add" />
                 <button onClick={addSkill}
-                  style={{ ...BTN(GREEN), background: GREEN, color: '#040c18', border: 'none', padding: '9px 16px', whiteSpace: 'nowrap' }}>
+                  style={{ ...BTN(GREEN), background: GREEN, color: '#ffffff', border: 'none', padding: '9px 16px', whiteSpace: 'nowrap' }}>
                   + Add
                 </button>
               </div>
@@ -484,7 +484,7 @@ export default function Profile() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: editing ? 14 : 0 }}>
               {(F.certifications || []).length > 0
                 ? (F.certifications || []).map((c, i) => (
-                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'rgba(245,166,35,0.1)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: AMBER }}>
+                    <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: AMBER }}>
                       <Award size={11} /> {c}
                       {editing && (
                         <button onClick={() => removeCert(i)}
@@ -494,7 +494,7 @@ export default function Profile() {
                       )}
                     </span>
                   ))
-                : <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>
+                : <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
                     {editing ? 'Add your first certification below' : 'No certifications added yet.'}
                   </p>
               }
@@ -505,7 +505,7 @@ export default function Profile() {
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCert(); } }}
                   style={INPUT} placeholder="e.g. AWS Cloud Practitioner — Amazon (2024)" />
                 <button onClick={addCert}
-                  style={{ ...BTN(AMBER), background: AMBER, color: '#040c18', border: 'none', padding: '9px 16px', whiteSpace: 'nowrap' }}>
+                  style={{ ...BTN(AMBER), background: AMBER, color: '#ffffff', border: 'none', padding: '9px 16px', whiteSpace: 'nowrap' }}>
                   + Add
                 </button>
               </div>
@@ -519,12 +519,12 @@ export default function Profile() {
 
 // ── Styles ─────────────────────────────────────────────────────────────────
 const INPUT = {
-  background:  '#071525',
-  border:      '1px solid rgba(0,200,240,0.15)',
+  background:  'var(--bg-input)',
+  border:      '1px solid var(--border)',
   borderRadius: 8,
   padding:     '9px 12px',
   fontSize:    13,
-  color:       '#e2e8f0',
+  color:       'var(--text-primary)',
   outline:     'none',
   width:       '100%',
   fontFamily:  "'Sora',sans-serif",

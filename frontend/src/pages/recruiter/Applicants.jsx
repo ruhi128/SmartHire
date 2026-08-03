@@ -6,8 +6,31 @@ import GlowCard from '../../components/GlowCard';
 import { Users, Search, Download, ChevronDown, CheckCircle, XCircle, Clock, Eye, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const VIOLET='#7c5cfc', GREEN='#10c98a', AMBER='#f5a623', RED='#f04b4b', CYAN='#00c8f0';
+const VIOLET='#4f46e5', GREEN='#16a34a', AMBER='#d97706', RED='#dc2626', CYAN='#4f46e5';
 const STATUS_COLOR = { applied:CYAN, shortlisted:AMBER, selected:GREEN, rejected:RED };
+
+// Recruitment pipeline (mirrors backend STAGE_ORDER)
+const STAGES = [
+  { key:'applied',             label:'Applied' },
+  { key:'oa_cleared',          label:'OA Cleared' },
+  { key:'interview_1_cleared', label:'Interview 1 Cleared' },
+  { key:'interview_2_cleared', label:'Interview 2 Cleared' },
+  { key:'selected',            label:'Selected' },
+  { key:'rejected',            label:'Rejected' },
+];
+function deriveStage(a) {
+  if (a.stage) return a.stage;
+  if (a.status === 'selected')    return 'selected';
+  if (a.status === 'rejected')    return 'rejected';
+  if (a.status === 'shortlisted') return 'oa_cleared';
+  return 'applied';
+}
+function stageToStatus(stage) {
+  if (stage === 'selected') return 'selected';
+  if (stage === 'rejected') return 'rejected';
+  if (stage === 'applied')  return 'applied';
+  return 'shortlisted';
+}
 
 export default function Applicants() {
   const { jobId }   = useParams();
@@ -31,8 +54,11 @@ export default function Applicants() {
     if (!selected) return;
     setLoading(true);
     applicationsAPI.getByJob(selected)
-      .then(r => setApps(r.data?.applications || DEMO_APPS))
-      .catch(() => setApps(DEMO_APPS))
+      .then(r => {
+        const list = Array.isArray(r.data) ? r.data : (r.data?.applications || DEMO_APPS);
+        setApps(list.map(a => ({ ...a, stage: deriveStage(a) })));
+      })
+      .catch(() => setApps(DEMO_APPS.map(a => ({ ...a, stage: deriveStage(a) }))))
       .finally(() => setLoading(false));
   }, [selected]);
 
@@ -42,6 +68,16 @@ export default function Applicants() {
       await applicationsAPI.updateStatus(appId, status);
       setApps(prev => prev.map(a => a.id === appId ? {...a, status} : a));
       toast.success(`Marked as ${status}`);
+    } catch { toast.error('Update failed'); }
+    finally { setUpdating(null); }
+  };
+
+  const updateStage = async (appId, stage) => {
+    setUpdating(appId);
+    try {
+      await applicationsAPI.updateStage(appId, stage);
+      setApps(prev => prev.map(a => a.id === appId ? {...a, stage, status: stageToStatus(stage)} : a));
+      toast.success(`Moved to ${STAGES.find(x=>x.key===stage)?.label || stage}`);
     } catch { toast.error('Update failed'); }
     finally { setUpdating(null); }
   };
@@ -57,7 +93,7 @@ export default function Applicants() {
   });
 
   const downloadCSV = () => {
-    const rows = [['Name','Roll No','Branch','CGPA','Email','Status'],...filtered.map(a=>[a.student_profiles?.full_name,a.student_profiles?.roll_number,a.student_profiles?.branch,a.student_profiles?.cgpa,a.users?.email,a.status])];
+    const rows = [['Name','Roll No','Branch','CGPA','Email','Stage'],...filtered.map(a=>[a.student_profiles?.full_name,a.student_profiles?.roll_number,a.student_profiles?.branch,a.student_profiles?.cgpa,a.student_profiles?.users?.email||a.users?.email,STAGES.find(x=>x.key===(a.stage||deriveStage(a)))?.label||a.status])];
     const csv  = rows.map(r=>r.join(',')).join('\n');
     const blob = new Blob([csv],{type:'text/csv'});
     const url  = URL.createObjectURL(blob);
@@ -84,13 +120,13 @@ export default function Applicants() {
         {['all','applied','shortlisted','selected','rejected'].map(st=>{
           const cnt = st==='all' ? apps.length : apps.filter(a=>a.status===st).length;
           const col = STATUS_COLOR[st]||CYAN;
-          return <button key={st} style={{padding:'6px 14px',borderRadius:999,fontSize:12,fontWeight:700,background:filter===st?`${col}18`:'rgba(255,255,255,0.04)',border:`1px solid ${filter===st?col+'44':'rgba(255,255,255,0.08)'}`,color:filter===st?col:'#64748b',cursor:'pointer',fontFamily:"'Sora',sans-serif",textTransform:'capitalize'}} onClick={()=>setFilter(st)}>
+          return <button key={st} style={{padding:'6px 14px',borderRadius:999,fontSize:12,fontWeight:700,background:filter===st?`${col}18`:'var(--bg-card-high)',border:`1px solid ${filter===st?col+'44':'var(--border)'}`,color:filter===st?col:'#64748b',cursor:'pointer',fontFamily:"'Sora',sans-serif",textTransform:'capitalize'}} onClick={()=>setFilter(st)}>
             {st==='all'?'All':st} ({cnt})
           </button>;
         })}
-        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,background:'#071525',border:'1px solid rgba(255,255,255,0.08)',borderRadius:9,padding:'6px 12px'}}>
+        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8,background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:9,padding:'6px 12px'}}>
           <Search size={13} color="#475569"/>
-          <input style={{background:'none',border:'none',outline:'none',fontSize:13,color:'#e2e8f0',fontFamily:"'Sora',sans-serif",width:180}} placeholder="Search by name or roll..." value={search} onChange={e=>setSearch(e.target.value)}/>
+          <input style={{background:'none',border:'none',outline:'none',fontSize:13,color:'var(--text-primary)',fontFamily:"'Sora',sans-serif",width:180}} placeholder="Search by name or roll..." value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
       </div>
 
@@ -98,7 +134,7 @@ export default function Applicants() {
         {loading
           ? <div style={{padding:40,textAlign:'center'}}><Loader2 size={24} color={VIOLET} style={{animation:'spin 1s linear infinite'}}/></div>
           : <table style={{width:'100%',borderCollapse:'collapse'}}>
-              <thead><tr>{['Student','Roll No','Branch','CGPA','Applied','Status','Action'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
+              <thead><tr>{['Student','Roll No','Branch','CGPA','Applied','Stage','Action'].map(h=><th key={h} style={s.th}>{h}</th>)}</tr></thead>
               <tbody>
                 {filtered.map(a=>(
                   <tr key={a.id}>
@@ -108,8 +144,8 @@ export default function Applicants() {
                           {(a.student_profiles?.full_name||'S')[0].toUpperCase()}
                         </div>
                         <div>
-                          <p style={{margin:0,fontSize:13,fontWeight:600,color:'#e2e8f0'}}>{a.student_profiles?.full_name||'—'}</p>
-                          <p style={{margin:'1px 0 0',fontSize:11,color:'#475569'}}>{a.users?.email||'—'}</p>
+                          <p style={{margin:0,fontSize:13,fontWeight:600,color:'var(--text-primary)'}}>{a.student_profiles?.full_name||'—'}</p>
+                          <p style={{margin:'1px 0 0',fontSize:11,color:'#475569'}}>{a.student_profiles?.users?.email||a.users?.email||'—'}</p>
                         </div>
                       </div>
                     </td>
@@ -117,15 +153,18 @@ export default function Applicants() {
                     <td style={s.td}>{a.student_profiles?.branch||'—'}</td>
                     <td style={s.td}><span style={{color:parseFloat(a.student_profiles?.cgpa)>=7.5?GREEN:AMBER,fontWeight:700}}>{a.student_profiles?.cgpa||'—'}</span></td>
                     <td style={s.td}>{new Date(a.applied_at||Date.now()).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</td>
-                    <td style={s.td}><span style={{padding:'2px 10px',borderRadius:999,fontSize:11,fontWeight:700,background:`${STATUS_COLOR[a.status]||CYAN}18`,color:STATUS_COLOR[a.status]||CYAN,border:`1px solid ${STATUS_COLOR[a.status]||CYAN}33`,textTransform:'capitalize'}}>{a.status}</span></td>
+                    <td style={s.td}><span style={{padding:'2px 10px',borderRadius:999,fontSize:11,fontWeight:700,background:`${STATUS_COLOR[a.status]||CYAN}18`,color:STATUS_COLOR[a.status]||CYAN,border:`1px solid ${STATUS_COLOR[a.status]||CYAN}33`}}>{STAGES.find(x=>x.key===(a.stage||deriveStage(a)))?.label || a.status}</span></td>
                     <td style={s.td}>
                       {updating===a.id
                         ? <Loader2 size={14} color={VIOLET} style={{animation:'spin 1s linear infinite'}}/>
-                        : <div style={{display:'flex',gap:5}}>
-                            {a.status!=='selected'   && <button style={s.actBtn(GREEN)}   onClick={()=>updateStatus(a.id,'shortlisted')}>Shortlist</button>}
-                            {a.status==='shortlisted' && <button style={s.actBtn(GREEN)}   onClick={()=>updateStatus(a.id,'selected')}>Select</button>}
-                            {a.status!=='rejected'   && <button style={s.actBtn(RED)}     onClick={()=>updateStatus(a.id,'rejected')}>Reject</button>}
-                          </div>
+                        : <select
+                            value={a.stage || deriveStage(a)}
+                            onChange={e=>updateStage(a.id, e.target.value)}
+                            style={s.stageSel}
+                            title="Advance candidate through the pipeline"
+                          >
+                            {STAGES.map(st=><option key={st.key} value={st.key}>{st.label}</option>)}
+                          </select>
                       }
                     </td>
                   </tr>
@@ -141,19 +180,20 @@ export default function Applicants() {
 
 const s = {
   page:   { padding:24, maxWidth:1200, margin:'0 auto' },
-  h1:     { margin:0, fontSize:24, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" },
+  h1:     { margin:0, fontSize:24, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" },
   sub:    { margin:'6px 0 0', fontSize:13, color:'#475569' },
-  dlBtn:  { display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:'rgba(124,92,252,0.1)', border:'1px solid rgba(124,92,252,0.25)', borderRadius:9, color:VIOLET, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif" },
-  sel:    { background:'#071525', border:'1px solid rgba(124,92,252,0.15)', borderRadius:9, padding:'10px 12px', fontSize:13, color:'#e2e8f0', outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer', minWidth:300 },
-  th:     { padding:'10px 14px', fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid rgba(255,255,255,0.05)', textAlign:'left' },
-  td:     { padding:'12px 14px', fontSize:13, color:'#94a3b8', borderBottom:'1px solid rgba(255,255,255,0.03)' },
+  dlBtn:  { display:'flex', alignItems:'center', gap:7, padding:'9px 16px', background:'rgba(79,70,229,0.1)', border:'1px solid rgba(79,70,229,0.25)', borderRadius:9, color:VIOLET, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif" },
+  sel:    { background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:9, padding:'10px 12px', fontSize:13, color:'var(--text-primary)', outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer', minWidth:300 },
+  th:     { padding:'10px 14px', fontSize:11, fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.07em', borderBottom:'1px solid var(--border)', textAlign:'left' },
+  td:     { padding:'12px 14px', fontSize:13, color:'#94a3b8', borderBottom:'1px solid var(--border)' },
   actBtn: (c) => ({ padding:'4px 10px', background:`${c}15`, border:`1px solid ${c}33`, borderRadius:6, fontSize:11, fontWeight:700, color:c, cursor:'pointer', fontFamily:"'Sora',sans-serif" }),
+  stageSel: { background:'var(--bg-input)', border:`1px solid ${VIOLET}44`, borderRadius:7, padding:'6px 10px', fontSize:12, color:'var(--text-primary)', outline:'none', fontFamily:"'Sora',sans-serif", cursor:'pointer', fontWeight:600 },
 };
 
 const DEMO_JOBS = [{id:'j1',title:'Software Engineer',package_lpa:7},{id:'j2',title:'Frontend Developer',package_lpa:9}];
 const DEMO_APPS = [
-  {id:'a1',status:'applied',    applied_at:new Date().toISOString(), student_profiles:{full_name:'Aarav Kumar',roll_number:'21CS001',branch:'CSE',cgpa:'8.5'}, users:{email:'aarav@demo.com'}},
+  {id:'a1',status:'applied',    applied_at:new Date().toISOString(), student_profiles:{full_name:'Aarav Kumar',roll_number:'21CS001',branch:'CST',cgpa:'8.5'}, users:{email:'aarav@demo.com'}},
   {id:'a2',status:'shortlisted',applied_at:new Date().toISOString(), student_profiles:{full_name:'Priya Sharma',roll_number:'21CS042',branch:'IT', cgpa:'7.8'}, users:{email:'priya@demo.com'}},
-  {id:'a3',status:'selected',   applied_at:new Date().toISOString(), student_profiles:{full_name:'Rahul Verma', roll_number:'21CS018',branch:'CSE',cgpa:'9.1'}, users:{email:'rahul@demo.com'}},
+  {id:'a3',status:'selected',   applied_at:new Date().toISOString(), student_profiles:{full_name:'Rahul Verma', roll_number:'21CS018',branch:'CST',cgpa:'9.1'}, users:{email:'rahul@demo.com'}},
   {id:'a4',status:'rejected',   applied_at:new Date().toISOString(), student_profiles:{full_name:'Ankit Singh', roll_number:'21IT005',branch:'IT', cgpa:'6.2'}, users:{email:'ankit@demo.com'}},
 ];

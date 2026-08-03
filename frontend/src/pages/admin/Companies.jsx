@@ -4,7 +4,7 @@ import { adminAPI } from '../../api/axios';
 import GlowCard from '../../components/GlowCard';
 import { Building2, Search, Plus, Users, Calendar, TrendingUp } from 'lucide-react';
 
-const AMBER='#f5a623', GREEN='#10c98a', CYAN='#00c8f0', VIOLET='#7c5cfc';
+const AMBER='#d97706', GREEN='#16a34a', CYAN='#4f46e5', VIOLET='#4f46e5';
 
 const DEMO_COMPANIES = [
   { id:'c1', name:'TCS',      industry:'IT Services',    total_drives:3, total_hired:45, avg_package:7.5,  status:'active',  last_drive:'Dec 2024' },
@@ -56,9 +56,9 @@ export default function AdminCompanies() {
       </div>
 
       {/* Search */}
-      <div style={{display:'flex',alignItems:'center',gap:8,background:'#071525',border:'1px solid rgba(255,255,255,0.08)',borderRadius:9,padding:'9px 12px',maxWidth:340,marginBottom:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--bg-input)',border:'1px solid var(--border)',borderRadius:9,padding:'9px 12px',maxWidth:340,marginBottom:16}}>
         <Search size={13} color="#475569"/>
-        <input style={{background:'none',border:'none',outline:'none',fontSize:13,color:'#e2e8f0',flex:1,fontFamily:"'Sora',sans-serif"}} placeholder="Search company or industry..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        <input style={{background:'none',border:'none',outline:'none',fontSize:13,color:'var(--text-primary)',flex:1,fontFamily:"'Sora',sans-serif"}} placeholder="Search company or industry..." value={search} onChange={e=>setSearch(e.target.value)}/>
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
@@ -70,23 +70,23 @@ export default function AdminCompanies() {
                   {company.name[0]}
                 </div>
                 <div>
-                  <p style={{margin:0,fontSize:15,fontWeight:700,color:'#e2e8f0'}}>{company.name}</p>
+                  <p style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text-primary)'}}>{company.name}</p>
                   <p style={{margin:'2px 0 0',fontSize:11,color:'#475569'}}>{company.industry}</p>
                 </div>
               </div>
-              <span style={{padding:'2px 9px',borderRadius:999,fontSize:10,fontWeight:700,background:company.status==='active'?'rgba(16,201,138,0.12)':'rgba(245,166,35,0.12)',color:company.status==='active'?GREEN:AMBER,border:`1px solid ${company.status==='active'?GREEN:AMBER}22`}}>
+              <span style={{padding:'2px 9px',borderRadius:999,fontSize:10,fontWeight:700,background:company.status==='active'?'rgba(22,163,74,0.12)':'rgba(217,119,6,0.12)',color:company.status==='active'?GREEN:AMBER,border:`1px solid ${company.status==='active'?GREEN:AMBER}22`}}>
                 {company.status}
               </span>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
               {[{label:'Drives',val:company.total_drives||0},{label:'Hired',val:company.total_hired||0},{label:'Avg Pkg',val:`${company.avg_package||0} L`}].map(m=>(
-                <div key={m.label} style={{textAlign:'center',padding:'8px',background:'rgba(255,255,255,0.02)',borderRadius:8}}>
-                  <p style={{margin:0,fontSize:16,fontWeight:800,color:'#e2e8f0',fontFamily:"'Sora',sans-serif"}}>{m.val}</p>
+                <div key={m.label} style={{textAlign:'center',padding:'8px',background:'var(--bg-card-high)',borderRadius:8}}>
+                  <p style={{margin:0,fontSize:16,fontWeight:800,color:'var(--text-primary)',fontFamily:"'Sora',sans-serif"}}>{m.val}</p>
                   <p style={{margin:'2px 0 0',fontSize:10,color:'#475569'}}>{m.label}</p>
                 </div>
               ))}
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:5,marginTop:12,paddingTop:10,borderTop:'1px solid rgba(255,255,255,0.05)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:5,marginTop:12,paddingTop:10,borderTop:'1px solid var(--border)'}}>
               <Calendar size={11} color="#475569"/>
               <span style={{fontSize:11,color:'#475569'}}>Last drive: {company.last_drive||'—'}</span>
             </div>
@@ -99,6 +99,6 @@ export default function AdminCompanies() {
 
 const s = {
   page: { padding:24, maxWidth:1200, margin:'0 auto' },
-  h1:   { margin:0, fontSize:24, fontWeight:800, color:'#f0f6ff', fontFamily:"'Sora',sans-serif" },
+  h1:   { margin:0, fontSize:24, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" },
   sub:  { margin:'6px 0 0', fontSize:13, color:'#475569' },
 };

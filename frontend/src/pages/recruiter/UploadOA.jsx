@@ -110,7 +110,7 @@ export default function UploadOA(){
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-white">Upload Mock OA Test</h2>
+      <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Upload Mock OA Test</h2>
 
       <input className="input mb-3 w-full" placeholder="Test Title"
         value={title} onChange={e => setTitle(e.target.value)} />
@@ -126,8 +126,8 @@ export default function UploadOA(){
       </div>
 
       {questions.map((q, qi) => (
-        <div key={qi} className="bg-gray-800 rounded-xl p-4 mb-4">
-          <p className="text-gray-400 mb-2">Question {qi + 1}</p>
+        <div key={qi} className="rounded-xl p-4 mb-4" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          <p className="mb-2" style={{ color: 'var(--text-secondary)' }}>Question {qi + 1}</p>
           <textarea className="input w-full mb-3" rows={2} placeholder="Question text"
             value={q.question_text}
             onChange={e => updateQuestion(qi, 'question_text', e.target.value)} />
@@ -140,7 +140,7 @@ export default function UploadOA(){
                 value={opt} onChange={e => updateOption(qi, oi, e.target.value)} />
             </div>
           ))}
-          <p className="text-xs text-gray-500">● Select the radio button next to the correct answer</p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>● Select the radio button next to the correct answer</p>
         </div>
       ))}
 
@@ -148,7 +148,7 @@ export default function UploadOA(){
         <button className="btn-secondary" onClick={() => setQuestions(qs => [...qs, emptyQuestion()])}>
           + Add Question
         </button>
-        <button className="btn-primary" onClick={handleSubmit} disabled={submitting}>
+        <button className="btn-primary" style={{ color: '#ffffff' }} onClick={handleSubmit} disabled={submitting}>
           {submitting ? 'Submitting...' : 'Submit for Review'}
         </button>
       </div>

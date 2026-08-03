@@ -6,10 +6,10 @@ import GlowCard from '../../components/GlowCard';
 import { Megaphone, Bell, AlertTriangle, Info, CheckCircle, Building2, Clock } from 'lucide-react';
 
 const PRIORITY = {
-  urgent:  { color:'#f04b4b', icon:AlertTriangle,  label:'Urgent'      },
-  warning: { color:'#f5a623', icon:AlertTriangle,   label:'Important'   },
-  success: { color:'#10c98a', icon:CheckCircle,      label:'Good News'  },
-  info:    { color:'#00c8f0', icon:Info,             label:'Information' },
+  urgent:  { color:'#dc2626', icon:AlertTriangle,  label:'Urgent'      },
+  warning: { color:'#d97706', icon:AlertTriangle,   label:'Important'   },
+  success: { color:'#16a34a', icon:CheckCircle,      label:'Good News'  },
+  info:    { color:'#4f46e5', icon:Info,             label:'Information' },
 };
 
 const DEMO = [
@@ -30,8 +30,9 @@ export default function Announcements() {
       .catch(()=> setItems(DEMO))
       .finally(()=>setLoading(false));
 
-    // Real-time updates
+    // Real-time updates (skip admin-only types like OA pending-approval notices)
     const sub = subscribeToAnnouncements(newItem => {
+      if (newItem?.type === 'oa_pending') return;
       setItems(prev => [newItem, ...prev]);
     });
     return () => sub.unsubscribe?.();
@@ -42,17 +43,17 @@ export default function Announcements() {
   return (
     <div style={{padding:24,maxWidth:900,margin:'0 auto'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
-        <div><h1 style={{margin:0,fontSize:24,fontWeight:800,color:'#f0f6ff',fontFamily:"'Sora',sans-serif"}}>Announcements</h1><p style={{margin:'6px 0 0',fontSize:13,color:'#475569'}}>Latest placement notices and company updates</p></div>
-        <div style={{display:'flex',alignItems:'center',gap:5,padding:'6px 12px',background:'rgba(240,75,75,0.1)',border:'1px solid rgba(240,75,75,0.2)',borderRadius:8}}>
-          <Bell size={13} color='#f04b4b'/>
-          <span style={{fontSize:12,fontWeight:700,color:'#f04b4b'}}>{items.filter(i=>i.priority==='urgent').length} Urgent</span>
+        <div><h1 style={{margin:0,fontSize:24,fontWeight:800,color:'var(--text-primary)',fontFamily:"'Sora',sans-serif"}}>Announcements</h1><p style={{margin:'6px 0 0',fontSize:13,color:'#475569'}}>Latest placement notices and company updates</p></div>
+        <div style={{display:'flex',alignItems:'center',gap:5,padding:'6px 12px',background:'rgba(220,38,38,0.1)',border:'1px solid rgba(220,38,38,0.2)',borderRadius:8}}>
+          <Bell size={13} color='#dc2626'/>
+          <span style={{fontSize:12,fontWeight:700,color:'#dc2626'}}>{items.filter(i=>i.priority==='urgent').length} Urgent</span>
         </div>
       </div>
 
       {/* Filter pills */}
       <div style={{display:'flex',gap:8,marginBottom:20}}>
         {['all','urgent','warning','success','info'].map(f=>(
-          <button key={f} style={{padding:'5px 14px',borderRadius:999,fontSize:12,fontWeight:700,background:filter===f?(PRIORITY[f]||{color:'#00c8f0'}).color+'22':'rgba(255,255,255,0.04)',border:`1px solid ${filter===f?(PRIORITY[f]||{color:'#00c8f0'}).color+'44':'rgba(255,255,255,0.08)'}`,color:filter===f?(PRIORITY[f]||{color:'#00c8f0'}).color:'#64748b',cursor:'pointer',fontFamily:"'Sora',sans-serif",textTransform:'capitalize'}} onClick={()=>setFilter(f)}>{f==='all'?'All':PRIORITY[f]?.label}</button>
+          <button key={f} style={{padding:'5px 14px',borderRadius:999,fontSize:12,fontWeight:700,background:filter===f?(PRIORITY[f]||{color:'#4f46e5'}).color+'22':'var(--bg-card-high)',border:`1px solid ${filter===f?(PRIORITY[f]||{color:'#4f46e5'}).color+'44':'var(--border)'}`,color:filter===f?(PRIORITY[f]||{color:'#4f46e5'}).color:'#64748b',cursor:'pointer',fontFamily:"'Sora',sans-serif",textTransform:'capitalize'}} onClick={()=>setFilter(f)}>{f==='all'?'All':PRIORITY[f]?.label}</button>
         ))}
       </div>
 
@@ -69,15 +70,15 @@ export default function Announcements() {
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8,marginBottom:6}}>
-                    <p style={{margin:0,fontSize:15,fontWeight:700,color:'#e2e8f0',lineHeight:1.4}}>{item.title}</p>
+                    <p style={{margin:0,fontSize:15,fontWeight:700,color:'var(--text-primary)',lineHeight:1.4}}>{item.title}</p>
                     <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
                       <span style={{padding:'2px 8px',borderRadius:999,fontSize:10,fontWeight:700,background:`${cfg.color}18`,color:cfg.color,border:`1px solid ${cfg.color}33`}}>{cfg.label}</span>
                       <span style={{fontSize:11,color:'#475569',display:'flex',alignItems:'center',gap:3,whiteSpace:'nowrap'}}><Clock size={11}/>{age}</span>
                     </div>
                   </div>
-                  <p style={{margin:'0 0 8px',fontSize:13,color:'#94a3b8',lineHeight:1.7}}>{item.content}</p>
+                  <p style={{margin:'0 0 8px',fontSize:13,color:'var(--text-secondary)',lineHeight:1.7}}>{item.content}</p>
                   {item.companies && (
-                    <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 10px',background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:999}}>
+                    <div style={{display:'inline-flex',alignItems:'center',gap:5,padding:'2px 10px',background:'var(--bg-card-high)',border:'1px solid var(--border)',borderRadius:999}}>
                       <Building2 size={11} color="#475569"/>
                       <span style={{fontSize:11,color:'#64748b',fontWeight:600}}>{item.companies.name}</span>
                     </div>
@@ -87,7 +88,7 @@ export default function Announcements() {
             </GlowCard>
           );
         })}
-        {!filtered.length && <p style={{textAlign:'center',color:'#334155',padding:'40px 0',fontSize:14}}>No announcements found.</p>}
+        {!filtered.length && <p style={{textAlign:'center',color:'var(--text-muted)',padding:'40px 0',fontSize:14}}>No announcements found.</p>}
       </div>
     </div>
   );

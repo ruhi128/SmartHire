@@ -14,8 +14,8 @@ import toast from 'react-hot-toast';
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
 
-const CYAN = '#00c8f0', GREEN = '#10c98a', AMBER = '#f5a623',
-      RED  = '#f04b4b', VIOLET = '#7c5cfc';
+const CYAN = '#4f46e5', GREEN = '#16a34a', AMBER = '#d97706',
+      RED  = '#dc2626', VIOLET = '#4f46e5';
 
 // ── Stop words ──────────────────────────────────────────────────────────────
 const STOP_WORDS = new Set([
@@ -389,9 +389,9 @@ export default function ATSScoring() {
     : RED;
 
   const suggestionColors = {
-    error:   { bg: 'rgba(240,75,75,0.08)',   border: 'rgba(240,75,75,0.2)',   color: RED,   icon: '🔴' },
-    warning: { bg: 'rgba(245,166,35,0.08)',  border: 'rgba(245,166,35,0.2)',  color: AMBER, icon: '🟡' },
-    info:    { bg: 'rgba(0,200,240,0.08)',   border: 'rgba(0,200,240,0.2)',   color: CYAN,  icon: '🔵' },
+    error:   { bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.2)',   color: RED,   icon: '🔴' },
+    warning: { bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.2)',  color: AMBER, icon: '🟡' },
+    info:    { bg: 'rgba(79,70,229,0.08)',   border: 'rgba(79,70,229,0.2)',   color: CYAN,  icon: '🔵' },
   };
 
   return (
@@ -399,7 +399,7 @@ export default function ATSScoring() {
 
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: '#f0f6ff', fontFamily: "'Sora',sans-serif" }}>
+        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" }}>
           ATS Score Checker
         </h1>
         <p style={{ margin: '6px 0 0', fontSize: 13, color: '#475569' }}>
@@ -408,9 +408,9 @@ export default function ATSScoring() {
       </div>
 
       {/* Info banner */}
-      <div style={{ padding: '10px 16px', marginBottom: 20, background: 'rgba(124,92,252,0.07)', border: '1px solid rgba(124,92,252,0.2)', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+      <div style={{ padding: '10px 16px', marginBottom: 20, background: 'rgba(79,70,229,0.07)', border: '1px solid rgba(79,70,229,0.2)', borderRadius: 10, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
         <AlertCircle size={15} color={VIOLET} style={{ flexShrink: 0, marginTop: 1 }} />
-        <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', lineHeight: 1.7 }}>
+        <p style={{ margin: 0, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
           <strong style={{ color: VIOLET }}>How scoring works:</strong> Keywords (50pts) + Tech phrases (20pts) + Action verbs (10pts) + Quantified impact (8pts) + Resume sections (21pts) = 100 points total.
           Scores above 70 indicate a strong match.
         </p>
@@ -434,13 +434,13 @@ export default function ATSScoring() {
           }
         >
           {/* Mode toggle */}
-          <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: 3 }}>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: 'var(--bg-card-high)', borderRadius: 8, padding: 3 }}>
             {[['paste', '✏️ Paste Text'], ['pdf', '📄 Upload PDF']].map(([mode, label]) => (
               <button key={mode} onClick={() => setInputMode(mode)} style={{
                 flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
                 fontSize: 12, fontWeight: 700, fontFamily: "'Sora',sans-serif",
                 background: inputMode === mode ? CYAN : 'transparent',
-                color: inputMode === mode ? '#040c18' : '#64748b',
+                color: inputMode === mode ? '#ffffff' : '#64748b',
               }}>{label}</button>
             ))}
           </div>
@@ -455,12 +455,12 @@ export default function ATSScoring() {
                 onDragLeave={onDragLeave}
                 onClick={() => !pdfFile && fileInputRef.current?.click()}
                 style={{
-                  border: `2px dashed ${dragging ? CYAN : 'rgba(0,200,240,0.25)'}`,
+                  border: `2px dashed ${dragging ? CYAN : 'rgba(79,70,229,0.25)'}`,
                   borderRadius: 10,
                   padding: '24px 16px',
                   textAlign: 'center',
                   cursor: pdfFile ? 'default' : 'pointer',
-                  background: dragging ? 'rgba(0,200,240,0.08)' : 'rgba(0,200,240,0.03)',
+                  background: dragging ? 'rgba(79,70,229,0.08)' : 'rgba(79,70,229,0.03)',
                   transition: 'all 0.2s',
                   marginBottom: 10,
                 }}
@@ -479,7 +479,7 @@ export default function ATSScoring() {
                     </p>
                     <button
                       onClick={(e) => { e.stopPropagation(); clearResume(); setInputMode('pdf'); }}
-                      style={{ marginTop: 4, padding: '4px 12px', background: 'rgba(240,75,75,0.1)', border: '1px solid rgba(240,75,75,0.3)', borderRadius: 6, fontSize: 11, color: RED, cursor: 'pointer', fontWeight: 700 }}
+                      style={{ marginTop: 4, padding: '4px 12px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 6, fontSize: 11, color: RED, cursor: 'pointer', fontWeight: 700 }}
                     >
                       Remove & Upload Again
                     </button>
@@ -487,7 +487,7 @@ export default function ATSScoring() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                     <Upload size={28} color={CYAN} />
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
                       Drop your PDF here or click to browse
                     </p>
                     <p style={{ margin: 0, fontSize: 11, color: '#475569' }}>
@@ -507,7 +507,7 @@ export default function ATSScoring() {
 
               {/* Show extracted text preview */}
               {resume && !pdfLoading && (
-                <div style={{ background: '#071525', border: '1px solid rgba(0,200,240,0.1)', borderRadius: 8, padding: '10px 12px', maxHeight: 140, overflowY: 'auto' }}>
+                <div style={{ background: 'var(--bg-input)', border: '1px solid rgba(79,70,229,0.1)', borderRadius: 8, padding: '10px 12px', maxHeight: 140, overflowY: 'auto' }}>
                   <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
                     Extracted Text Preview
                   </p>
@@ -552,11 +552,11 @@ export default function ATSScoring() {
             onChange={e => setJD(e.target.value)}
             rows={inputMode === 'pdf' ? 16 : 13}
             placeholder={`Paste the job description here...\n\nInclude:\n• Required skills & technologies\n• Responsibilities\n• Qualifications\n• Nice-to-have skills\n• Company description`}
-            style={{ ...TA, borderColor: 'rgba(245,166,35,0.2)' }}
+            style={{ ...TA, borderColor: 'rgba(217,119,6,0.2)' }}
           />
 
           {/* Quick tips */}
-          <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(245,166,35,0.05)', border: '1px solid rgba(245,166,35,0.12)', borderRadius: 8 }}>
+          <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(217,119,6,0.05)', border: '1px solid rgba(217,119,6,0.12)', borderRadius: 8 }}>
             <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
               💡 <strong style={{ color: AMBER }}>Tip:</strong> Include the full JD — required skills, responsibilities, and qualifications. The more complete, the more accurate your score.
             </p>
@@ -570,13 +570,13 @@ export default function ATSScoring() {
         disabled={!resume.trim() || !jd.trim() || analyzing || pdfLoading}
         style={{
           width: '100%', padding: '14px',
-          background: (!resume.trim() || !jd.trim()) ? '#0b1a2e' : CYAN,
-          color: (!resume.trim() || !jd.trim()) ? '#334155' : '#040c18',
+          background: (!resume.trim() || !jd.trim()) ? 'var(--bg-card)' : CYAN,
+          color: (!resume.trim() || !jd.trim()) ? 'var(--text-muted)' : '#ffffff',
           border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700,
           cursor: (!resume.trim() || !jd.trim()) ? 'not-allowed' : 'pointer',
           fontFamily: "'Sora',sans-serif",
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          boxShadow: (!resume.trim() || !jd.trim()) ? 'none' : '0 4px 20px rgba(0,200,240,0.3)',
+          boxShadow: (!resume.trim() || !jd.trim()) ? 'none' : '0 4px 20px rgba(79,70,229,0.3)',
           marginBottom: 24, transition: 'all 0.2s',
         }}
       >
@@ -594,8 +594,8 @@ export default function ATSScoring() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
               {/* Score circle */}
               <div style={{ position: 'relative', width: 110, height: 110, flexShrink: 0 }}>
-                <div style={{ width: 110, height: 110, borderRadius: '50%', background: `conic-gradient(${scoreColor} ${result.score * 3.6}deg, #0b1a2e 0)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 30px ${scoreColor}44` }}>
-                  <span style={{ fontSize: 28, fontWeight: 900, color: '#f0f6ff', lineHeight: 1 }}>{result.score}</span>
+                <div style={{ width: 110, height: 110, borderRadius: '50%', background: `conic-gradient(${scoreColor} ${result.score * 3.6}deg, var(--bg-card-high) 0)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 30px ${scoreColor}44` }}>
+                  <span style={{ fontSize: 28, fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1 }}>{result.score}</span>
                   <span style={{ fontSize: 10, color: '#64748b' }}>/ 100</span>
                 </div>
               </div>
@@ -609,7 +609,7 @@ export default function ATSScoring() {
                     Grade: {result.grade}
                   </span>
                 </div>
-                <p style={{ margin: '0 0 12px', fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                   {result.score >= 70
                     ? 'Your resume aligns well with this job. You are likely to pass ATS screening.'
                     : result.score >= 45
@@ -641,7 +641,7 @@ export default function ATSScoring() {
     {result.breakdown.map(({ label, score, max, color, pct }) => (
       <div key={label}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 12, color: '#94a3b8' }}>{label}</span>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {/* ✅ Show match percentage */}
             <span style={{ fontSize: 11, color: '#475569' }}>{pct}% match</span>
@@ -650,7 +650,7 @@ export default function ATSScoring() {
             </span>
           </div>
         </div>
-        <div style={{ height: 8, background: '#0b1a2e', borderRadius: 4 }}>
+        <div style={{ height: 8, background: 'var(--bg-card)', borderRadius: 4 }}>
           <div style={{
             width: `${(score / max) * 100}%`,
             height: '100%',
@@ -664,8 +664,8 @@ export default function ATSScoring() {
     ))}
 
     {/* Total */}
-    <div style={{ marginTop: 4, padding: '10px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>Total ATS Score</span>
+    <div style={{ marginTop: 4, padding: '10px 14px', background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Total ATS Score</span>
       <span style={{ fontSize: 18, fontWeight: 900, color: scoreColor }}>{result.score} / 100</span>
     </div>
   </div>
@@ -686,7 +686,7 @@ export default function ATSScoring() {
               ].map(({ key, label }) => {
                 const found = key === 'hasQuantified' ? result.hasQuantified : result.sections[key];
                 return (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 10px', background: found ? 'rgba(16,201,138,0.08)' : 'rgba(240,75,75,0.06)', border: `1px solid ${found ? 'rgba(16,201,138,0.2)' : 'rgba(240,75,75,0.15)'}`, borderRadius: 8 }}>
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 10px', background: found ? 'rgba(22,163,74,0.08)' : 'rgba(220,38,38,0.06)', border: `1px solid ${found ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.15)'}`, borderRadius: 8 }}>
                     {found
                       ? <CheckCircle size={13} color={GREEN} style={{ flexShrink: 0 }} />
                       : <XCircle size={13} color={RED} style={{ flexShrink: 0 }} />}
@@ -702,7 +702,7 @@ export default function ATSScoring() {
             <GlowCard title="✅ Matched Keywords" accent={GREEN}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: result.matchedPhrases.length > 0 ? 10 : 0 }}>
                 {result.matched.map(k => (
-                  <span key={k} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(16,201,138,0.12)', color: GREEN, border: '1px solid rgba(16,201,138,0.25)' }}>
+                  <span key={k} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(22,163,74,0.12)', color: GREEN, border: '1px solid rgba(22,163,74,0.25)' }}>
                     {k}
                   </span>
                 ))}
@@ -712,7 +712,7 @@ export default function ATSScoring() {
                   <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Matched Phrases</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {result.matchedPhrases.map(p => (
-                      <span key={p} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(0,200,240,0.12)', color: CYAN, border: '1px solid rgba(0,200,240,0.25)' }}>
+                      <span key={p} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(79,70,229,0.12)', color: CYAN, border: '1px solid rgba(79,70,229,0.25)' }}>
                         {p}
                       </span>
                     ))}
@@ -720,14 +720,14 @@ export default function ATSScoring() {
                 </>
               )}
               {result.matched.length === 0 && result.matchedPhrases.length === 0 && (
-                <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>No keyword matches found.</p>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>No keyword matches found.</p>
               )}
             </GlowCard>
 
             <GlowCard title="❌ Missing Keywords" accent={RED}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: result.missingPhrases.length > 0 ? 10 : 0 }}>
                 {result.missing.map(k => (
-                  <span key={k} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(240,75,75,0.12)', color: RED, border: '1px solid rgba(240,75,75,0.25)' }}>
+                  <span key={k} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(220,38,38,0.12)', color: RED, border: '1px solid rgba(220,38,38,0.25)' }}>
                     {k}
                   </span>
                 ))}
@@ -737,7 +737,7 @@ export default function ATSScoring() {
                   <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Missing Phrases</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {result.missingPhrases.slice(0, 6).map(p => (
-                      <span key={p} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(245,166,35,0.12)', color: AMBER, border: '1px solid rgba(245,166,35,0.25)' }}>
+                      <span key={p} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(217,119,6,0.12)', color: AMBER, border: '1px solid rgba(217,119,6,0.25)' }}>
                         {p}
                       </span>
                     ))}
@@ -757,7 +757,7 @@ export default function ATSScoring() {
             <GlowCard title="💪 Action Verbs Detected" accent={GREEN}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {result.usedVerbs.map(v => (
-                  <span key={v} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(16,201,138,0.1)', color: GREEN, border: '1px solid rgba(16,201,138,0.2)' }}>
+                  <span key={v} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(22,163,74,0.1)', color: GREEN, border: '1px solid rgba(22,163,74,0.2)' }}>
                     {v}
                   </span>
                 ))}
@@ -779,7 +779,7 @@ export default function ATSScoring() {
                   return (
                     <div key={i} style={{ display: 'flex', gap: 10, padding: '10px 14px', background: style.bg, border: `1px solid ${style.border}`, borderRadius: 9 }}>
                       <span style={{ fontSize: 14, flexShrink: 0 }}>{style.icon}</span>
-                      <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', lineHeight: 1.6 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
                         <strong style={{ color: style.color }}>
                           {s.type === 'error' ? 'Required: ' : s.type === 'warning' ? 'Recommended: ' : 'Optional: '}
                         </strong>
@@ -791,7 +791,7 @@ export default function ATSScoring() {
               </div>
 
               {/* Priority indicator */}
-              <div style={{ marginTop: 14, padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 14, padding: '10px 14px', background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 11, color: RED }}>🔴 Required — Fix immediately</span>
                 <span style={{ fontSize: 11, color: AMBER }}>🟡 Recommended — Improves score</span>
                 <span style={{ fontSize: 11, color: CYAN }}>🔵 Optional — Nice to have</span>
@@ -811,7 +811,7 @@ export default function ATSScoring() {
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${color}18`, border: `1px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color, marginBottom: 8 }}>
                     {step}
                   </div>
-                  <p style={{ margin: '0 0 5px', fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{title}</p>
+                  <p style={{ margin: '0 0 5px', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>{title}</p>
                   <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{desc}</p>
                 </div>
               ))}
@@ -826,12 +826,12 @@ export default function ATSScoring() {
 
 const TA = {
   width: '100%',
-  background: '#071525',
-  border: '1px solid rgba(0,200,240,0.15)',
+  background: 'var(--bg-input)',
+  border: '1px solid var(--border)',
   borderRadius: 10,
   padding: '12px 14px',
   fontSize: 13,
-  color: '#e2e8f0',
+  color: 'var(--text-primary)',
   outline: 'none',
   fontFamily: "'Sora',sans-serif",
   boxSizing: 'border-box',

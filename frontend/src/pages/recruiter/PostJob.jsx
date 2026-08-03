@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const BRANCHES = ['CSE','IT','ECE','EEE','MECH','CIVIL','AIDS','AIML','DS'];
+const BRANCHES = ['CE','CST','ENC','DS','AI','IT'];
 
 export default function PostJob() {
   const navigate  = useNavigate();
@@ -79,12 +79,12 @@ export default function PostJob() {
   const T = {
     page:    { padding: 24, maxWidth: 920, margin: '0 auto' },
     card:    {
-      background: isDark ? '#0b1a2e' : '#ffffff',
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)'}`,
+      background: 'var(--bg-card)',
+      border: '1px solid var(--border)',
       borderRadius: 14, padding: '20px 22px', marginBottom: 16,
     },
     cardTitle: {
-      fontSize: 13, fontWeight: 700, color: isDark ? '#7c5cfc' : '#6d28d9',
+      fontSize: 13, fontWeight: 700, color: '#4f46e5',
       textTransform: 'uppercase', letterSpacing: '0.07em',
       marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8,
     },
@@ -95,10 +95,10 @@ export default function PostJob() {
     },
     input: {
       width: '100%', boxSizing: 'border-box',
-      background: isDark ? '#071525' : '#f8fafc',
-      border: `1px solid ${isDark ? 'rgba(124,92,252,0.2)' : 'rgba(0,0,0,0.15)'}`,
+      background: 'var(--bg-input)',
+      border: '1px solid var(--border)',
       borderRadius: 9, padding: '10px 12px',
-      fontSize: 13, color: isDark ? '#e2e8f0' : '#0f172a',
+      fontSize: 13, color: 'var(--text-primary)',
       outline: 'none', fontFamily: "'Sora',sans-serif",
       transition: 'border-color 0.15s',
     },
@@ -114,17 +114,17 @@ export default function PostJob() {
   if (submitted) return (
     <div style={{ ...T.page, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
       <div style={{ textAlign: 'center', maxWidth: 500 }}>
-        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(16,201,138,0.12)',
-          border: '2px solid #10c98a', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(22,163,74,0.12)',
+          border: '2px solid #16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center',
           margin: '0 auto 20px' }}>
-          <Send size={30} color="#10c98a"/>
+          <Send size={30} color="#16a34a"/>
         </div>
         <h2 style={{ margin: '0 0 10px', fontSize: 22, fontWeight: 800,
-          color: isDark ? '#f0f6ff' : '#0f172a', fontFamily: "'Sora',sans-serif" }}>
+          color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" }}>
           Job Submitted for Approval!
         </h2>
-        <p style={{ color: isDark ? '#94a3b8' : '#475569', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
-          Your job posting <strong style={{ color: isDark ? '#e2e8f0' : '#0f172a' }}>{form.title}</strong> has been
+        <p style={{ color: '#475569', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>
+          Your job posting <strong style={{ color: 'var(--text-primary)' }}>{form.title}</strong> has been
           submitted. The placement officer (admin) has been notified and will review it shortly.
           <br/><br/>
           Once approved, the job will automatically appear in the student job listings and
@@ -132,13 +132,13 @@ export default function PostJob() {
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button onClick={() => { setSubmitted(false); setForm({ title:'', description:'', package_lpa:'', job_type:'full-time', min_cgpa:'6.0', max_backlogs:'0', eligible_branches:[], required_skills:'', deadline:'', drive_date:'', rounds:'' }); }}
-            style={{ padding: '10px 20px', background: 'rgba(124,92,252,0.12)', border: '1px solid rgba(124,92,252,0.3)',
-              borderRadius: 9, color: '#7c5cfc', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ padding: '10px 20px', background: 'rgba(79,70,229,0.12)', border: '1px solid rgba(79,70,229,0.3)',
+              borderRadius: 9, color: '#4f46e5', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             Post Another Job
           </button>
           <button onClick={() => navigate('/recruiter/dashboard')}
-            style={{ padding: '10px 20px', background: '#7c5cfc', border: 'none',
-              borderRadius: 9, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            style={{ padding: '10px 20px', background: '#4f46e5', border: 'none',
+              borderRadius: 9, color: '#ffffff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
             Go to Dashboard
           </button>
         </div>
@@ -150,19 +150,19 @@ export default function PostJob() {
     <div style={T.page}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800,
-          color: isDark ? '#f0f6ff' : '#0f172a', fontFamily: "'Sora',sans-serif" }}>
+          color: 'var(--text-primary)', fontFamily: "'Sora',sans-serif" }}>
           Post a New Job
         </h1>
         <p style={{ margin: '6px 0 0', fontSize: 13, color: isDark ? '#475569' : '#64748b' }}>
           Fill in the details — once submitted, the placement officer will review and approve it.
         </p>
         {/* Approval info banner */}
-        <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(245,166,35,0.08)',
-          border: '1px solid rgba(245,166,35,0.25)', borderRadius: 9,
+        <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(217,119,6,0.08)',
+          border: '1px solid rgba(217,119,6,0.25)', borderRadius: 9,
           display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <AlertCircle size={15} color="#f5a623" style={{ flexShrink: 0, marginTop: 1 }}/>
-          <p style={{ margin: 0, fontSize: 12, color: isDark ? '#94a3b8' : '#475569', lineHeight: 1.5 }}>
-            <strong style={{ color: '#f5a623' }}>Approval Required:</strong> Jobs are reviewed by the placement officer
+          <AlertCircle size={15} color="#d97706" style={{ flexShrink: 0, marginTop: 1 }}/>
+          <p style={{ margin: 0, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+            <strong style={{ color: '#d97706' }}>Approval Required:</strong> Jobs are reviewed by the placement officer
             before going live. Approved jobs are automatically announced to students.
           </p>
         </div>
@@ -175,18 +175,18 @@ export default function PostJob() {
           <div style={T.cardTitle}><Briefcase size={14}/>Basic Information</div>
           <div style={T.grid2}>
             <div>
-              <label style={T.label}>Job Title <span style={{ color: '#f04b4b' }}>*</span></label>
+              <label style={T.label}>Job Title <span style={{ color: '#dc2626' }}>*</span></label>
               <input style={T.input} value={form.title} onChange={e => set('title', e.target.value)}
                 placeholder="e.g. Software Engineer" required/>
             </div>
             <div>
-              <label style={T.label}>Package (LPA) <span style={{ color: '#f04b4b' }}>*</span></label>
+              <label style={T.label}>Package (LPA) <span style={{ color: '#dc2626' }}>*</span></label>
               <input style={T.input} type="number" min="0" step="0.1" value={form.package_lpa}
                 onChange={e => set('package_lpa', e.target.value)} placeholder="e.g. 7.5" required/>
             </div>
           </div>
           <div style={{ marginTop: 14 }}>
-            <label style={T.label}>Job Description <span style={{ color: '#f04b4b' }}>*</span></label>
+            <label style={T.label}>Job Description <span style={{ color: '#dc2626' }}>*</span></label>
             <textarea style={{ ...T.input, resize: 'vertical', minHeight: 100 }}
               value={form.description} onChange={e => set('description', e.target.value)}
               rows={4} placeholder="Describe the role, responsibilities, and what you're looking for..." required/>
@@ -232,12 +232,12 @@ export default function PostJob() {
           <div style={{ marginTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
               <label style={{ ...T.label, marginBottom: 0 }}>
-                Eligible Branches <span style={{ color: '#f04b4b' }}>*</span>
+                Eligible Branches <span style={{ color: '#dc2626' }}>*</span>
               </label>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="button" onClick={selectAll} style={{ fontSize: 11, color: '#7c5cfc',
+                <button type="button" onClick={selectAll} style={{ fontSize: 11, color: '#4f46e5',
                   background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Select All</button>
-                <button type="button" onClick={clearAll} style={{ fontSize: 11, color: '#f04b4b',
+                <button type="button" onClick={clearAll} style={{ fontSize: 11, color: '#dc2626',
                   background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Clear</button>
               </div>
             </div>
@@ -247,9 +247,9 @@ export default function PostJob() {
                 return (
                   <button type="button" key={b} onClick={() => toggleBranch(b)} style={{
                     padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 700,
-                    background: sel ? 'rgba(124,92,252,0.18)' : (isDark ? 'rgba(255,255,255,0.04)' : '#f1f5f9'),
-                    border: `1px solid ${sel ? '#7c5cfc' : (isDark ? 'rgba(255,255,255,0.1)' : '#e2e8f0')}`,
-                    color: sel ? '#7c5cfc' : (isDark ? '#64748b' : '#94a3b8'),
+                    background: sel ? 'rgba(79,70,229,0.18)' : 'var(--bg-card-high)',
+                    border: `1px solid ${sel ? '#4f46e5' : 'var(--border)'}`,
+                    color: sel ? '#4f46e5' : 'var(--text-secondary)',
                     cursor: 'pointer', transition: 'all 0.15s',
                     display: 'flex', alignItems: 'center', gap: 4,
                   }}>
@@ -259,7 +259,7 @@ export default function PostJob() {
               })}
             </div>
             {form.eligible_branches.length > 0 && (
-              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#7c5cfc' }}>
+              <p style={{ margin: '8px 0 0', fontSize: 11, color: '#4f46e5' }}>
                 {form.eligible_branches.length} branch{form.eligible_branches.length > 1 ? 'es' : ''} selected
               </p>
             )}
@@ -272,7 +272,7 @@ export default function PostJob() {
           <div style={T.grid2}>
             <div>
               <label style={T.label}>
-                Application Deadline <span style={{ color: '#f04b4b' }}>*</span>
+                Application Deadline <span style={{ color: '#dc2626' }}>*</span>
               </label>
               <div style={{ position: 'relative' }}>
                 <input
@@ -287,7 +287,7 @@ export default function PostJob() {
                   style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}/>
               </div>
               {form.deadline && (
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#10c98a' }}>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#16a34a' }}>
                   📅 {new Date(form.deadline + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
                 </p>
               )}
@@ -306,12 +306,12 @@ export default function PostJob() {
                   style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}/>
               </div>
               {form.drive_date && (
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#10c98a' }}>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: '#16a34a' }}>
                   📅 {new Date(form.drive_date + 'T00:00:00').toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
                 </p>
               )}
               {!form.drive_date && (
-                <p style={{ margin: '4px 0 0', fontSize: 11, color: isDark ? '#334155' : '#cbd5e1' }}>
+                <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-muted)' }}>
                   Leave blank if not scheduled yet
                 </p>
               )}
@@ -323,17 +323,17 @@ export default function PostJob() {
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button type="button" onClick={() => navigate('/recruiter/dashboard')} style={{
             padding: '11px 22px', background: 'transparent',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.12)'}`,
+            border: '1px solid var(--border)',
             borderRadius: 9, fontSize: 13, fontWeight: 600,
-            color: isDark ? '#64748b' : '#94a3b8', cursor: 'pointer',
+            color: 'var(--text-secondary)', cursor: 'pointer',
           }}>Cancel</button>
           <button type="submit" disabled={loading} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '11px 28px', background: '#7c5cfc', color: '#fff',
+            padding: '11px 28px', background: '#4f46e5', color: '#ffffff',
             border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700,
             cursor: loading ? 'not-allowed' : 'pointer',
             opacity: loading ? 0.75 : 1,
-            boxShadow: '0 4px 14px rgba(124,92,252,0.4)',
+            boxShadow: '0 4px 14px rgba(79,70,229,0.4)',
           }}>
             {loading
               ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }}/> Submitting...</>
