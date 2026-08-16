@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { jobsAPI, applicationsAPI } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import GlowCard from '../../components/GlowCard';
-import { Briefcase, Search, Clock, TrendingUp, Building2, ChevronDown, ChevronUp, CheckCircle, Loader2, Filter } from 'lucide-react';
+import { Briefcase, Search, Clock, TrendingUp, Building2, ChevronDown, ChevronUp, CheckCircle, Loader2, Filter, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const CYAN='#4f46e5', GREEN='#16a34a', AMBER='#d97706', RED='#dc2626', VIOLET='#4f46e5';
@@ -129,6 +129,12 @@ export default function Jobs() {
                         {(job.required_skills||[]).map(sk=><span key={sk} style={{padding:'2px 8px',background:'rgba(79,70,229,0.08)',border:'1px solid rgba(79,70,229,0.2)',borderRadius:6,fontSize:11,color:CYAN,fontWeight:600}}>{sk}</span>)}
                       </div>
                       {job.drive_date && <p style={{margin:0,fontSize:12,color:'#64748b'}}>Drive Date: <strong style={{color:'var(--text-primary)'}}>{new Date(job.drive_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</strong></p>}
+                      {(job.jd_doc_url || job.eval_doc_url) && (
+                        <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:10}}>
+                          {job.jd_doc_url && <a href={job.jd_doc_url} target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:8,fontSize:11,fontWeight:600,textDecoration:'none',color:CYAN,background:'rgba(79,70,229,0.08)',border:'1px solid rgba(79,70,229,0.25)'}}><FileText size={12}/>Job Description PDF</a>}
+                          {job.eval_doc_url && <a href={job.eval_doc_url} target="_blank" rel="noopener noreferrer" style={{display:'inline-flex',alignItems:'center',gap:5,padding:'5px 11px',borderRadius:8,fontSize:11,fontWeight:600,textDecoration:'none',color:CYAN,background:'rgba(79,70,229,0.08)',border:'1px solid rgba(79,70,229,0.25)'}}><FileText size={12}/>Evaluation Details PDF</a>}
+                        </div>
+                      )}
                     </div>
                   )}
 

@@ -32,7 +32,7 @@ export default function Announcements() {
 
     // Real-time updates (skip admin-only types like OA pending-approval notices)
     const sub = subscribeToAnnouncements(newItem => {
-      if (newItem?.type === 'oa_pending') return;
+      if (newItem?.type === 'oa_pending' || newItem?.type === 'job_pending') return;
       setItems(prev => [newItem, ...prev]);
     });
     return () => sub.unsubscribe?.();

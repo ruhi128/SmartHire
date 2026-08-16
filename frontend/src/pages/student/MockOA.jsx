@@ -14,6 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import toast from 'react-hot-toast';
+import ProctorLayer, { computeIntegrity } from '../../components/ProctorLayer';
 
 // ─── OA_BANK (hardcoded platform tests — unchanged, trimmed for brevity) ───
 const OA_BANK = {
@@ -260,8 +261,10 @@ export default function MockOA() {
   const [result,      setResult]      = useState(null);
   const [submitting,  setSubmitting]  = useState(false);
   const [flagged,     setFlagged]     = useState(new Set());
-  const [tabWarnings, setTabWarnings] = useState(0);
-  const [showWarning, setShowWarning] = useState(false);
+
+  // Proctoring: violations accumulate here for the whole attempt.
+  const proctorRef = useRef([]);
+  const [violationCount, setViolationCount] = useState(0);
 
   // DB-fetched company-uploaded tests
   const [dbTests,     setDbTests]     = useState([]);
@@ -319,21 +322,11 @@ export default function MockOA() {
     return () => clearInterval(timerRef.current);
   }, [screen]);
 
-  // ── Tab proctoring ─────────────────────────────────────────────────────
-  useEffect(() => {
-    if (screen !== 'test') return;
-    const onBlur = () => {
-      setTabWarnings(w => {
-        const next = w + 1;
-        setShowWarning(true);
-        setTimeout(() => setShowWarning(false), 3000);
-        if (next >= 3) { toast.error('3 tab switches detected — auto-submitting!'); setTimeout(() => handleSubmit(true), 1500); }
-        return next;
-      });
-    };
-    window.addEventListener('blur', onBlur);
-    return () => window.removeEventListener('blur', onBlur);
-  }, [screen]);
+  // ── Proctoring: collect violations from ProctorLayer ────────────────────
+  const handleViolation = useCallback((v) => {
+    proctorRef.current.push(v);
+    setViolationCount(proctorRef.current.length);
+  }, []);
 
   // ── Start test ─────────────────────────────────────────────────────────
   const startTest = async (catalogEntry) => {
@@ -379,7 +372,15 @@ export default function MockOA() {
     setFlagged(new Set());
     setCurrent(0);
     setTimeLeft((catalogEntry.duration || 60) * 60);
-    setTabWarnings(0);
+    proctorRef.current = [];
+    setViolationCount(0);
+    toast('Proctored exam — camera & full-screen are required. Stay on this tab.', { icon:'🎥', duration:3500 });
+    // Request full-screen from this user gesture (click) so the browser allows it.
+    try {
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (req) await req.call(el).catch(() => {});
+    } catch (_) {}
     startRef.current = Date.now();
     setScreen('test');
   };
@@ -390,6 +391,13 @@ export default function MockOA() {
     clearInterval(timerRef.current);
     setSubmitting(true);
 
+    // Snapshot proctoring for this attempt.
+    const violations = proctorRef.current.slice();
+    const integrityScore = computeIntegrity(violations);
+    const terminated = violations.filter(v => v.type === 'tab_switch' || v.type === 'fullscreen_exit').length >= 3;
+    const violationSummary = violations.reduce((acc, v) => { acc[v.type] = (acc[v.type] || 0) + 1; return acc; }, {});
+    const proctoring = { violations, integrityScore, terminated };
+
     if (test?.source === 'company') {
       // Submit to backend for accurate scoring
       try {
@@ -399,6 +407,7 @@ export default function MockOA() {
           testId: test.id,
           answers: answerMap,
           startedAt: new Date(startRef.current).toISOString(),
+          proctoring,
         });
         const d = r.data;
         // Build result shape compatible with result screen
@@ -420,11 +429,16 @@ export default function MockOA() {
           timeTaken: Math.round((Date.now() - startRef.current) / 1000),
           autoSubmitted: auto, breakdown, questions,
           scoredAnswers: d.scoredAnswers,
+          integrityScore: d.integrityScore ?? integrityScore,
+          violationCount: d.violationCount ?? violations.length,
+          terminated: d.terminated ?? terminated,
+          violationSummary: d.violationSummary || violationSummary,
         });
       } catch (err) {
         // Fallback to local scoring
         const res = calcScore(test, answers, questions);
-        setResult({ ...res, timeTaken: Math.round((Date.now() - startRef.current) / 1000), autoSubmitted: auto });
+        setResult({ ...res, timeTaken: Math.round((Date.now() - startRef.current) / 1000), autoSubmitted: auto,
+          integrityScore, violationCount: violations.length, terminated, violationSummary });
       }
     } else {
       // Local scoring for platform tests
@@ -434,7 +448,8 @@ export default function MockOA() {
         const prev = JSON.parse(localStorage.getItem(key) || '[]');
         localStorage.setItem(key, JSON.stringify([{ score: res.pct, time: new Date().toLocaleString(), grade: res.grade }, ...prev].slice(0, 5)));
       } catch (_) {}
-      setResult({ ...res, timeTaken: Math.round((Date.now() - startRef.current) / 1000), autoSubmitted: auto });
+      setResult({ ...res, timeTaken: Math.round((Date.now() - startRef.current) / 1000), autoSubmitted: auto,
+        integrityScore, violationCount: violations.length, terminated, violationSummary });
     }
 
     setScreen('result');
@@ -624,6 +639,12 @@ export default function MockOA() {
             <p style={{ margin:0, fontSize:11, color:C.gray }}>{test.company} · {questions.length} Questions · {test.totalMarks} Marks</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:20 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 12px', borderRadius:999, background: violationCount ? 'rgba(220,38,38,0.1)' : 'rgba(22,163,74,0.1)', border:`1px solid ${violationCount ? 'rgba(220,38,38,0.35)' : 'rgba(22,163,74,0.3)'}` }}>
+              <Eye size={13} color={violationCount ? C.red : C.green}/>
+              <span style={{ fontSize:11, fontWeight:700, color: violationCount ? C.red : C.green }}>
+                {violationCount ? `${violationCount} flag${violationCount!==1?'s':''}` : 'Proctored'}
+              </span>
+            </div>
             <div style={{ textAlign:'center' }}>
               <p style={{ margin:0, fontSize:11, color:C.gray }}>Answered</p>
               <p style={{ margin:0, fontSize:14, fontWeight:700, color:C.green }}>{answered}/{questions.length}</p>
@@ -639,12 +660,14 @@ export default function MockOA() {
           </div>
         </div>
 
-        {/* Tab warning */}
-        {showWarning && (
-          <div style={{ background:C.red+'22', border:`1px solid ${C.red}`, padding:'10px 24px', display:'flex', alignItems:'center', gap:10, fontSize:13, color:C.red, fontWeight:600 }}>
-            <AlertTriangle size={16}/> Tab switch detected ({tabWarnings}/3). {3-tabWarnings} warning{3-tabWarnings!==1?'s':''} remaining before auto-submit.
-          </div>
-        )}
+        {/* Proctoring layer: fullscreen lock, tab/blur, copy-paste, camera face-presence */}
+        <ProctorLayer
+          active={screen === 'test'}
+          onViolation={handleViolation}
+          onTerminate={() => handleSubmit(true)}
+          maxHardStrikes={3}
+          requireCamera={true}
+        />
 
         <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
 
@@ -822,6 +845,50 @@ export default function MockOA() {
             </div>
           ))}
         </div>
+
+        {/* Proctoring integrity panel */}
+        {(() => {
+          const iScore = result.integrityScore ?? 100;
+          const iColor = iScore >= 85 ? C.green : iScore >= 60 ? C.amber : C.red;
+          const summary = result.violationSummary || {};
+          const LABELS = {
+            tab_switch:'Tab switches', fullscreen_exit:'Full-screen exits', multiple_faces:'Multiple faces',
+            no_face:'Face not visible', copy:'Copy attempts', cut:'Cut attempts', paste:'Paste attempts',
+            context_menu:'Right-clicks', camera_blocked:'Camera blocked',
+          };
+          const entries = Object.entries(summary).filter(([, n]) => n > 0);
+          return (
+            <div style={{ background:'var(--bg-card)', border:`1px solid ${iColor}33`, borderRadius:14, padding:20, marginBottom:20 }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:44, height:44, borderRadius:12, background:`${iColor}18`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <Eye size={22} color={iColor}/>
+                  </div>
+                  <div>
+                    <p style={{ margin:0, fontSize:13, fontWeight:800, color:C.white }}>Proctoring Integrity</p>
+                    <p style={{ margin:'2px 0 0', fontSize:11, color:C.gray }}>
+                      {result.terminated ? 'Exam auto-submitted due to repeated violations' :
+                        (result.violationCount ? `${result.violationCount} violation${result.violationCount!==1?'s':''} recorded` : 'No violations detected — clean attempt')}
+                    </p>
+                  </div>
+                </div>
+                <div style={{ textAlign:'right' }}>
+                  <p style={{ margin:0, fontSize:28, fontWeight:800, color:iColor, fontFamily:"'Sora',sans-serif", lineHeight:1 }}>{iScore}<span style={{ fontSize:14, color:C.gray }}>/100</span></p>
+                  <p style={{ margin:'2px 0 0', fontSize:10, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em' }}>Integrity Score</p>
+                </div>
+              </div>
+              {entries.length > 0 && (
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginTop:16, paddingTop:14, borderTop:'1px solid var(--border)' }}>
+                  {entries.map(([type, n]) => (
+                    <span key={type} style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'5px 11px', borderRadius:999, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', fontSize:11, fontWeight:700, color:C.red }}>
+                      <AlertTriangle size={11}/> {LABELS[type] || type}: {n}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Charts */}
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>

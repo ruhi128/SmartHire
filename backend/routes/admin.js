@@ -185,7 +185,7 @@ router.get('/announcements', auth, async (req, res) => {
     // Admin-only announcement types (e.g. "OA pending approval") must never
     // reach students/recruiters — they should only learn about an OA once it
     // has been approved.
-    const ADMIN_ONLY_TYPES = ['oa_pending'];
+    const ADMIN_ONLY_TYPES = ['oa_pending', 'job_pending'];
     const visible = req.user.role === 'admin'
       ? (data || [])
       : (data || []).filter(a => !ADMIN_ONLY_TYPES.includes(a.type));

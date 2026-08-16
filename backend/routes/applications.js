@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
 const supabase = require('../config/supabase');
-const { sendShortlistEmail, sendSelectionEmail, sendRejectionEmail } = require('../config/email');
+const { sendShortlistEmail, sendSelectionEmail, sendRejectionEmail, sendStageEmail } = require('../config/email');
 const { notify } = require('../utils/notify');
 
 // Ordered recruitment pipeline stages + display metadata
@@ -245,10 +245,12 @@ router.patch('/:id/stage', auth, roles('recruiter', 'admin'), async (req, res) =
     metadata: { applicationId: app.id, stage },
   });
 
-  // Emails only on terminal stages to avoid spam
+  // Email the student on every pipeline milestone (OA cleared, interview rounds,
+  // selected, rejected). 'applied' is skipped here — job-posting already notified them.
   try {
-    if (stage === 'selected')      await sendSelectionEmail(studentEmail, studentName, companyName, jobTitle);
-    else if (stage === 'rejected') await sendRejectionEmail(studentEmail, studentName, companyName, jobTitle);
+    if (stage !== 'applied') {
+      await sendStageEmail(studentEmail, studentName, companyName, jobTitle, stage);
+    }
   } catch (e) {
     console.error('Stage email failed:', e.message);
   }

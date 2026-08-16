@@ -95,11 +95,25 @@ router.get('/tests/:id', auth, async (req, res) => {
 // Body: { testId, answers: { questionId: answerValue } }
 // ─────────────────────────────────────────────
 router.post('/submit', auth, roles('student'), async (req, res) => {
-  const { testId, answers } = req.body;
+  const { testId, answers, proctoring } = req.body;
 
   if (!testId || !answers) {
     return res.status(400).json({ error: 'testId and answers are required' });
   }
+
+  // Normalise proctoring payload (optional — older clients may omit it).
+  const rawViolations = Array.isArray(proctoring?.violations) ? proctoring.violations : [];
+  const violations = rawViolations
+    .filter(v => v && typeof v.type === 'string')
+    .slice(0, 500); // hard cap to avoid abuse
+  const integrityScore = Number.isFinite(proctoring?.integrityScore)
+    ? Math.max(0, Math.min(100, Math.round(proctoring.integrityScore)))
+    : (violations.length ? Math.max(0, 100 - violations.length * 5) : 100);
+  const terminated = !!proctoring?.terminated;
+  const violationSummary = violations.reduce((acc, v) => {
+    acc[v.type] = (acc[v.type] || 0) + 1;
+    return acc;
+  }, {});
 
   try {
     const { data: test, error: tErr } = await supabaseAdmin
@@ -175,12 +189,39 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
         passed_mcq: correctCount,
         wrong_mcq: wrongCount,
         skipped_mcq: skippedCount,
-        // Note: total_marks & started_at don't exist in schema — removed
       })
       .select()
       .single();
 
     if (aErr) throw aErr;
+
+    // Best-effort integrity update — no-op if migration 003 hasn't been applied.
+    const { error: iErr } = await supabaseAdmin
+      .from('mock_oa_attempts')
+      .update({
+        integrity_score: integrityScore,
+        violation_count: violations.length,
+        terminated,
+        proctoring_summary: violationSummary,
+      })
+      .eq('id', attempt.id);
+    if (iErr) console.error('integrity update skipped (run migration 003?):', iErr.message);
+
+    // Persist each proctoring violation, linked to this attempt.
+    if (violations.length) {
+      const rows = violations.map(v => ({
+        attempt_id: attempt.id,
+        student_id: req.user.id,
+        test_id: testId,
+        type: String(v.type).slice(0, 60),
+        detail: v.detail ? String(v.detail).slice(0, 300) : null,
+        occurred_at: v.at ? new Date(v.at).toISOString() : new Date().toISOString(),
+      }));
+      const { error: vErr } = await supabaseAdmin
+        .from('proctoring_violations')
+        .insert(rows);
+      if (vErr) console.error('proctoring_violations insert error:', vErr.message);
+    }
 
     res.json({
       attemptId: attempt.id,
@@ -193,6 +234,10 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
       correct: correctCount,
       wrong: wrongCount,
       skipped: skippedCount,
+      integrityScore,
+      violationCount: violations.length,
+      terminated,
+      violationSummary,
       scoredAnswers,
     });
   } catch (err) {

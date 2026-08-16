@@ -323,3 +323,26 @@ create table if not exists public.email_verifications (
 );
 create index if not exists idx_emailver_user  on public.email_verifications(user_id);
 create index if not exists idx_emailver_email on public.email_verifications(email);
+
+-- ── Proctoring (Phase 2) ──────────────────────────────────────────────────
+create table if not exists public.proctoring_violations (
+  id          uuid primary key default gen_random_uuid(),
+  attempt_id  uuid references public.mock_oa_attempts(id) on delete cascade,
+  student_id  uuid references public.users(id) on delete cascade,
+  test_id     uuid,
+  type        text not null,
+  detail      text,
+  occurred_at timestamptz not null default now()
+);
+create index if not exists idx_proctoring_attempt on public.proctoring_violations(attempt_id);
+create index if not exists idx_proctoring_student on public.proctoring_violations(student_id);
+
+alter table public.mock_oa_attempts add column if not exists integrity_score    integer;
+alter table public.mock_oa_attempts add column if not exists violation_count    integer default 0;
+alter table public.mock_oa_attempts add column if not exists terminated         boolean default false;
+alter table public.mock_oa_attempts add column if not exists proctoring_summary jsonb;
+
+-- ── Job documents (Phase 2) ────────────────────────────────────────────────
+-- Recruiter-uploaded PDFs (JD + evaluation details), public URLs in `resumes` bucket.
+alter table public.job_postings add column if not exists jd_doc_url   text;
+alter table public.job_postings add column if not exists eval_doc_url text;

@@ -5,7 +5,7 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   CheckCircle, XCircle, Clock, Briefcase, Building2,
   DollarSign, Users, Calendar, ChevronDown, ChevronUp,
-  AlertCircle, Loader2, RefreshCw
+  AlertCircle, Loader2, RefreshCw, FileText
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -266,6 +266,36 @@ export default function JobApprovals() {
                         </div>
                       )}
                     </div>
+
+                    {/* Attached documents (JD + evaluation details) */}
+                    {(job.jd_doc_url || job.eval_doc_url) && (
+                      <div style={{ marginBottom: 14 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700,
+                          color: isDark ? '#475569' : '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                          Attached Documents
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {job.jd_doc_url && (
+                            <a href={job.jd_doc_url} target="_blank" rel="noopener noreferrer"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                textDecoration: 'none', color: '#4f46e5',
+                                background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(79,70,229,0.25)' }}>
+                              <FileText size={13}/> Job Description PDF
+                            </a>
+                          )}
+                          {job.eval_doc_url && (
+                            <a href={job.eval_doc_url} target="_blank" rel="noopener noreferrer"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                                textDecoration: 'none', color: '#4f46e5',
+                                background: 'rgba(79,70,229,0.08)', border: '1px solid rgba(79,70,229,0.25)' }}>
+                              <FileText size={13}/> Evaluation Details PDF
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Reason / note input */}
                     <div>

@@ -91,6 +91,9 @@ export const jobsAPI = {
   getPending: ()                     => api.get('/api/jobs/pending'),
   approve:    (id, action, reason)   => api.patch(`/api/jobs/${id}/approve`, { action, reason }),
   myJobs:     ()                     => api.get('/api/jobs/recruiter/my-jobs'),
+  uploadDoc:  (formData)             => api.post('/api/upload/job-doc', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
 };
 
 // Applications

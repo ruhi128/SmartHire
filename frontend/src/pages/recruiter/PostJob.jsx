@@ -5,7 +5,7 @@ import { jobsAPI } from '../../api/axios';
 import { useTheme } from '../../context/ThemeContext';
 import {
   Briefcase, Loader2, CheckCircle, Calendar, Clock,
-  DollarSign, Users, AlertCircle, Send
+  DollarSign, Users, AlertCircle, Send, FileText, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -16,6 +16,8 @@ export default function PostJob() {
   const { isDark } = useTheme();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [jdFile, setJdFile]     = useState(null);
+  const [evalFile, setEvalFile] = useState(null);
   const [form, setForm] = useState({
     title:             '',
     description:       '',
@@ -31,6 +33,14 @@ export default function PostJob() {
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const pickFile = (setter) => (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (f.type !== 'application/pdf') { toast.error('Only PDF files are allowed'); e.target.value = ''; return; }
+    if (f.size > 10 * 1024 * 1024)    { toast.error('File too large (max 10 MB)'); e.target.value = ''; return; }
+    setter(f);
+  };
 
   const toggleBranch = b => set('eligible_branches',
     form.eligible_branches.includes(b)
@@ -61,6 +71,21 @@ export default function PostJob() {
     if (!validate()) return;
     setLoading(true);
     try {
+      // Upload optional documents first (JD + evaluation details).
+      let jd_doc_url = null, eval_doc_url = null;
+      if (jdFile) {
+        const fd = new FormData();
+        fd.append('file', jdFile);
+        fd.append('kind', 'jd');
+        jd_doc_url = (await jobsAPI.uploadDoc(fd)).data.url;
+      }
+      if (evalFile) {
+        const fd = new FormData();
+        fd.append('file', evalFile);
+        fd.append('kind', 'eval');
+        eval_doc_url = (await jobsAPI.uploadDoc(fd)).data.url;
+      }
+
       await jobsAPI.create({
         ...form,
         package_lpa:   parseFloat(form.package_lpa),
@@ -68,6 +93,8 @@ export default function PostJob() {
         max_backlogs:  parseInt(form.max_backlogs),
         required_skills: form.required_skills.split(',').map(s => s.trim()).filter(Boolean),
         drive_date:    form.drive_date || null,
+        jd_doc_url,
+        eval_doc_url,
       });
       setSubmitted(true);
     } catch (err) {
@@ -266,6 +293,31 @@ export default function PostJob() {
           </div>
         </div>
 
+        {/* Documents — optional PDF uploads */}
+        <div style={T.card}>
+          <div style={T.cardTitle}><FileText size={14}/>Documents <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)', marginLeft: 4 }}>(optional · PDF, max 10 MB)</span></div>
+          <div style={T.grid2}>
+            <FileField
+              label="Job Description (JD)"
+              hint="Company JD document"
+              file={jdFile}
+              onPick={pickFile(setJdFile)}
+              onClear={() => setJdFile(null)}
+              isDark={isDark}
+              inputId="jd-file"
+            />
+            <FileField
+              label="Evaluation Details"
+              hint="Assessment / evaluation criteria doc"
+              file={evalFile}
+              onPick={pickFile(setEvalFile)}
+              onClear={() => setEvalFile(null)}
+              isDark={isDark}
+              inputId="eval-file"
+            />
+          </div>
+        </div>
+
         {/* Schedule — date inputs with proper styling */}
         <div style={T.card}>
           <div style={T.cardTitle}><Calendar size={14}/>Schedule & Dates</div>
@@ -342,6 +394,48 @@ export default function PostJob() {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// ── Reusable PDF file picker field ───────────────────────────────────────────
+function FileField({ label, hint, file, onPick, onClear, isDark, inputId }) {
+  return (
+    <div>
+      <label style={{
+        display: 'block', marginBottom: 5, fontSize: 11, fontWeight: 700,
+        color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em',
+      }}>{label}</label>
+      {file ? (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          background: 'var(--bg-input)', border: '1px solid #4f46e5',
+          borderRadius: 9, padding: '10px 12px',
+        }}>
+          <FileText size={16} color="#4f46e5" style={{ flexShrink: 0 }}/>
+          <span style={{
+            fontSize: 13, color: 'var(--text-primary)', flex: 1,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{file.name}</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            {(file.size / 1024).toFixed(0)} KB
+          </span>
+          <button type="button" onClick={onClear} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: '#dc2626', display: 'flex', padding: 2,
+          }}><X size={15}/></button>
+        </div>
+      ) : (
+        <label htmlFor={inputId} style={{
+          display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+          background: 'var(--bg-input)', border: `1px dashed ${isDark ? '#475569' : '#cbd5e1'}`,
+          borderRadius: 9, padding: '10px 12px', fontSize: 13, color: 'var(--text-muted)',
+        }}>
+          <FileText size={16}/>
+          <span>Choose PDF — {hint}</span>
+          <input id={inputId} type="file" accept="application/pdf" onChange={onPick} style={{ display: 'none' }}/>
+        </label>
+      )}
     </div>
   );
 }

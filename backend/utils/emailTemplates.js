@@ -425,9 +425,192 @@ function jobOpeningTemplate({ studentName, companyName, jobTitle, packageLpa, de
 // ════════════════════════════════════════════════════
 //  EXPORTS
 // ════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════
+//  RECRUITMENT PIPELINE STAGE UPDATE
+//  Emails the student on EVERY milestone (OA cleared, interview
+//  rounds, selected, rejected) — not just terminal stages.
+// ════════════════════════════════════════════════════
+function stageUpdateTemplate({ studentName, companyName, jobTitle, stage, portalUrl }) {
+  const STAGES = ['applied', 'oa_cleared', 'interview_1_cleared', 'interview_2_cleared', 'selected'];
+
+  const stageConfig = {
+    applied:             { color: BRAND.cyan,  icon: '📩', label: 'Application Submitted',      msg: 'Your application has been received and is under review.' },
+    oa_cleared:          { color: BRAND.green, icon: '✅', label: 'Cleared Online Assessment',  msg: 'Great work! You cleared the Online Assessment and have advanced to the interview stage.' },
+    interview_1_cleared: { color: BRAND.green, icon: '🗣️', label: 'Cleared Interview Round 1',   msg: 'Congratulations! You cleared Interview Round 1. Keep up the momentum for the next round.' },
+    interview_2_cleared: { color: BRAND.green, icon: '🎯', label: 'Cleared Interview Round 2',   msg: 'Excellent! You cleared Interview Round 2. You are almost there — final decision coming soon.' },
+    selected:            { color: BRAND.amber, icon: '🏆', label: 'Selected! 🎊',                msg: 'Congratulations! You have been selected. Please check your portal for the offer and next steps.' },
+    rejected:            { color: BRAND.red,   icon: '📋', label: 'Not Selected',                msg: "This role didn't work out this time, but keep applying and preparing — more opportunities are on the way." },
+  };
+
+  const cfg = stageConfig[stage] || stageConfig.applied;
+
+  // Simple progress tracker (hidden for a rejected outcome).
+  let progressHtml = '';
+  if (stage !== 'rejected') {
+    const currentIdx = STAGES.indexOf(stage);
+    progressHtml = `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+      <tr>
+        ${STAGES.map((s, i) => {
+          const done = i <= currentIdx && currentIdx >= 0;
+          const dot  = done ? cfg.color : '#D1D5DB';
+          return `<td align="center" style="width:20%;">
+            <div style="width:14px;height:14px;border-radius:50%;background:${dot};margin:0 auto 6px;"></div>
+            <div style="font-size:10px;color:${done ? BRAND.navy : BRAND.gray};line-height:1.3;">${stageConfig[s].label.replace(/ 🎊| Round/g, m => m.includes('Round') ? m : '')}</div>
+          </td>`;
+        }).join('')}
+      </tr>
+    </table>`;
+  }
+
+  return wrap(`
+    <h2 style="margin:0 0 8px;color:${BRAND.navy};font-size:22px;">
+      ${cfg.icon} Application Update
+    </h2>
+    <p style="color:${BRAND.gray};margin:0 0 20px;font-size:15px;">
+      Hi ${studentName || 'there'}, your recruitment status has been updated.
+    </p>
+
+    ${progressHtml}
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#F8FAFC;border-radius:8px;padding:20px;margin-bottom:20px;">
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow('Company', companyName)}
+          ${infoRow('Role', jobTitle)}
+          ${infoRow('Status', badge(cfg.label, cfg.color))}
+        </table>
+      </td></tr>
+    </table>
+
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 20px;
+              padding:16px;background:${cfg.color}11;border-left:4px solid ${cfg.color};
+              border-radius:0 8px 8px 0;">
+      ${cfg.msg}
+    </p>
+
+    ${btn('View in Portal', portalUrl || '#', cfg.color)}
+  `);
+}
+
+// ════════════════════════════════════════════════════
+//  JOB PENDING APPROVAL (to placement officers)
+//  Sent to every placement officer/admin when a recruiter
+//  submits a new job, including the eligibility criteria.
+// ════════════════════════════════════════════════════
+function jobPendingApprovalTemplate({ officerName, companyName, jobTitle, packageLpa, jobType, deadline, driveDate, minCgpa, maxBacklogs, branches, portalUrl }) {
+  const branchText = (branches && branches.length) ? branches.join(", ") : "All branches";
+  const eligibility = [
+    infoRow("Eligible Branches", branchText),
+    infoRow("Minimum CGPA", (minCgpa || minCgpa === 0) ? String(minCgpa) : "Not specified"),
+    infoRow("Max Backlogs Allowed", (maxBacklogs || maxBacklogs === 0) ? String(maxBacklogs) : "Not specified"),
+  ].join("");
+
+  return wrap(`
+    <div style="display:inline-block;background:${BRAND.amber}22;color:${BRAND.amber};
+                padding:4px 14px;border-radius:999px;font-size:12px;
+                font-weight:bold;margin-bottom:16px;">
+      📋 Action Required · Pending Approval
+    </div>
+
+    <h2 style="margin:0 0 8px;color:${BRAND.navy};font-size:22px;">
+      New job awaiting your approval
+    </h2>
+    <p style="color:${BRAND.gray};margin:0 0 20px;font-size:15px;">
+      Hi ${officerName || "Placement Officer"}, <strong>${companyName}</strong> has submitted a new
+      job posting. It stays hidden from students until you approve it.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#F8FAFC;border-radius:8px;padding:20px;margin-bottom:16px;">
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow("Company", companyName)}
+          ${infoRow("Role", jobTitle)}
+          ${infoRow("Package", packageLpa ? packageLpa + " LPA" : "Not specified")}
+          ${jobType ? infoRow("Type", jobType) : ""}
+          ${deadline ? infoRow("Apply By", deadline) : ""}
+          ${driveDate ? infoRow("Drive Date", driveDate) : ""}
+        </table>
+      </td></tr>
+    </table>
+
+    <p style="color:${BRAND.navy};font-size:13px;font-weight:bold;margin:0 0 8px;">
+      Eligibility criteria set by the recruiter
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#F8FAFC;border-radius:8px;padding:20px;margin-bottom:20px;">
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${eligibility}
+        </table>
+      </td></tr>
+    </table>
+
+    <p style="color:#374151;font-size:14px;line-height:1.7;margin:0 0 4px;">
+      On approval, only students matching these criteria will be notified.
+    </p>
+
+    ${btn("Review & Approve", portalUrl || "#", BRAND.amber)}
+  `);
+}
+
+function jobDecisionTemplate({ recruiterName, companyName, jobTitle, packageLpa, decision, reason, deadline, driveDate, portalUrl }) {
+  const approved = decision === "approve";
+  const color = approved ? BRAND.green : BRAND.red;
+  const label = approved ? "✅ Approved · Now live to students" : "❌ Not approved";
+  const heading = approved ? "Your job posting is approved" : "Your job posting was not approved";
+  const lead = approved
+    ? `Great news! The placement office has approved <strong>${jobTitle}</strong>${companyName ? " at " + companyName : ""}. It is now visible to all eligible students, and matching candidates have been notified.`
+    : `The placement office reviewed <strong>${jobTitle}</strong>${companyName ? " at " + companyName : ""} and did not approve it at this time. You can revise the details and submit again.`;
+
+  return wrap(`
+    <div style="display:inline-block;background:${color}22;color:${color};
+                padding:4px 14px;border-radius:999px;font-size:12px;
+                font-weight:bold;margin-bottom:16px;">
+      ${label}
+    </div>
+
+    <h2 style="margin:0 0 8px;color:${BRAND.navy};font-size:22px;">
+      ${heading}
+    </h2>
+    <p style="color:${BRAND.gray};margin:0 0 20px;font-size:15px;">
+      Hi ${recruiterName || "Recruiter"}, ${lead}
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#F8FAFC;border-radius:8px;padding:20px;margin-bottom:16px;">
+      <tr><td>
+        <table width="100%" cellpadding="0" cellspacing="0">
+          ${infoRow("Role", jobTitle)}
+          ${companyName ? infoRow("Company", companyName) : ""}
+          ${packageLpa ? infoRow("Package", packageLpa + " LPA") : ""}
+          ${deadline ? infoRow("Apply By", deadline) : ""}
+          ${driveDate ? infoRow("Drive Date", driveDate) : ""}
+        </table>
+      </td></tr>
+    </table>
+
+    ${(!approved && reason) ? `
+    <p style="color:${BRAND.navy};font-size:13px;font-weight:bold;margin:0 0 8px;">
+      Reason from the placement office
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0"
+           style="background:#FEF2F2;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+      <tr><td style="color:#374151;font-size:14px;line-height:1.7;">${reason}</td></tr>
+    </table>` : ""}
+
+    ${btn(approved ? "View Your Job" : "Update & Resubmit", portalUrl || "#", color)}
+  `);
+}
+
 module.exports = {
   shortlistTemplate,
+  jobPendingApprovalTemplate,
+  jobDecisionTemplate,
   applicationStatusTemplate,
+  stageUpdateTemplate,
   announcementTemplate,
   welcomeTemplate,
   driveReminderTemplate,

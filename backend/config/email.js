@@ -69,6 +69,56 @@ async function sendRejectionEmail(to, studentName, companyName, jobTitle) {
   );
 }
 
+// ── Recruitment pipeline stage update (used by routes/applications.js) ──
+// Emails on every milestone: oa_cleared, interview_1_cleared, interview_2_cleared, selected, rejected.
+const STAGE_SUBJECTS = {
+  applied:             (c) => `📩 Application received — ${c}`,
+  oa_cleared:          (c) => `✅ You cleared the OA — ${c}`,
+  interview_1_cleared: (c) => `🗣️ Cleared Interview Round 1 — ${c}`,
+  interview_2_cleared: (c) => `🎯 Cleared Interview Round 2 — ${c}`,
+  selected:            (c) => `🎊 Congratulations! Selected at ${c}`,
+  rejected:            (c) => `Application update — ${c}`,
+};
+async function sendStageEmail(to, studentName, companyName, jobTitle, stage) {
+  const subjectFn = STAGE_SUBJECTS[stage] || STAGE_SUBJECTS.applied;
+  return sendMail(
+    to,
+    subjectFn(companyName),
+    T.stageUpdateTemplate({ studentName, companyName, jobTitle, stage, portalUrl: PORTAL })
+  );
+}
+
+// ── Drive reminder (used by utils/driveReminders.js scheduler) ──
+async function sendDriveReminderEmail(to, info) {
+  return sendMail(
+    to,
+    `⏰ Reminder: ${info.companyName} drive on ${info.driveDate}`,
+    T.driveReminderTemplate({ ...info, portalUrl: `${PORTAL}/student/jobs` })
+  );
+}
+
+// ── Job pending approval (to placement officers) — used by routes/jobs.js ──
+async function sendJobPendingEmail(to, info) {
+  return sendMail(
+    to,
+    `📋 Approval needed: ${info.jobTitle} — ${info.companyName}`,
+    T.jobPendingApprovalTemplate({ ...info, portalUrl: `${PORTAL}/admin/job-approvals` })
+  );
+}
+
+// ── Job decision (approve/reject) → notify the recruiter who posted it ──
+async function sendJobDecisionEmail(to, info) {
+  const approved = info.decision === 'approve';
+  const subject = approved
+    ? `✅ Approved: ${info.jobTitle} is now live`
+    : `❌ Update needed: ${info.jobTitle} was not approved`;
+  return sendMail(
+    to,
+    subject,
+    T.jobDecisionTemplate({ ...info, portalUrl: `${PORTAL}/recruiter/dashboard` })
+  );
+}
+
 // ── Announcement broadcast (used by routes/admin.js) ──
 async function sendAnnouncementEmail(emails, title, content, priority = 'info') {
   const list = Array.isArray(emails) ? emails : [emails];
@@ -87,5 +137,9 @@ module.exports = {
   sendShortlistEmail,
   sendSelectionEmail,
   sendRejectionEmail,
+  sendStageEmail,
+  sendDriveReminderEmail,
+  sendJobPendingEmail,
+  sendJobDecisionEmail,
   sendAnnouncementEmail,
 };
