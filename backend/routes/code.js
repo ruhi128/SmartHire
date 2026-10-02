@@ -4,15 +4,13 @@ const router  = express.Router();
 const auth    = require('../middleware/auth');
 const { execute, isAvailable } = require('../utils/coderunner');
 
-// GET /api/code/status — check if Judge0 is running
+// GET /api/code/status — check if code execution engine is running
 router.get('/status', async (req, res) => {
   const available = await isAvailable();
   res.json({
     available,
-    judge0_url: process.env.JUDGE0_URL || 'http://localhost:2358',
-    message: available
-      ? '✅ Judge0 CE is running and ready'
-      : '❌ Judge0 CE not running. Start it with: docker-compose up -d (see judge0/ folder)',
+    engine: process.env.JDOODLE_CLIENT_ID ? 'JDoodle Cloud API' : 'Native High-Speed Runner',
+    message: '✅ Code execution engine is active and ready',
   });
 });
 

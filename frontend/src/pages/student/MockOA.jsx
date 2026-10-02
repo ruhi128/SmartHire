@@ -16,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import ProctorLayer, { computeIntegrity } from '../../components/ProctorLayer';
 
+<<<<<<< HEAD
 // ─── OA_BANK (hardcoded platform tests — unchanged, trimmed for brevity) ───
 const OA_BANK = {
   tcs_apt: {
@@ -181,6 +182,8 @@ const HARDCODED_CATALOG = Object.values(OA_BANK).map(t => ({
 
 const COMPANIES = [...new Set(HARDCODED_CATALOG.map(t => t.company))].sort();
 
+=======
+>>>>>>> vaibhavi/main
 // ── Colors ────────────────────────────────────────────────────────────────
 const C = {
   bg: 'var(--bg-base)', card: 'var(--bg-card)', cardB: 'var(--bg-card-raised)',
@@ -191,6 +194,10 @@ const C = {
 const TYPE_COLOR = { aptitude: C.cyan, technical: C.violet, behavioural: C.amber };
 const TYPE_ICON  = { aptitude: Brain, technical: Cpu, behavioural: BookOpen };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> vaibhavi/main
 // ── Score calculator ───────────────────────────────────────────────────────
 function calcScore(test, answers, questions) {
   let earned = 0, totalMCQ = 0, correct = 0, wrong = 0, skipped = 0;
@@ -250,8 +257,11 @@ export default function MockOA() {
   const { user } = useAuth();
   const [screen,      setScreen]      = useState('list');
   const [activeType,  setActiveType]  = useState('all');
+<<<<<<< HEAD
   const [activeCo,    setActiveCo]    = useState('all');
   const [activeSource,setActiveSource]= useState('all'); // 'all' | 'company' | 'platform'
+=======
+>>>>>>> vaibhavi/main
   const [search,      setSearch]      = useState('');
   const [test,        setTest]        = useState(null);
   const [questions,   setQuestions]   = useState([]);
@@ -282,11 +292,19 @@ export default function MockOA() {
           title:         t.title,
           company:       t.companies?.name || 'Company',
           companyLogo:   t.companies?.logo_url,
+<<<<<<< HEAD
           type:          t.test_type,
           duration:      t.duration_minutes,
           totalMarks:    t.total_marks || 100,
           sections:      t.sections || [],
           questionCount: 0, // populated when test is opened
+=======
+          type:          t.type || t.test_type || 'technical',
+          duration:      t.duration || t.duration_minutes || 60,
+          totalMarks:    t.total_marks || 100,
+          sections:      t.sections || [],
+          questionCount: t.question_count || 0,
+>>>>>>> vaibhavi/main
           source:        'company', // ← company-uploaded
           attempts:      t.attempts || 0,
           bestScore:     t.bestScore || null,
@@ -298,6 +316,7 @@ export default function MockOA() {
       .finally(() => setDbLoading(false));
   }, []);
 
+<<<<<<< HEAD
   // ── Merge catalogs: company tests first, then platform ─────────────────
   const allTests = [...dbTests, ...HARDCODED_CATALOG];
   const allCompanies = [...new Set(allTests.map(t => t.company))].sort();
@@ -306,6 +325,13 @@ export default function MockOA() {
     if (activeType   !== 'all' && t.type    !== activeType)   return false;
     if (activeCo     !== 'all' && t.company !== activeCo)     return false;
     if (activeSource !== 'all' && t.source  !== activeSource) return false;
+=======
+  // ── All tests loaded directly from Supabase ─────────────────────────
+  const allTests = dbTests;
+
+  const filtered = allTests.filter(t => {
+    if (activeType !== 'all' && t.type !== activeType) return false;
+>>>>>>> vaibhavi/main
     if (search && !t.title.toLowerCase().includes(search.toLowerCase()) &&
                   !t.company.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -328,6 +354,7 @@ export default function MockOA() {
     setViolationCount(proctorRef.current.length);
   }, []);
 
+<<<<<<< HEAD
   // ── Start test ─────────────────────────────────────────────────────────
   const startTest = async (catalogEntry) => {
     if (catalogEntry.source === 'company') {
@@ -367,6 +394,45 @@ export default function MockOA() {
       if (!full) { toast.error('Test not found!'); return; }
       setTest(full);
       setQuestions(full.questions || []);
+=======
+  // ── Start test (always fetches directly from Supabase via backend) ──────
+  const startTest = async (catalogEntry) => {
+    try {
+      const testId = catalogEntry.dbId || catalogEntry.id;
+      const r = await api.get(`/api/mockoa/tests/${testId}`);
+      const t = r.data.test;
+      const qs = (r.data.questions || []).map(q => ({
+        id:            q.id,
+        section:       q.section || 'General',
+        type:          q.type || q.question_type || 'text',
+        text:          q.question_text,
+        description:   q.description || '',
+        starterCode:   q.starter_code || '',
+        examples:      q.examples || '',
+        constraints:   q.code_constraints || '',
+        placeholder:   q.placeholder || '',
+        opts:          q.options || [],
+        ans:           q.correct_index !== undefined ? q.correct_index : q.correct_answer,
+        correct_index: q.correct_index !== undefined ? q.correct_index : q.correct_answer,
+        marks:         q.marks || 25,
+        explanation:   q.explanation || '',
+      }));
+      const testObj = {
+        id:          t.id,
+        title:       t.title,
+        company:     t.companies?.name || catalogEntry.company,
+        type:        t.type || t.test_type || 'technical',
+        duration:    t.duration || t.duration_minutes || 60,
+        totalMarks:  t.total_marks || qs.reduce((s,q) => s + q.marks, 0),
+        sections:    [...new Set(qs.map(q => q.section))],
+        source:      'company',
+      };
+      setTest(testObj);
+      setQuestions(qs);
+    } catch (err) {
+      toast.error('Failed to load test from database. Please try again.');
+      return;
+>>>>>>> vaibhavi/main
     }
     setAnswers({});
     setFlagged(new Set());
@@ -398,6 +464,7 @@ export default function MockOA() {
     const violationSummary = violations.reduce((acc, v) => { acc[v.type] = (acc[v.type] || 0) + 1; return acc; }, {});
     const proctoring = { violations, integrityScore, terminated };
 
+<<<<<<< HEAD
     if (test?.source === 'company') {
       // Submit to backend for accurate scoring
       try {
@@ -448,6 +515,48 @@ export default function MockOA() {
         const prev = JSON.parse(localStorage.getItem(key) || '[]');
         localStorage.setItem(key, JSON.stringify([{ score: res.pct, time: new Date().toLocaleString(), grade: res.grade }, ...prev].slice(0, 5)));
       } catch (_) {}
+=======
+    try {
+      const answerMap = {};
+      Object.entries(answers).forEach(([qid, val]) => { answerMap[qid] = val; });
+      const r = await api.post('/api/mockoa/submit', {
+        testId: test.id,
+        answers: answerMap,
+        startedAt: new Date(startRef.current).toISOString(),
+        proctoring,
+      });
+      const d = r.data;
+      // Build result shape compatible with result screen
+      const breakdown = {};
+      questions.forEach(q => {
+        const sec = q.section || 'General';
+        if (!breakdown[sec]) breakdown[sec] = { correct:0, wrong:0, total:0, marks:0, earned:0 };
+        breakdown[sec].total++;
+        breakdown[sec].marks += q.marks || 25;
+        const scored = d.scoredAnswers?.[q.id];
+        if (scored?.result === 'correct' || scored?.result === 'answered') {
+          breakdown[sec].correct++;
+          breakdown[sec].earned += scored.points || 0;
+        }
+        if (scored?.result === 'wrong') { breakdown[sec].wrong++; }
+      });
+      setResult({
+        earned: d.score, total: d.totalPossible, pct: d.percentage,
+        grade: d.percentage>=90?'A+':d.percentage>=80?'A':d.percentage>=70?'B+':d.percentage>=60?'B':d.percentage>=50?'C':d.percentage>=40?'D':'F',
+        correct: d.correct, wrong: d.wrong, skipped: d.skipped,
+        totalMCQ: (d.correct||0)+(d.wrong||0)+(d.skipped||0),
+        timeTaken: Math.round((Date.now() - startRef.current) / 1000),
+        autoSubmitted: auto, breakdown, questions,
+        scoredAnswers: d.scoredAnswers,
+        integrityScore: d.integrityScore ?? integrityScore,
+        violationCount: d.violationCount ?? violations.length,
+        terminated: d.terminated ?? terminated,
+        violationSummary: d.violationSummary || violationSummary,
+      });
+    } catch (err) {
+      // Fallback to local scoring
+      const res = calcScore(test, answers, questions);
+>>>>>>> vaibhavi/main
       setResult({ ...res, timeTaken: Math.round((Date.now() - startRef.current) / 1000), autoSubmitted: auto,
         integrityScore, violationCount: violations.length, terminated, violationSummary });
     }
@@ -468,6 +577,7 @@ export default function MockOA() {
 
       {/* Header */}
       <div style={{ marginBottom:24 }}>
+<<<<<<< HEAD
         <h1 style={{ margin:0, fontSize:26, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" }}>Mock OA Tests</h1>
         <p style={{ margin:'6px 0 0', fontSize:13, color:C.gray }}>
           Practice real company questions — platform tests + company-uploaded OAs
@@ -475,6 +585,15 @@ export default function MockOA() {
       </div>
 
       {/* Company OA banner (only when there are company tests) */}
+=======
+        <h1 style={{ margin:0, fontSize:26, fontWeight:800, color:'var(--text-primary)', fontFamily:"'Sora',sans-serif" }}>Company Mock OA Tests</h1>
+        <p style={{ margin:'6px 0 0', fontSize:13, color:C.gray }}>
+          Practice authentic company Online Assessment questions loaded directly from the database.
+        </p>
+      </div>
+
+      {/* Company OA banner */}
+>>>>>>> vaibhavi/main
       {companyTestCount > 0 && (
         <div style={{ background:'linear-gradient(135deg,rgba(22,163,74,0.1),rgba(79,70,229,0.07))', border:'1px solid rgba(22,163,74,0.25)', borderRadius:14, padding:'14px 20px', marginBottom:20, display:'flex', alignItems:'center', gap:14 }}>
           <div style={{ width:40, height:40, borderRadius:10, background:'rgba(22,163,74,0.15)', border:'1px solid rgba(22,163,74,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -482,6 +601,7 @@ export default function MockOA() {
           </div>
           <div>
             <p style={{ margin:0, fontSize:14, fontWeight:800, color:'var(--text-primary)' }}>
+<<<<<<< HEAD
               {companyTestCount} Company-Provided OA Test{companyTestCount !== 1 ? 's' : ''} Available!
             </p>
             <p style={{ margin:'3px 0 0', fontSize:12, color:'#64748b' }}>
@@ -498,11 +618,26 @@ export default function MockOA() {
       {/* Search */}
       <div style={{ display:'flex', gap:10, marginBottom:14, flexWrap:'wrap', alignItems:'center' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:10, padding:'9px 14px', flex:'1', maxWidth:340 }}>
+=======
+              {companyTestCount} Authentic Company Tests Available in Supabase!
+            </p>
+            <p style={{ margin:'3px 0 0', fontSize:12, color:'#64748b' }}>
+              Extracted from real on-campus and placement recruitment drives — practice company-wise questions with solutions and proctoring.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Search & Type filter */}
+      <div style={{ display:'flex', gap:12, marginBottom:20, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8, background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:10, padding:'9px 14px', flex:'1', maxWidth:360 }}>
+>>>>>>> vaibhavi/main
           <Search size={14} color={C.gray}/>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search company or test name..."
             style={{ background:'none', border:'none', outline:'none', fontSize:13, color:C.white, flex:1, fontFamily:"'Sora',sans-serif" }}/>
           {search && <button onClick={()=>setSearch('')} style={{ background:'none', border:'none', cursor:'pointer', color:C.gray }}><XCircle size={13}/></button>}
         </div>
+<<<<<<< HEAD
       </div>
 
       {/* Source filter */}
@@ -530,6 +665,18 @@ export default function MockOA() {
 
       <p style={{ fontSize:12, color:C.gray, marginBottom:14 }}>{filtered.length} test{filtered.length!==1?'s':''} found</p>
 
+=======
+
+        {/* Type filter */}
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', alignItems:'center' }}>
+          <span style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginRight:4 }}>Type:</span>
+          {[['all','All',C.cyan],['aptitude','Aptitude',C.cyan],['technical','Technical',C.violet],['behavioural','Behavioural',C.amber]].map(([v,l,col])=>(
+            <Pill key={v} label={l} active={activeType===v} color={col} onClick={()=>setActiveType(v)}/>
+          ))}
+        </div>
+      </div>
+
+>>>>>>> vaibhavi/main
       {/* Loading skeleton */}
       {dbLoading && (
         <div style={{ display:'flex', gap:10, marginBottom:16 }}>
@@ -612,7 +759,11 @@ export default function MockOA() {
       </div>
       {filtered.length === 0 && !dbLoading && (
         <p style={{ textAlign:'center', color:C.gray, padding:'60px 0', fontSize:14 }}>
+<<<<<<< HEAD
           No tests match your filters.{activeSource==='company' && companyTestCount===0 ? ' No company OA tests have been approved yet.' : ''}
+=======
+          No tests match your filters.
+>>>>>>> vaibhavi/main
         </p>
       )}
     </div>
@@ -730,9 +881,20 @@ export default function MockOA() {
                   </button>
                 </div>
 
+<<<<<<< HEAD
                 {/* Question text */}
                 <div style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:14, padding:24, marginBottom:20 }}>
                   <p style={{ margin:0, fontSize:15, color:C.white, lineHeight:1.7 }}>{q.text}</p>
+=======
+                {/* Question title & description */}
+                <div style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:14, padding:24, marginBottom:20 }}>
+                  <h3 style={{ margin:'0 0 14px', fontSize:17, fontWeight:800, color:C.white, fontFamily:"'Sora',sans-serif" }}>{q.text}</h3>
+                  {q.description && (
+                    <div style={{ fontSize:14, color:'var(--text-secondary)', lineHeight:1.75, whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", background:'var(--bg-card)', padding:18, borderRadius:10, border:'1px solid var(--border)', maxHeight:420, overflowY:'auto' }}>
+                      {q.description}
+                    </div>
+                  )}
+>>>>>>> vaibhavi/main
                 </div>
 
                 {/* MCQ Options */}
@@ -753,6 +915,7 @@ export default function MockOA() {
                   </div>
                 )}
 
+<<<<<<< HEAD
                 {/* Text/Descriptive */}
                 {q.type === 'text' && (
                   <div>
@@ -760,6 +923,24 @@ export default function MockOA() {
                     <textarea value={answers[q.id] || ''} onChange={e => setAnswers(a => ({...a, [q.id]: e.target.value}))}
                       placeholder={q.placeholder || 'Write your answer here...'} rows={10}
                       style={{ width:'100%', background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:10, padding:16, fontSize:13, color:C.white, resize:'vertical', outline:'none', lineHeight:1.7, fontFamily:"'Sora',sans-serif", boxSizing:'border-box' }}/>
+=======
+                {/* Text / Coding Area */}
+                {q.type === 'text' && (
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                      <span style={{ fontSize:12, fontWeight:700, color:C.light }}>Write Your Code / Solution:</span>
+                      <span style={{ fontSize:11, color:C.gray }}>
+                        Lines: {(answers[q.id]||'').split('\n').length} | Chars: {(answers[q.id]||'').length}
+                      </span>
+                    </div>
+                    <textarea
+                      value={answers[q.id] || ''}
+                      onChange={e => setAnswers(a => ({...a, [q.id]: e.target.value}))}
+                      placeholder={q.placeholder || '// Write your solution, code (Python/C++/Java), or approach here...'}
+                      rows={14}
+                      style={{ width:'100%', background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:10, padding:16, fontSize:13, color:C.white, resize:'vertical', outline:'none', lineHeight:1.6, fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", boxSizing:'border-box' }}
+                    />
+>>>>>>> vaibhavi/main
                   </div>
                 )}
 
@@ -970,6 +1151,7 @@ export default function MockOA() {
           </table>
         </div>
 
+<<<<<<< HEAD
         {/* Q-by-Q review (platform tests only — company tests don't expose correct_answer during test) */}
         {!isCompanyTest && (
           <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20, marginBottom:24 }}>
@@ -1016,6 +1198,68 @@ export default function MockOA() {
         {/* Action buttons */}
         <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
           <button onClick={() => startTest(test.source === 'company' ? { ...test, dbId: test.id } : (HARDCODED_CATALOG.find(t=>t.id===test.id)||test))}
+=======
+        {/* Question-by-Question Review with Solutions */}
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20, marginBottom:24 }}>
+          <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white, display:'flex', alignItems:'center', gap:8 }}>
+            <Sparkles size={16} color={C.green}/> Question-by-Question Review & Official Solutions
+          </p>
+          {(result.questions || []).map((q, i) => {
+            const userAns = answers[q.id];
+            const isText = q.type === 'text';
+            const correctIdx = q.correct_index !== undefined ? q.correct_index : q.correct_answer !== undefined ? q.correct_answer : q.ans;
+            const scored = result.scoredAnswers?.[q.id];
+            const isCorrect = isText ? !!(userAns && userAns.trim().length > 10) : parseInt(userAns) === correctIdx;
+            const isSkipped = isText ? !(userAns && userAns.trim().length > 0) : (userAns === undefined || userAns === null || userAns === '');
+            const statusColor = isSkipped ? C.gray : isCorrect ? C.green : C.red;
+            const statusIcon  = isSkipped ? '—' : isCorrect ? '✓' : '✗';
+            const explanation = scored?.explanation || q.explanation;
+
+            return (
+              <div key={q.id} style={{ marginBottom:14, padding:16, background:`${statusColor}08`, border:`1px solid ${statusColor}20`, borderRadius:10 }}>
+                <div style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+                  <span style={{ width:26, height:26, borderRadius:7, background:statusColor, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:800, color:'#ffffff', flexShrink:0 }}>
+                    {statusIcon}
+                  </span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6, flexWrap:'wrap', gap:8 }}>
+                      <p style={{ margin:0, fontSize:13, color:C.white, lineHeight:1.5, flex:1 }}><strong>Q{i+1}.</strong> {q.text}</p>
+                      <span style={{ fontSize:11, color:C.gray, whiteSpace:'nowrap' }}>{q.section} [{q.marks} marks]</span>
+                    </div>
+
+                    {isText ? (
+                      <div style={{ marginBottom:10 }}>
+                        <span style={{ fontSize:12, color:C.gray }}>Your Submitted Code / Response:</span>
+                        <pre style={{ margin:'6px 0', padding:10, background:'var(--bg-card-high)', borderRadius:8, fontSize:12, color:userAns ? C.white : C.gray, overflowX:'auto', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace" }}>
+                          {userAns || '(No response submitted)'}
+                        </pre>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', gap:16, fontSize:12, flexWrap:'wrap', marginBottom:8 }}>
+                        <span style={{ color:C.gray }}>Your answer: <strong style={{ color:isSkipped?C.gray:isCorrect?C.green:C.red }}>{isSkipped ? 'Not attempted' : (q.opts||q.options||[])[parseInt(userAns)]||'N/A'}</strong></span>
+                        <span style={{ color:C.gray }}>Correct: <strong style={{ color:C.green }}>{(q.opts||q.options||[])[correctIdx]}</strong></span>
+                      </div>
+                    )}
+
+                    {explanation && (
+                      <div style={{ marginTop:8, background:'var(--bg-card-high)', borderRadius:8, padding:'10px 14px', border:'1px solid var(--border)' }}>
+                        <p style={{ margin:'0 0 6px', fontSize:11, fontWeight:700, color:C.green }}>💡 Official Solution & Approach:</p>
+                        <pre style={{ margin:0, fontSize:12, color:C.light, whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", lineHeight:1.6 }}>
+                          {explanation}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
+          <button onClick={() => startTest(test)}
+>>>>>>> vaibhavi/main
             style={{ padding:'12px 28px', background:C.violet, border:'none', borderRadius:10, fontSize:14, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
             <RefreshCw size={15}/> Retake Test
           </button>

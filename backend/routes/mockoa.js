@@ -17,8 +17,9 @@ router.get('/tests', auth, async (req, res) => {
     let query = supabaseAdmin
       .from('mock_oa_tests')
       .select(`
-        id, title, type, duration, status,
-        created_at, companies(name, logo_url)
+        id, title, type, duration, total_marks, sections, status,
+        created_at, companies(id, name, logo_url),
+        mock_oa_questions(count)
       `)
       .eq('status', 'approved');
 
@@ -41,6 +42,7 @@ router.get('/tests', auth, async (req, res) => {
 
     const enriched = (data || []).map(t => ({
       ...t,
+      question_count: t.mock_oa_questions?.[0]?.count || 0,
       attempts: (attemptMap[t.id] || []).length,
       bestScore: attemptMap[t.id] ? Math.max(...attemptMap[t.id]) : null,
     }));
@@ -75,7 +77,7 @@ router.get('/tests/:id', auth, async (req, res) => {
 
     const { data: questions, error: qErr } = await supabaseAdmin
       .from('mock_oa_questions')
-      .select('id, question_text, type, options, marks, ordering, section')
+      .select('id, question_text, description, type, options, marks, ordering, section, placeholder, word_limit, starter_code, examples, code_constraints')
       // correct_index intentionally excluded — sent only after submission
       .eq('test_id', req.params.id)
       .order('ordering', { ascending: true }); // was order_index
@@ -129,7 +131,7 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
 
     const { data: questions, error: qErr } = await supabaseAdmin
       .from('mock_oa_questions')
-      .select('id, type, correct_index, marks') // was question_type, correct_answer
+      .select('id, type, correct_index, marks, explanation') // was question_type, correct_answer
       .eq('test_id', testId);
 
     if (qErr) throw qErr;
@@ -146,29 +148,29 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
       const studentAnswer = answers[q.id];
 
       if (q.type === 'text') { // was question_type
-        const answered = studentAnswer && studentAnswer.trim().length > 20;
+        const answered = studentAnswer && studentAnswer.trim().length > 10;
         if (answered) {
           totalScore += q.marks;
           correctCount++;
-          scoredAnswers[q.id] = { answer: studentAnswer, result: 'answered', points: q.marks };
+          scoredAnswers[q.id] = { answer: studentAnswer, result: 'answered', points: q.marks, explanation: q.explanation };
         } else {
           skippedCount++;
-          scoredAnswers[q.id] = { answer: studentAnswer || '', result: 'skipped', points: 0 };
+          scoredAnswers[q.id] = { answer: studentAnswer || '', result: 'skipped', points: 0, explanation: q.explanation };
         }
         continue;
       }
 
       if (studentAnswer === null || studentAnswer === undefined || studentAnswer === '') {
         skippedCount++;
-        scoredAnswers[q.id] = { answer: null, result: 'skipped', points: 0, correct: q.correct_index };
+        scoredAnswers[q.id] = { answer: null, result: 'skipped', points: 0, correct: q.correct_index, explanation: q.explanation };
       } else if (parseInt(studentAnswer) === q.correct_index) { // was correct_answer
         totalScore += q.marks;
         correctCount++;
-        scoredAnswers[q.id] = { answer: parseInt(studentAnswer), result: 'correct', points: q.marks, correct: q.correct_index };
+        scoredAnswers[q.id] = { answer: parseInt(studentAnswer), result: 'correct', points: q.marks, correct: q.correct_index, explanation: q.explanation };
       } else {
         totalScore -= 1;
         wrongCount++;
-        scoredAnswers[q.id] = { answer: parseInt(studentAnswer), result: 'wrong', points: -1, correct: q.correct_index };
+        scoredAnswers[q.id] = { answer: parseInt(studentAnswer), result: 'wrong', points: -1, correct: q.correct_index, explanation: q.explanation };
       }
     }
 

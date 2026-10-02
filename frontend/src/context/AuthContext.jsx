@@ -74,6 +74,7 @@ export function AuthProvider({ children }) {
 
   // ── LOGIN ──
   const login = useCallback(async (email, password) => {
+<<<<<<< HEAD
   try {
     const { data } = await authAPI.login(email, password);
     
@@ -111,6 +112,51 @@ export function AuthProvider({ children }) {
     return { success: false, error: msg };
   }
 }, []);
+=======
+    try {
+      const cleanEmail = (email || '').trim().toLowerCase();
+      const cleanPassword = (password || '').trim();
+      const { data } = await authAPI.login(cleanEmail, cleanPassword);
+      
+      const token  = data.token;
+      const role   = data.role;
+      const userId = data.userId;
+      const name   = data.name
+                  || data.profile?.full_name
+                  || cleanEmail.split('@')[0];
+
+      localStorage.setItem('token', token);
+
+      const userData = { 
+        id:    userId,
+        email: cleanEmail, 
+        role, 
+        name,
+      };
+
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+
+      try {
+        await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPassword });
+      } catch (sbErr) {
+        console.warn('Browser supabase session signin warning:', sbErr);
+      }
+
+      toast.success(`Welcome back${name ? ', ' + name : ''}!`);
+      return { success: true, role };
+    } catch (err) {
+      const data = err.response?.data;
+      if (data?.needsVerification) {
+        toast('Please verify your email to continue.', { icon: '📧' });
+        return { success: false, needsVerification: true, email: data.email || email };
+      }
+      const msg = data?.error || data?.errors?.[0]?.msg || 'Invalid email or password';
+      toast.error(msg);
+      return { success: false, error: msg };
+    }
+  }, []);
+>>>>>>> vaibhavi/main
 
   // ── REGISTER ──
   const register = useCallback(async (formData) => {

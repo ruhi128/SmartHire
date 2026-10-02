@@ -42,7 +42,7 @@ const registerRules = [
 ];
 
 const loginRules = [
-  body('email').isEmail().withMessage('Invalid email'),
+  body('email').trim().toLowerCase().isEmail().withMessage('Invalid email'),
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
@@ -116,9 +116,10 @@ router.post('/register', registerRules, async (req, res) => {
 router.post('/login', loginRules, async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
-    return res.status(400).json({ errors: errors.array() });
+    return res.status(400).json({ error: errors.array()[0].msg, errors: errors.array() });
 
-  const { email, password } = req.body;
+  const email = (req.body.email || '').trim().toLowerCase();
+  const password = req.body.password;
 
   try {
     // Step 1: Authenticate with Supabase Auth
