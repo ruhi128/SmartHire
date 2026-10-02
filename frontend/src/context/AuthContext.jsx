@@ -74,45 +74,6 @@ export function AuthProvider({ children }) {
 
   // ── LOGIN ──
   const login = useCallback(async (email, password) => {
-<<<<<<< HEAD
-  try {
-    const { data } = await authAPI.login(email, password);
-    
-    const token  = data.token;
-    const role   = data.role;
-    const userId = data.userId;           // ✅ now backend sends this
-    const name   = data.name             // ✅ now backend sends this
-                || data.profile?.full_name
-                || email.split('@')[0];
-
-    localStorage.setItem('token', token);
-
-    const userData = { 
-      id:    userId,  // ✅ will now be a real UUID
-      email, 
-      role, 
-      name,
-    };
-
-    localStorage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-
-    await supabase.auth.signInWithPassword({ email, password });
-
-    toast.success(`Welcome back${name ? ', ' + name : ''}!`);
-    return { success: true, role };
-  } catch (err) {
-    const data = err.response?.data;
-    if (data?.needsVerification) {
-      toast('Please verify your email to continue.', { icon: '📧' });
-      return { success: false, needsVerification: true, email: data.email || email };
-    }
-    const msg = data?.error || 'Invalid email or password';
-    toast.error(msg);
-    return { success: false, error: msg };
-  }
-}, []);
-=======
     try {
       const cleanEmail = (email || '').trim().toLowerCase();
       const cleanPassword = (password || '').trim();
@@ -156,7 +117,6 @@ export function AuthProvider({ children }) {
       return { success: false, error: msg };
     }
   }, []);
->>>>>>> vaibhavi/main
 
   // ── REGISTER ──
   const register = useCallback(async (formData) => {
