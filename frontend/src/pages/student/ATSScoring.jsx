@@ -6,18 +6,71 @@ import {
   Briefcase, Upload, X, AlertCircle, Loader2,
   TrendingUp, Target, Award
 } from 'lucide-react';
-import * as pdfjsLib from 'pdfjs-dist';
+
 import toast from 'react-hot-toast';
 
-// ✅ Set PDF.js worker
+// PDF.js v5 uses import.meta. Load it as a native browser module from /public
+// so Create React App/Webpack never places that syntax in its classic bundle.
+// The fallback supports the PDF.js v3 browser script already used by older installs.
+const publicUrl = typeof process !== 'undefined' && process.env && process.env.PUBLIC_URL
+  ? process.env.PUBLIC_URL.replace(/\/$/, '')
+  : '';
+const pdfJsModuleUrl = `${publicUrl}/pdfjs/pdf.mjs`;
+const pdfJsModuleWorkerUrl = `${publicUrl}/pdfjs/pdf.worker.min.mjs`;
+const pdfJsClassicUrl = `${publicUrl}/pdfjs/pdf.min.js`;
+const pdfJsClassicWorkerUrl = `${publicUrl}/pdfjs/pdf.worker.min.js`;
+let pdfJsModulePromise;
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+function configurePdfJs(pdfjsLib, workerSrc) {
+  if (!pdfjsLib?.getDocument || !pdfjsLib?.GlobalWorkerOptions) {
+    throw new Error('PDF.js did not load correctly.');
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  return pdfjsLib;
+}
+
+function loadClassicPdfJs() {
+  if (window.pdfjsLib) {
+    return Promise.resolve(configurePdfJs(window.pdfjsLib, pdfJsClassicWorkerUrl));
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = pdfJsClassicUrl;
+    script.async = true;
+    script.onload = () => {
+      try {
+        resolve(configurePdfJs(window.pdfjsLib, pdfJsClassicWorkerUrl));
+      } catch (error) {
+        reject(error);
+      }
+    };
+    script.onerror = () => reject(new Error('PDF.js browser files are missing. Run node scripts/copyPdfWorker.cjs, then restart Vite.'));
+    document.head.appendChild(script);
+  });
+}
+
+async function loadPdfJs() {
+  if (!pdfJsModulePromise) {
+    pdfJsModulePromise = import(
+      /* webpackIgnore: true */
+      /* @vite-ignore */
+      pdfJsModuleUrl
+    )
+      .then((pdfjsLib) => configurePdfJs(pdfjsLib, pdfJsModuleWorkerUrl))
+      .catch(() => loadClassicPdfJs())
+      .catch((error) => {
+        pdfJsModulePromise = null;
+        throw error;
+      });
+  }
+  return pdfJsModulePromise;
+}
 
 const CYAN = '#4f46e5', GREEN = '#16a34a', AMBER = '#d97706',
       RED  = '#dc2626', VIOLET = '#4f46e5';
 
-// ── Stop words ──────────────────────────────────────────────────────────────
+//  Stop words 
 const STOP_WORDS = new Set([
   'the','a','an','in','on','at','for','with','and','or','to','of',
   'is','are','was','were','be','been','have','has','will','would',
@@ -27,7 +80,7 @@ const STOP_WORDS = new Set([
   'below','between','each','such','when','while','although','however',
 ]);
 
-// ── Tech phrases to detect ───────────────────────────────────────────────────
+//  Tech phrases to detect 
 const TECH_PHRASES = [
   'machine learning','data structures','system design','rest api',
   'node.js','react.js','spring boot','deep learning','natural language',
@@ -40,23 +93,18 @@ const TECH_PHRASES = [
   'docker','kubernetes','machine learning','neural network',
 ];
 
-// ── Action verbs (good to have) ──────────────────────────────────────────────
+//  Action verbs (good to have) 
 const ACTION_VERBS = [
   'developed','built','designed','implemented','created','managed',
   'led','improved','optimized','reduced','increased','deployed',
   'architected','collaborated','delivered','achieved','automated',
   'integrated','migrated','maintained',
 ];
-
-// ═══════════════════════════════════════════════════════════════════════════
 //  ATS ANALYSIS ENGINE
-// ═══════════════════════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════════
-//  ATS ANALYSIS ENGINE — Pure JD-Resume matching
-// ═══════════════════════════════════════════════════════════════════════════
+//  ATS ANALYSIS ENGINE  Pure JD-Resume matching
 function analyzeATS(resumeText, jd) {
 
-  // ── Clean and tokenize ──────────────────────────────────────────────────
+  //  Clean and tokenize 
   const tokenize = (text) =>
     text.toLowerCase()
         .replace(/[^\w\s]/g, ' ')
@@ -69,7 +117,7 @@ function analyzeATS(resumeText, jd) {
   const resumeLow = resumeText.toLowerCase();
   const jdLow     = jd.toLowerCase();
 
-  // ── 1. Keyword Match (40 pts) ───────────────────────────────────────────
+  //  1. Keyword Match (40 pts) 
   // Every unique JD keyword checked against resume
   const matchedKeywords = jdTokens.filter(w => resumeTokens.includes(w));
   const missingKeywords = jdTokens.filter(w => !resumeTokens.includes(w));
@@ -78,7 +126,7 @@ function analyzeATS(resumeText, jd) {
     ? (matchedKeywords.length / jdTokens.length) * 40
     : 0;
 
-  // ── 2. Tech Phrase Match (25 pts) ───────────────────────────────────────
+  //  2. Tech Phrase Match (25 pts) 
   // Only phrases that BOTH appear in JD and resume count
   const TECH_PHRASES = [
     'machine learning','data structures','system design','rest api',
@@ -101,7 +149,7 @@ function analyzeATS(resumeText, jd) {
     ? (matchedPhrases.length / jdPhrases.length) * 25
     : 15; // neutral if JD has no detectable phrases
 
-  // ── 3. Skills Section Match (20 pts) ────────────────────────────────────
+  //  3. Skills Section Match (20 pts) 
   // Extract specific tech skills from JD and check in resume
   const SKILL_PATTERNS = [
     'python','java','javascript','typescript','c\\+\\+','c#','golang',
@@ -123,7 +171,7 @@ function analyzeATS(resumeText, jd) {
     ? (matchedSkills.length / jdSkills.length) * 20
     : 10; // neutral if JD has no detectable skills
 
-  // ── 4. Experience / Seniority Match (10 pts) ────────────────────────────
+  //  4. Experience / Seniority Match (10 pts) 
   // Check if experience level mentioned in JD matches resume
   const seniorityTerms = {
     junior:  ['junior','entry level','entry-level','fresher','graduate','0-1','0-2','1 year'],
@@ -142,7 +190,7 @@ function analyzeATS(resumeText, jd) {
     experienceScore = resumeHasSeniority ? 10 : 2;
   }
 
-  // ── 5. Responsibility Match (5 pts) ─────────────────────────────────────
+  //  5. Responsibility Match (5 pts) 
   // Extract key responsibility words from JD and check resume
   const jdResponsibilities = jdTokens.filter(w =>
     w.length > 5 &&
@@ -160,13 +208,13 @@ function analyzeATS(resumeText, jd) {
     ? (matchedResponsibilities.length / topResponsibilities.length) * 5
     : 2.5;
 
-  // ── Total Score ──────────────────────────────────────────────────────────
+  //  Total Score 
   const rawScore = keywordScore + phraseScore + skillScore + experienceScore + responsibilityScore;
   const score    = Math.min(100, Math.max(0, Math.round(rawScore)));
   const grade    = score >= 85 ? 'A+' : score >= 75 ? 'A'  : score >= 65 ? 'B+'
                  : score >= 55 ? 'B'  : score >= 45 ? 'C'  : score >= 35 ? 'D' : 'F';
 
-  // ── Section Detection (for suggestions only, NOT scoring) ───────────────
+  //  Section Detection (for suggestions only, NOT scoring) 
   const sections = {
     hasContact:        /email|phone|linkedin|github|@/i.test(resumeText),
     hasSummary:        /summary|objective|about|profile/i.test(resumeText),
@@ -186,7 +234,7 @@ function analyzeATS(resumeText, jd) {
   ];
   const usedVerbs = ACTION_VERBS.filter(v => resumeLow.includes(v));
 
-  // ── Suggestions based on actual gaps ────────────────────────────────────
+  //  Suggestions based on actual gaps 
   const suggestions = [];
 
   // Critical keyword gap
@@ -221,15 +269,15 @@ function analyzeATS(resumeText, jd) {
   if (!sections.hasExperience)
     suggestions.push({ type: 'warning', text: 'Add an Experience or Internships section.' });
   if (!hasQuantified)
-    suggestions.push({ type: 'warning', text: 'Quantify achievements — e.g. "improved performance by 40%" or "served 10,000+ users".' });
+    suggestions.push({ type: 'warning', text: 'Quantify achievements - for example, "improved performance by 40%" or "served 10,000+ users".' });
   if (usedVerbs.length < 4)
     suggestions.push({ type: 'warning', text: 'Use more action verbs: developed, built, optimized, deployed, led, improved...' });
   if (resumeText.split(/\s+/).filter(Boolean).length < 200)
-    suggestions.push({ type: 'warning', text: 'Resume is too short — add more detail (aim for 400–600 words).' });
+    suggestions.push({ type: 'warning', text: 'Resume is too short - add more detail (aim for 400-600 words).' });
   if (score >= 70)
     suggestions.push({ type: 'info', text: 'Good match! Make sure your resume is ATS-formatted (no tables, no images, simple fonts).' });
 
-  // ── Score breakdown for display ──────────────────────────────────────────
+  //  Score breakdown for display 
   const breakdown = [
     {
       label: `Keyword Match (${matchedKeywords.length}/${jdTokens.length} JD keywords)`,
@@ -287,28 +335,22 @@ function analyzeATS(resumeText, jd) {
     },
   };
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
 //  PDF TEXT EXTRACTOR
-// ═══════════════════════════════════════════════════════════════════════════
 async function extractTextFromPDF(file) {
+  const pdfjsLib = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
-  const pdf         = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-  let   fullText    = '';
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
 
   for (let i = 1; i <= pdf.numPages; i++) {
-    const page    = await pdf.getPage(i);
+    const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const text    = content.items.map(item => item.str).join(' ');
-    fullText      += text + '\n';
+    fullText += content.items.map(item => item.str).join(' ') + '\n';
   }
 
   return fullText.trim();
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════════════════
 export default function ATSScoring() {
   const [resume,       setResume]       = useState('');
   const [jd,           setJD]           = useState('');
@@ -318,17 +360,24 @@ export default function ATSScoring() {
   const [pdfLoading,   setPdfLoading]   = useState(false);
   const [dragging,     setDragging]     = useState(false);
   const [analyzing,    setAnalyzing]    = useState(false);
+  // Job-description PDF upload state (added without changing the pasted JD flow)
+  const [jdInputMode,  setJdInputMode]  = useState('paste'); // 'paste' | 'pdf'
+  const [jdPdfFile,    setJdPdfFile]    = useState(null);
+  const [jdPdfLoading, setJdPdfLoading] = useState(false);
+  const [jdDragging,   setJdDragging]   = useState(false);
   const fileInputRef   = useRef(null);
+  const jdFileInputRef = useRef(null);
 
-  // ── PDF Upload Handler ───────────────────────────────────────────────────
+  //  PDF Upload Handler 
   const handlePDF = useCallback(async (file) => {
     if (!file) return;
-    if (file.type !== 'application/pdf') {
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
       toast.error('Please upload a PDF file');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('PDF must be under 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('PDF must be under 10MB');
       return;
     }
 
@@ -342,7 +391,7 @@ export default function ATSScoring() {
         return;
       }
       setResume(text);
-      toast.success(`✅ Extracted ${text.split(/\s+/).filter(Boolean).length} words from PDF`);
+      toast.success(`Extracted ${text.split(/\s+/).filter(Boolean).length} words from PDF`);
     } catch (err) {
       console.error('PDF extract error:', err);
       toast.error('Failed to read PDF. Please paste your resume text instead.');
@@ -352,7 +401,44 @@ export default function ATSScoring() {
     }
   }, []);
 
-  // ── Drag and drop ────────────────────────────────────────────────────────
+  //  Job-description PDF upload (additive; pasted JD input remains available) 
+  const handleJobDescriptionPDF = useCallback(async (file) => {
+    if (!file) return;
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+    if (!isPdf) {
+      toast.error('Please upload a job description PDF file');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Job description PDF must be under 10MB');
+      return;
+    }
+
+    setJdPdfFile(file);
+    setJdPdfLoading(true);
+    try {
+      const text = await extractTextFromPDF(file);
+      if (!text || text.length < 50) {
+        toast.error('Could not extract enough text from this PDF. Please paste the job description instead.');
+        setJdPdfFile(null);
+        return;
+      }
+
+      // The existing textarea and ATS analysis both use `jd`, so no backend or
+      // scoring changes are needed.
+      setJD(text);
+      setResult(null);
+      toast.success(`Extracted ${text.split(/\s+/).filter(Boolean).length} words from the job description PDF`);
+    } catch (err) {
+      console.error('Job description PDF extract error:', err);
+      toast.error('Failed to read this job description PDF. Please paste the text instead.');
+      setJdPdfFile(null);
+    } finally {
+      setJdPdfLoading(false);
+    }
+  }, []);
+
+  //  Drag and drop 
   const onDrop = useCallback((e) => {
     e.preventDefault();
     setDragging(false);
@@ -363,7 +449,21 @@ export default function ATSScoring() {
   const onDragOver = (e) => { e.preventDefault(); setDragging(true); };
   const onDragLeave= () => setDragging(false);
 
-  // ── Analyze ──────────────────────────────────────────────────────────────
+  const onJobDescriptionDrop = useCallback((e) => {
+    e.preventDefault();
+    setJdDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleJobDescriptionPDF(file);
+  }, [handleJobDescriptionPDF]);
+
+  const onJobDescriptionDragOver = (e) => {
+    e.preventDefault();
+    setJdDragging(true);
+  };
+
+  const onJobDescriptionDragLeave = () => setJdDragging(false);
+
+  // Analyze 
   const analyze = async () => {
     if (!resume.trim() || !jd.trim()) {
       toast.error('Please provide both resume and job description');
@@ -383,15 +483,22 @@ export default function ATSScoring() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const clearJobDescription = () => {
+    setJD('');
+    setJdPdfFile(null);
+    setResult(null);
+    if (jdFileInputRef.current) jdFileInputRef.current.value = '';
+  };
+
   const scoreColor = !result ? CYAN
     : result.score >= 70 ? GREEN
     : result.score >= 45 ? AMBER
     : RED;
 
   const suggestionColors = {
-    error:   { bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.2)',   color: RED,   icon: '🔴' },
-    warning: { bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.2)',  color: AMBER, icon: '🟡' },
-    info:    { bg: 'rgba(79,70,229,0.08)',   border: 'rgba(79,70,229,0.2)',   color: CYAN,  icon: '🔵' },
+    error:   { bg: 'rgba(220,38,38,0.08)',   border: 'rgba(220,38,38,0.2)',   color: RED,   icon: '!' },
+    warning: { bg: 'rgba(217,119,6,0.08)',  border: 'rgba(217,119,6,0.2)',  color: AMBER, icon: '!' },
+    info:    { bg: 'rgba(79,70,229,0.08)',   border: 'rgba(79,70,229,0.2)',   color: CYAN,  icon: 'i' },
   };
 
   return (
@@ -403,7 +510,7 @@ export default function ATSScoring() {
           ATS Score Checker
         </h1>
         <p style={{ margin: '6px 0 0', fontSize: 13, color: '#475569' }}>
-          Upload your resume PDF or paste text — get an instant ATS compatibility score with detailed feedback
+          Upload your resume PDF or paste text - get an instant ATS compatibility score with detailed feedback
         </p>
       </div>
 
@@ -435,7 +542,7 @@ export default function ATSScoring() {
         >
           {/* Mode toggle */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: 'var(--bg-card-high)', borderRadius: 8, padding: 3 }}>
-            {[['paste', '✏️ Paste Text'], ['pdf', '📄 Upload PDF']].map(([mode, label]) => (
+            {[['paste', 'Paste Text'], ['pdf', 'Upload PDF']].map(([mode, label]) => (
               <button key={mode} onClick={() => setInputMode(mode)} style={{
                 flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
                 fontSize: 12, fontWeight: 700, fontFamily: "'Sora',sans-serif",
@@ -475,7 +582,7 @@ export default function ATSScoring() {
                     <CheckCircle size={28} color={GREEN} />
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: GREEN }}>{pdfFile.name}</p>
                     <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>
-                      {(pdfFile.size / 1024).toFixed(1)} KB · {resume.split(/\s+/).filter(Boolean).length} words extracted
+                      {(pdfFile.size / 1024).toFixed(1)} KB - {resume.split(/\s+/).filter(Boolean).length} words extracted
                     </p>
                     <button
                       onClick={(e) => { e.stopPropagation(); clearResume(); setInputMode('pdf'); }}
@@ -491,7 +598,7 @@ export default function ATSScoring() {
                       Drop your PDF here or click to browse
                     </p>
                     <p style={{ margin: 0, fontSize: 11, color: '#475569' }}>
-                      PDF format only · Max 5MB
+                      PDF only - Max 10MB
                     </p>
                   </div>
                 )}
@@ -530,7 +637,7 @@ export default function ATSScoring() {
                 value={resume}
                 onChange={e => setResume(e.target.value)}
                 rows={13}
-                placeholder={`Paste your resume content here...\n\nInclude:\n• Personal info & contact\n• Education details\n• Technical skills\n• Work experience / internships\n• Projects with tech stack\n• Certifications`}
+                placeholder={`Paste your resume content here...\n\nInclude:\n- Personal info and contact\n- Education details\n- Technical skills\n- Work experience or internships\n- Projects with tech stack\n- Certifications`}
                 style={TA}
               />
             </>
@@ -541,33 +648,128 @@ export default function ATSScoring() {
         <GlowCard
           title="Job Description"
           accent={AMBER}
-          headerRight={<span style={{ fontSize: 11, color: '#475569' }}>{jd.split(/\s+/).filter(Boolean).length} words</span>}
+          headerRight={
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {jd && <span style={{ fontSize: 11, color: '#475569' }}>{jd.split(/\s+/).filter(Boolean).length} words</span>}
+              {jd && (
+                <button onClick={clearJobDescription} style={{ background: 'none', border: 'none', color: '#475569', cursor: 'pointer', display: 'flex', padding: 0 }}>
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          }
         >
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-            <Briefcase size={13} color={AMBER} style={{ flexShrink: 0, marginTop: 2 }} />
-            <p style={{ margin: 0, fontSize: 12, color: '#475569' }}>Paste the target job description</p>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 14, background: 'var(--bg-card-high)', borderRadius: 8, padding: 3 }}>
+            {[['paste', 'Paste Text'], ['pdf', 'Upload PDF']].map(([mode, label]) => (
+              <button key={mode} onClick={() => setJdInputMode(mode)} style={{
+                flex: 1, padding: '6px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontSize: 12, fontWeight: 700, fontFamily: "'Sora',sans-serif",
+                background: jdInputMode === mode ? AMBER : 'transparent',
+                color: jdInputMode === mode ? '#ffffff' : '#64748b',
+              }}>{label}</button>
+            ))}
           </div>
-          <textarea
-            value={jd}
-            onChange={e => setJD(e.target.value)}
-            rows={inputMode === 'pdf' ? 16 : 13}
-            placeholder={`Paste the job description here...\n\nInclude:\n• Required skills & technologies\n• Responsibilities\n• Qualifications\n• Nice-to-have skills\n• Company description`}
-            style={{ ...TA, borderColor: 'rgba(217,119,6,0.2)' }}
-          />
 
-          {/* Quick tips */}
-          <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(217,119,6,0.05)', border: '1px solid rgba(217,119,6,0.12)', borderRadius: 8 }}>
-            <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
-              💡 <strong style={{ color: AMBER }}>Tip:</strong> Include the full JD — required skills, responsibilities, and qualifications. The more complete, the more accurate your score.
-            </p>
-          </div>
+          {jdInputMode === 'pdf' && (
+            <>
+              <div
+                onDrop={onJobDescriptionDrop}
+                onDragOver={onJobDescriptionDragOver}
+                onDragLeave={onJobDescriptionDragLeave}
+                onClick={() => !jdPdfFile && !jdPdfLoading && jdFileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${jdDragging ? AMBER : 'rgba(217,119,6,0.25)'}`,
+                  borderRadius: 10,
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  cursor: jdPdfFile || jdPdfLoading ? 'default' : 'pointer',
+                  background: jdDragging ? 'rgba(217,119,6,0.08)' : 'rgba(217,119,6,0.03)',
+                  transition: 'all 0.2s',
+                  marginBottom: 10,
+                }}
+              >
+                {jdPdfLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <Loader2 size={28} color={AMBER} style={{ animation: 'spin 1s linear infinite' }} />
+                    <p style={{ margin: 0, fontSize: 13, color: AMBER }}>Extracting text from PDF...</p>
+                  </div>
+                ) : jdPdfFile ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <CheckCircle size={28} color={GREEN} />
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: GREEN }}>{jdPdfFile.name}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: '#64748b' }}>
+                      {(jdPdfFile.size / 1024).toFixed(1)} KB - {jd.split(/\s+/).filter(Boolean).length} words extracted
+                    </p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); clearJobDescription(); setJdInputMode('pdf'); }}
+                      style={{ marginTop: 4, padding: '4px 12px', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 6, fontSize: 11, color: RED, cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      Remove and Upload Again
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <Upload size={28} color={AMBER} />
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Drop the job description PDF here or click to browse
+                    </p>
+                    <p style={{ margin: 0, fontSize: 11, color: '#475569' }}>
+                      PDF only - Max 10MB
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <input
+                ref={jdFileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                style={{ display: 'none' }}
+                onClick={e => { e.currentTarget.value = ''; }}
+                onChange={e => { if (e.target.files[0]) handleJobDescriptionPDF(e.target.files[0]); }}
+              />
+
+              {jd && !jdPdfLoading && (
+                <div style={{ background: 'var(--bg-input)', border: '1px solid rgba(217,119,6,0.16)', borderRadius: 8, padding: '10px 12px', maxHeight: 140, overflowY: 'auto' }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 10, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    Extracted Text Preview
+                  </p>
+                  <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                    {jd.slice(0, 400)}{jd.length > 400 ? '...' : ''}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+
+          {jdInputMode === 'paste' && (
+            <>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                <Briefcase size={13} color={AMBER} style={{ flexShrink: 0, marginTop: 2 }} />
+                <p style={{ margin: 0, fontSize: 12, color: '#475569' }}>Paste the target job description</p>
+              </div>
+              <textarea
+                value={jd}
+                onChange={e => setJD(e.target.value)}
+                rows={inputMode === 'pdf' ? 16 : 13}
+                placeholder={`Paste the job description here...\n\nInclude:\n- Required skills and technologies\n- Responsibilities\n- Qualifications\n- Nice-to-have skills\n- Company description`}
+                style={{ ...TA, borderColor: 'rgba(217,119,6,0.2)' }}
+              />
+
+              <div style={{ marginTop: 10, padding: '8px 12px', background: 'rgba(217,119,6,0.05)', border: '1px solid rgba(217,119,6,0.12)', borderRadius: 8 }}>
+                <p style={{ margin: 0, fontSize: 11, color: '#64748b', lineHeight: 1.7 }}>
+                  <strong style={{ color: AMBER }}>Tip:</strong> Include the full job description - required skills, responsibilities, and qualifications. The more complete it is, the more accurate your score will be.
+                </p>
+              </div>
+            </>
+          )}
         </GlowCard>
       </div>
 
       {/* Analyze Button */}
       <button
         onClick={analyze}
-        disabled={!resume.trim() || !jd.trim() || analyzing || pdfLoading}
+        disabled={!resume.trim() || !jd.trim() || analyzing || pdfLoading || jdPdfLoading}
         style={{
           width: '100%', padding: '14px',
           background: (!resume.trim() || !jd.trim()) ? 'var(--bg-card)' : CYAN,
@@ -636,14 +838,14 @@ export default function ATSScoring() {
 
           {/* Score Breakdown */}
           {/* Score Breakdown */}
-<GlowCard title="📊 Score Breakdown" accent={VIOLET}>
+<GlowCard title="Score Breakdown" accent={VIOLET}>
   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
     {result.breakdown.map(({ label, score, max, color, pct }) => (
       <div key={label}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
           <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{label}</span>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* ✅ Show match percentage */}
+            {/*  Show match percentage */}
             <span style={{ fontSize: 11, color: '#475569' }}>{pct}% match</span>
             <span style={{ fontSize: 12, fontWeight: 700, color }}>
               {score} / {max} pts
@@ -672,7 +874,7 @@ export default function ATSScoring() {
 </GlowCard>
 
           {/* Resume Sections Detected */}
-          <GlowCard title="📋 Resume Sections Detected" accent={CYAN}>
+          <GlowCard title="Resume Sections Detected" accent={CYAN}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
               {[
                 { key: 'hasContact',        label: 'Contact Info' },
@@ -699,7 +901,7 @@ export default function ATSScoring() {
 
           {/* Keywords */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <GlowCard title="✅ Matched Keywords" accent={GREEN}>
+            <GlowCard title="Matched Keywords" accent={GREEN}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: result.matchedPhrases.length > 0 ? 10 : 0 }}>
                 {result.matched.map(k => (
                   <span key={k} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(22,163,74,0.12)', color: GREEN, border: '1px solid rgba(22,163,74,0.25)' }}>
@@ -724,7 +926,7 @@ export default function ATSScoring() {
               )}
             </GlowCard>
 
-            <GlowCard title="❌ Missing Keywords" accent={RED}>
+            <GlowCard title="Missing Keywords" accent={RED}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: result.missingPhrases.length > 0 ? 10 : 0 }}>
                 {result.missing.map(k => (
                   <span key={k} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(220,38,38,0.12)', color: RED, border: '1px solid rgba(220,38,38,0.25)' }}>
@@ -746,7 +948,7 @@ export default function ATSScoring() {
               )}
               {result.missing.length === 0 && (
                 <p style={{ margin: 0, fontSize: 13, color: GREEN, fontWeight: 700 }}>
-                  ✅ No significant keywords missing!
+                  No significant keywords missing.
                 </p>
               )}
             </GlowCard>
@@ -754,7 +956,7 @@ export default function ATSScoring() {
 
           {/* Action Verbs Used */}
           {result.usedVerbs.length > 0 && (
-            <GlowCard title="💪 Action Verbs Detected" accent={GREEN}>
+            <GlowCard title="Action Verbs Detected" accent={GREEN}>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {result.usedVerbs.map(v => (
                   <span key={v} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: 'rgba(22,163,74,0.1)', color: GREEN, border: '1px solid rgba(22,163,74,0.2)' }}>
@@ -764,15 +966,15 @@ export default function ATSScoring() {
               </div>
               <p style={{ margin: '8px 0 0', fontSize: 12, color: '#475569' }}>
                 {result.usedVerbs.length >= 8
-                  ? '✅ Great use of action verbs!'
-                  : `Add more action verbs — aim for 10+ (developed, built, optimized, deployed, led, improved...)`}
+                  ? 'Great use of action verbs.'
+                  : `Add more action verbs - aim for 10+ (developed, built, optimized, deployed, led, improved...)`}
               </p>
             </GlowCard>
           )}
 
           {/* Suggestions */}
           {result.suggestions.length > 0 && (
-            <GlowCard title="💡 Improvement Suggestions" accent={AMBER}>
+            <GlowCard title="Improvement Suggestions" accent={AMBER}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {result.suggestions.map((s, i) => {
                   const style = suggestionColors[s.type] || suggestionColors.info;
@@ -792,18 +994,18 @@ export default function ATSScoring() {
 
               {/* Priority indicator */}
               <div style={{ marginTop: 14, padding: '10px 14px', background: 'var(--bg-card-high)', border: '1px solid var(--border)', borderRadius: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, color: RED }}>🔴 Required — Fix immediately</span>
-                <span style={{ fontSize: 11, color: AMBER }}>🟡 Recommended — Improves score</span>
-                <span style={{ fontSize: 11, color: CYAN }}>🔵 Optional — Nice to have</span>
+                <span style={{ fontSize: 11, color: RED }}>Required - Fix immediately</span>
+                <span style={{ fontSize: 11, color: AMBER }}>Recommended - Improves score</span>
+                <span style={{ fontSize: 11, color: CYAN }}>Optional - Nice to have</span>
               </div>
             </GlowCard>
           )}
 
           {/* What to do next */}
-          <GlowCard title="🚀 What To Do Next" accent={VIOLET}>
+          <GlowCard title="What To Do Next" accent={VIOLET}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               {[
-                { step: '1', title: 'Fix Required Issues', desc: 'Address all 🔴 red suggestions first — missing sections and critical keywords.', color: RED },
+                { step: '1', title: 'Fix Required Issues', desc: 'Address all required suggestions first - missing sections and critical keywords.', color: RED },
                 { step: '2', title: 'Add Missing Keywords', desc: 'Naturally incorporate missing keywords from the JD into your experience and skills.', color: AMBER },
                 { step: '3', title: 'Re-Score & Apply', desc: 'Re-paste your updated resume, target 70+ score, then apply with confidence.', color: GREEN },
               ].map(({ step, title, desc, color }) => (
@@ -838,3 +1040,4 @@ const TA = {
   resize: 'vertical',
   lineHeight: 1.7,
 };
+
