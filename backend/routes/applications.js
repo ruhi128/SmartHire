@@ -24,6 +24,25 @@ function stageToStatus(stage) {
   return 'shortlisted';
 }
 
+// Recruiters may only view or change applications belonging to jobs posted by
+// their own company. Administrators retain placement-wide access.
+async function recruiterOwnsJob(recruiterId, jobId) {
+  const { data: job, error: jobError } = await supabase
+    .from('job_postings')
+    .select('company_id')
+    .eq('id', jobId)
+    .maybeSingle();
+  if (jobError || !job?.company_id) return false;
+
+  const { data: company, error: companyError } = await supabase
+    .from('companies')
+    .select('id')
+    .eq('id', job.company_id)
+    .eq('recruiter_id', recruiterId)
+    .maybeSingle();
+  return !companyError && Boolean(company);
+}
+
 // ────────────────────────────────────────────────
 // POST /api/applications
 // Student applies to a job
@@ -103,6 +122,10 @@ router.get('/my', auth, roles('student'), async (req, res) => {
 router.get('/job/:jobId', auth, roles('recruiter', 'admin'), async (req, res) => {
   const { status } = req.query;
 
+  if (req.user.role === 'recruiter' && !(await recruiterOwnsJob(req.user.id, req.params.jobId))) {
+    return res.status(403).json({ error: 'You can only view applicants for jobs posted by your company.' });
+  }
+
   let query = supabase
     .from('applications')
     .select(`
@@ -138,7 +161,7 @@ router.patch('/:id/status', auth, roles('recruiter', 'admin'), async (req, res) 
   const { data: app } = await supabase
     .from('applications')
     .select(`
-      id, student_id,
+      id, student_id, job_id,
       student_profiles(full_name, users(email)),
       job_postings(title, companies(name))
     `)
@@ -146,6 +169,9 @@ router.patch('/:id/status', auth, roles('recruiter', 'admin'), async (req, res) 
     .single();
 
   if (!app) return res.status(404).json({ error: 'Application not found.' });
+  if (req.user.role === 'recruiter' && !(await recruiterOwnsJob(req.user.id, app.job_id))) {
+    return res.status(403).json({ error: 'You can only update applications for jobs posted by your company.' });
+  }
 
   // Update status
   const { data, error } = await supabase
@@ -209,7 +235,7 @@ router.patch('/:id/stage', auth, roles('recruiter', 'admin'), async (req, res) =
   const { data: app } = await supabase
     .from('applications')
     .select(`
-      id, student_id, stage, stage_history,
+      id, student_id, job_id, stage, stage_history,
       student_profiles(full_name, users(email)),
       job_postings(title, companies(name))
     `)
@@ -217,6 +243,9 @@ router.patch('/:id/stage', auth, roles('recruiter', 'admin'), async (req, res) =
     .single();
 
   if (!app) return res.status(404).json({ error: 'Application not found.' });
+  if (req.user.role === 'recruiter' && !(await recruiterOwnsJob(req.user.id, app.job_id))) {
+    return res.status(403).json({ error: 'You can only update applications for jobs posted by your company.' });
+  }
 
   const now = new Date().toISOString();
   const history = Array.isArray(app.stage_history) ? app.stage_history : [];

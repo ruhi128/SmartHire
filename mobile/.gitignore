@@ -1,0 +1,20 @@
+node_modules/
+.expo/
+.expo-shared/
+
+# Local environment values. Keep the documented template under version control.
+.env*
+!.env.example
+
+# Native signing credentials and Firebase service-account keys are secrets.
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+firebase-service-account*.json
+*firebase*service*account*.json
+
+# Do not add a blanket rule for google-services.json or GoogleService-Info.plist:
+# they contain public app identifiers and must be available to the EAS build after
+# the team has reviewed its source-control policy.

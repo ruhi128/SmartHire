@@ -9,8 +9,9 @@
 -- owns credentials; public.users holds role + activation/verification flags.
 --
 -- Apply: Supabase Dashboard -> SQL Editor -> paste & run.
--- For Phase-1-only additions on an already-populated DB, run
---   db/migrations/001_phase1.sql
+-- For an already-populated database, prefer the ordered incremental files in
+--   db/migrations/001_phase1.sql through db/migrations/006_profile_avatars.sql
+-- so deployment history remains explicit.
 -- ============================================================================
 
 create extension if not exists pgcrypto;   -- gen_random_uuid()
@@ -20,9 +21,11 @@ create table if not exists public.users (
   id             uuid primary key references auth.users(id) on delete cascade,
   email          text unique not null,
   role           text not null check (role in ('student','recruiter','admin')),
-  is_active      boolean not null default true,
-  email_verified boolean not null default false,   -- Phase 1: email-OTP gate
-  created_at     timestamptz not null default now()
+  is_active         boolean not null default true,
+  email_verified    boolean not null default false,   -- Phase 1: email-OTP gate
+  avatar_path       text,                              -- private Storage object path
+  avatar_updated_at timestamptz,
+  created_at        timestamptz not null default now()
 );
 
 -- STUDENT PROFILES ------------------------------------------------------------
@@ -346,3 +349,47 @@ alter table public.mock_oa_attempts add column if not exists proctoring_summary 
 -- Recruiter-uploaded PDFs (JD + evaluation details), public URLs in `resumes` bucket.
 alter table public.job_postings add column if not exists jd_doc_url   text;
 alter table public.job_postings add column if not exists eval_doc_url text;
+
+-- ── Mobile push devices (Phase 3) ───────────────────────────────────────────
+create table if not exists public.mobile_devices (
+  id              uuid primary key default gen_random_uuid(),
+  user_id         uuid not null references public.users(id) on delete cascade,
+  expo_push_token text not null unique,
+  platform        text check (platform in ('ios', 'android')),
+  device_name     text,
+  app_version     text,
+  last_seen_at    timestamptz not null default now(),
+  created_at      timestamptz not null default now()
+);
+create index if not exists idx_mobile_devices_user on public.mobile_devices(user_id);
+
+-- Expo tokens are sensitive device identifiers. The backend uses the Supabase
+-- service-role client (which bypasses RLS), so clients do not need any policy
+-- granting direct access to this registry.
+alter table public.mobile_devices enable row level security;
+
+-- ── Authenticated profile avatars (all roles) ──────────────────────────────
+-- Keep image metadata with the common account row rather than only the student
+-- profile, since recruiters and administrators can also use a profile photo.
+alter table public.users add column if not exists avatar_path       text;
+alter table public.users add column if not exists avatar_updated_at timestamptz;
+
+-- The backend accesses this bucket with the service-role client and returns
+-- bytes only through /api/auth/avatar after JWT verification. It must remain
+-- private: no public or signed storage URL is stored in user profile data.
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', false)
+on conflict (id) do update set public = false;
+
+-- Do not create an authenticated-client read/upload policy for this bucket.
+-- The Express service-role client bypasses RLS after it validates SmartHire's
+-- JWT; all browsers/mobile apps use /api/auth/avatar instead of Storage APIs.
+-- This restrictive guard also wins over any accidental future permissive
+-- storage policy and leaves policies for all non-avatar buckets unaffected.
+drop policy if exists "avatars_backend_only" on storage.objects;
+create policy "avatars_backend_only"
+  on storage.objects as restrictive
+  for all
+  to public
+  using (bucket_id <> 'avatars')
+  with check (bucket_id <> 'avatars');

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const { PDFParse } = require('pdf-parse');
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
 
@@ -20,6 +21,71 @@ const upload = multer({
     else cb(new Error('Only PDF files allowed for resume upload.'));
   },
 });
+
+
+// ATS PDF analysis is deliberately separate from profile-resume storage. The
+// source PDF is held only in Multer memory while text is extracted, then it is
+// discarded; it is never uploaded to Supabase or associated with a profile.
+const ATS_MAX_PDF_BYTES = 8 * 1024 * 1024;
+const atsUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: ATS_MAX_PDF_BYTES, files: 1 },
+});
+
+function runAtsUpload(req, res, next) {
+  atsUpload.single('document')(req, res, (error) => {
+    if (!error) return next();
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'Choose a PDF no larger than 8 MB.' });
+    }
+    return res.status(400).json({ error: error.message || 'Could not read the selected PDF.' });
+  });
+}
+
+function isPdfUpload(file) {
+  if (!file?.buffer?.length) return false;
+  const namedPdf = /\.pdf$/i.test(String(file.originalname || ''));
+  const typedPdf = String(file.mimetype || '').toLowerCase() === 'application/pdf';
+  // The header test blocks renamed images while still accepting Android/iOS
+  // pickers that omit or generalize the MIME type.
+  const header = file.buffer.subarray(0, Math.min(file.buffer.length, 1024)).toString('latin1');
+  return (namedPdf || typedPdf) && header.includes('%PDF-');
+}
+
+function avatarSchemaUnavailable(error) {
+  const message = String(error?.message || '');
+  // Existing Supabase projects may receive the backend deployment before the
+  // incremental avatar migration is applied. Keep non-avatar profile/dashboard
+  // reads working during that rollout, while making the missing migration
+  // visible in server logs instead of turning it into a generic 500.
+  return error?.code === '42703'
+    || (/(?:avatar_path|avatar_updated_at)/i.test(message)
+      && /(does not exist|could not find|schema cache|column)/i.test(message));
+}
+
+async function attachOwnAvatar(profile, userId) {
+  if (!profile) return profile;
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('avatar_path, avatar_updated_at')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) {
+    if (avatarSchemaUnavailable(error)) {
+      console.warn('Avatar metadata is unavailable; apply db/migrations/006_profile_avatars.sql.', error.message);
+      return { ...profile, avatar_url: null, avatar_updated_at: null };
+    }
+    throw error;
+  }
+  const updated = user?.avatar_updated_at || null;
+  return {
+    ...profile,
+    avatar_url: user?.avatar_path
+      ? `/api/auth/avatar${updated ? `?v=${encodeURIComponent(updated)}` : ''}`
+      : null,
+    avatar_updated_at: updated,
+  };
+}
 
 // ────────────────────────────────────────────────
 // GET /api/students/profile
@@ -42,12 +108,12 @@ router.get('/profile', auth, roles('student'), async (req, res) => {
           .select()
           .single();
         if (insertErr) return res.status(500).json({ error: insertErr.message });
-        return res.json({ profile: newProfile });
+        return res.json({ profile: await attachOwnAvatar(newProfile, req.user.id) });
       }
       return res.status(404).json({ error: 'Profile not found.' });
     }
 
-    res.json({ profile: data });
+    res.json({ profile: await attachOwnAvatar(data, req.user.id) });
   } catch (err) {
     console.error('GET /profile error:', err);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -95,10 +161,47 @@ router.put('/profile', auth, roles('student'), async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    res.json({ message: 'Profile updated successfully.', profile: data });
+    res.json({ message: 'Profile updated successfully.', profile: await attachOwnAvatar(data, req.user.id) });
   } catch (err) {
     console.error('PUT /profile error:', err);
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// ────────────────────────────────────────────────
+// POST /api/students/ats/extract-pdf
+// Transient PDF-to-text extraction for the ATS guide. Unlike /resume, this
+// route never persists the uploaded file or a storage URL.
+// ────────────────────────────────────────────────
+router.post('/ats/extract-pdf', auth, roles('student'), runAtsUpload, async (req, res) => {
+  let parser = null;
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Choose a PDF to extract.' });
+    if (!isPdfUpload(req.file)) {
+      return res.status(400).json({ error: 'Choose a valid PDF document.' });
+    }
+
+    parser = new PDFParse({ data: req.file.buffer });
+    const parsed = await parser.getText();
+    const text = String(parsed?.text || '').replace(/\u0000/g, '').trim();
+    const readableLength = text.replace(/\s+/g, ' ').trim().length;
+    if (readableLength < 50) {
+      return res.status(422).json({
+        error: 'We could not extract enough selectable text from this PDF. It may be image-scanned; paste the text instead.',
+      });
+    }
+
+    res.json({
+      text,
+      word_count: text.split(/\s+/).filter(Boolean).length,
+    });
+  } catch (err) {
+    console.error('POST /ats/extract-pdf error:', err?.message || err);
+    res.status(422).json({
+      error: 'We could not extract readable text from this PDF. It may be image-scanned or protected; paste the text instead.',
+    });
+  } finally {
+    if (parser) await parser.destroy().catch(() => {});
   }
 });
 
@@ -164,9 +267,10 @@ router.get('/dashboard', auth, roles('student'), async (req, res) => {
       total:    dsaSubmissions.data?.length || 0,
       accepted: dsaSubmissions.data?.filter(s => s.status === 'Accepted').length || 0,
     };
+    const dashboardProfile = await attachOwnAvatar(profile.data || null, id);
 
     res.json({
-      profile:             profile.data || null,
+      profile:             dashboardProfile,
       applications:        appCounts,
       recentApplications:  applications.data?.slice(0, 5) || [],
       aptitudeScores:      aptitudeAttempts.data || [],

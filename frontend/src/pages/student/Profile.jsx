@@ -1,11 +1,11 @@
 // src/pages/student/Profile.jsx
-import { useState, useEffect } from 'react';
-import { studentAPI } from '../../api/axios';
+import { useState, useEffect, useRef } from 'react';
+import { authAPI, studentAPI } from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import GlowCard from '../../components/GlowCard';
 import {
   User, Mail, Phone, Github, Linkedin, BookOpen,
-  Award, Edit3, Save, X, CheckCircle, Loader2,
+  Award, Edit3, Save, X, CheckCircle, Loader2, Camera, Trash2,
   MapPin, Calendar, TrendingUp, Shield
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -30,6 +30,10 @@ export default function Profile() {
   const [skillInput, setSkillInput] = useState('');
   const [certInput,  setCertInput]  = useState('');
   const [activeTab,  setActiveTab]  = useState('overview');
+
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const avatarInputRef = useRef(null);
 
   useEffect(() => {
     studentAPI.getProfile()
@@ -64,6 +68,95 @@ export default function Profile() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // Avatar files live in a private bucket. Fetch them with Axios so the
+  // existing bearer token is attached; a normal <img src> cannot do that.
+  const avatarMarker = profile?.avatar_url || user?.avatar_url || null;
+  const avatarRevision = profile?.avatar_updated_at || user?.avatar_updated_at || null;
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = null;
+    if (!avatarMarker) {
+      setAvatarUrl(null);
+      return () => {};
+    }
+
+    authAPI.getAvatar()
+      .then((response) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setAvatarUrl(objectUrl);
+      })
+      .catch(() => {
+        // A stale profile marker or a removed image should gracefully fall
+        // back to initials instead of exposing a Storage error to the user.
+        if (active) setAvatarUrl(null);
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [avatarMarker, avatarRevision]);
+
+  const isAllowedAvatarFile = (file) => {
+    if (!file) return false;
+    if (['image/jpeg', 'image/png', 'image/webp'].includes(String(file.type || '').toLowerCase())) return true;
+    return /\.(jpe?g|png|webp)$/i.test(file.name || '');
+  };
+
+  const uploadAvatar = async (event) => {
+    const file = event.target.files?.[0];
+    // Let someone choose the same file again after a rejected/failed upload.
+    event.target.value = '';
+    if (!file) return;
+    if (!isAllowedAvatarFile(file)) {
+      toast.error('Choose a JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Profile photos must be 2 MB or smaller.');
+      return;
+    }
+
+    setAvatarBusy(true);
+    try {
+      const body = new FormData();
+      body.append('avatar', file);
+      const { data } = await authAPI.uploadAvatar(body);
+      const patch = {
+        avatar_url: data.avatar_url || null,
+        avatar_updated_at: data.avatar_updated_at || null,
+      };
+      setProfile((current) => ({ ...(current || {}), ...patch }));
+      setForm((current) => ({ ...(current || {}), ...patch }));
+      updateUserLocally?.(patch);
+      toast.success(data.message || 'Profile photo updated.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Could not update your profile photo.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    if (!window.confirm('Remove your profile photo? Your initials will be shown instead.')) return;
+    setAvatarBusy(true);
+    try {
+      const { data } = await authAPI.removeAvatar();
+      const patch = { avatar_url: null, avatar_updated_at: null };
+      setAvatarUrl(null);
+      setProfile((current) => ({ ...(current || {}), ...patch }));
+      setForm((current) => ({ ...(current || {}), ...patch }));
+      updateUserLocally?.(patch);
+      toast.success(data.message || 'Profile photo removed.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Could not remove your profile photo.');
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
 
   // ── Save to DB ───────────────────────────────────────────────────────────
   const save = async () => {
@@ -201,9 +294,43 @@ export default function Profile() {
       <GlowCard accent={CYAN} style={{ marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
 
-          {/* Avatar */}
-          <div style={{ width: 80, height: 80, borderRadius: 20, background: `${CYAN}18`, border: `2px solid ${CYAN}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: CYAN, fontFamily: "'Sora',sans-serif", flexShrink: 0 }}>
-            {(F.full_name || user?.name || 'S')[0].toUpperCase()}
+          {/* Avatar — an object URL is used because the private endpoint needs the bearer token. */}
+          <div style={{ width: 80, flexShrink: 0 }}>
+            <div style={{ width: 80, height: 80, borderRadius: 20, overflow: 'hidden', background: `${CYAN}18`, border: `2px solid ${CYAN}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800, color: CYAN, fontFamily: "'Sora',sans-serif" }}>
+              {avatarUrl
+                ? <img src={avatarUrl} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={() => setAvatarUrl(null)} />
+                : (F.full_name || user?.name || 'S')[0].toUpperCase()}
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={uploadAvatar}
+              style={{ display: 'none' }}
+            />
+            <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={avatarBusy}
+                title="Upload or replace profile photo"
+                style={{ ...BTN(CYAN), padding: '6px 8px', fontSize: 11, opacity: avatarBusy ? 0.6 : 1 }}
+              >
+                {avatarBusy ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Camera size={12} />}
+                {avatarMarker ? 'Change' : 'Photo'}
+              </button>
+              {avatarMarker && (
+                <button
+                  type="button"
+                  onClick={removeAvatar}
+                  disabled={avatarBusy}
+                  title="Remove profile photo"
+                  style={{ ...BTN(RED), padding: '6px 7px', opacity: avatarBusy ? 0.6 : 1 }}
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Name + meta */}

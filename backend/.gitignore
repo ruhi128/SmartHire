@@ -1,2 +1,16 @@
-node_modules/
+
+# OS junk
+.DS_Store
+
+# Local secrets (never commit real environment files or credential notes)
 .env
+.env.*
+!.env.example
+ENV_VALUES.local.md
+*.local.md
+
+# Research paper manuscripts (do not commit to code repo)
+*.tex
+SmartHire_IEEE_Research_Paper.tex
+
+node_modules/

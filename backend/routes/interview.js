@@ -7,7 +7,9 @@ const roles = require('../middleware/roles');
 
 // ─────────────────────────────────────────────
 // POST /api/interview/save
-// Save completed mock interview session + AI metrics
+// Save completed mock-interview session plus client-side practice feedback.
+// A typed mobile session may intentionally send null for unavailable
+// camera/attention/stress signals; null is preserved rather than fabricated.
 // Body: {
 //   companyId?, durationSeconds,
 //   overallScore, eyeContactScore, confidenceScore,
@@ -42,10 +44,14 @@ router.post('/save', auth, roles('student'), async (req, res) => {
         // ✅ Removed company_id - column doesn't exist in schema
         duration_seconds: durationSeconds,
         overall_score: overallScore,
-        eye_contact_score: eyeContactScore || 0,
-        confidence_score: confidenceScore || 0,
-        attention_score: attentionScore || 0,
-        stress_score: stressScore || 0,
+        // Null means the capability was not collected (for example a
+        // text-only mobile practice session); it must not be displayed as a
+        // fabricated camera/attention/stress score. Existing web sessions
+        // continue to persist their numeric values.
+        eye_contact_score: eyeContactScore ?? null,
+        confidence_score: confidenceScore ?? null,
+        attention_score: attentionScore ?? null,
+        stress_score: stressScore ?? null,
         ai_feedback: {
           transcript: transcript || [],
           expressionLog: expressionLog || [],
@@ -87,7 +93,7 @@ router.get('/history', auth, roles('student'), async (req, res) => {
       .select(`
         id, duration_seconds, overall_score,
         eye_contact_score, confidence_score,
-        attention_score, stress_score, conducted_at
+        attention_score, stress_score, ai_feedback, conducted_at
       `)
       // ✅ Removed companies(name, logo_url) - no company_id foreign key
       .eq('student_id', req.user.id)
@@ -95,19 +101,27 @@ router.get('/history', auth, roles('student'), async (req, res) => {
 
     if (error) throw error;
 
-    const history = (data || []).map(s => ({
-      id: s.id,
-      company: 'General', // ✅ Hardcoded since no company relation
-      companyLogo: null,
-      overallScore: s.overall_score,
-      eyeContact: s.eye_contact_score,
-      confidence: s.confidence_score,
-      attention: s.attention_score,
-      stress: s.stress_score,
-      duration: formatDuration(s.duration_seconds),
-      conductedAt: s.conducted_at,
-      grade: getGrade(s.overall_score),
-    }));
+    const history = (data || []).map((s) => {
+      const feedback = s.ai_feedback?.feedback || {};
+      const textScores = feedback.scores || null;
+      return {
+        id: s.id,
+        company: 'General', // The current schema has no company relation.
+        companyLogo: null,
+        overallScore: s.overall_score,
+        eyeContact: s.eye_contact_score,
+        confidence: s.confidence_score,
+        attention: s.attention_score,
+        stress: s.stress_score,
+        // A mode is additive and lets clients accurately label a session
+        // without breaking established web history consumers.
+        practiceMode: feedback.mode || 'browser-media',
+        textScores,
+        duration: formatDuration(s.duration_seconds),
+        conductedAt: s.conducted_at,
+        grade: getGrade(s.overall_score),
+      };
+    });
 
     res.json({ history });
   } catch (err) {
@@ -123,9 +137,9 @@ router.get('/session/:id', auth, async (req, res) => {
   try {
     const { data: session, error } = await supabaseAdmin
       .from('interview_sessions')
-      .select(`
-        *, companies(name, logo_url)
-      `)
+      // interview_sessions has no company_id foreign key in the current schema.
+      // Do not request a nonexistent Supabase relationship here.
+      .select('*')
       .eq('id', req.params.id)
       .single();
 
@@ -141,8 +155,8 @@ router.get('/session/:id', auth, async (req, res) => {
     res.json({
       session: {
         id: session.id,
-        company: session.companies?.name || 'General',
-        companyLogo: session.companies?.logo_url,
+        company: 'General',
+        companyLogo: null,
         overallScore: session.overall_score,
         eyeContactScore: session.eye_contact_score,
         confidenceScore: session.confidence_score,
@@ -153,6 +167,7 @@ router.get('/session/:id', auth, async (req, res) => {
         transcript: session.ai_feedback?.transcript || [],
         expressionLog: session.ai_feedback?.expressionLog || [],
         feedback: session.ai_feedback?.feedback || {},
+        practiceMode: session.ai_feedback?.feedback?.mode || 'browser-media',
         grade: getGrade(session.overall_score),
       },
     });
@@ -171,7 +186,7 @@ router.get('/analytics', auth, roles('student'), async (req, res) => {
     const { data, error } = await supabaseAdmin
       .from('interview_sessions')
       .select(
-        'overall_score, eye_contact_score, confidence_score, attention_score, stress_score, conducted_at'
+        'overall_score, eye_contact_score, confidence_score, attention_score, stress_score, ai_feedback, conducted_at'
       )
       .eq('student_id', req.user.id)
       .order('conducted_at', { ascending: true });
@@ -184,7 +199,12 @@ router.get('/analytics', auth, roles('student'), async (req, res) => {
       return res.json({ message: 'No sessions yet', sessions: [], averages: null });
     }
 
-    // Compute rolling averages for trend charts
+    // Compute rolling averages for trend charts. A null signal means it was
+    // unavailable, not zero; do not let typed-only sessions depress a camera
+    // metric that they never attempted to collect.
+    const textScoresFor = (session) => session.ai_feedback?.feedback?.scores || {};
+    const practiceModeFor = (session) => session.ai_feedback?.feedback?.mode || 'browser-media';
+    const typedSessions = sessions.filter((session) => practiceModeFor(session) === 'typed-practice');
     const trend = sessions.map((s, i) => ({
       session: i + 1,
       date: s.conducted_at,
@@ -193,17 +213,33 @@ router.get('/analytics', auth, roles('student'), async (req, res) => {
       confidence: s.confidence_score,
       attention: s.attention_score,
       stress: s.stress_score,
+      practiceMode: practiceModeFor(s),
+      textScores: textScoresFor(s),
     }));
 
-    const avg = (arr) =>
-      arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+    const avg = (values) => {
+      const numbers = values.filter((value) => typeof value === 'number' && Number.isFinite(value));
+      return numbers.length ? Math.round(numbers.reduce((sum, value) => sum + value, 0) / numbers.length) : null;
+    };
+    // Text-only metrics intentionally use only native typed sessions. Do not
+    // relabel values from browser speech/camera sessions as typed feedback.
+    const typedScoreAverage = (key) => avg(typedSessions.map((s) => textScoresFor(s)[key]));
 
     const averages = {
-      overall: avg(sessions.map(s => s.overall_score)),
-      eyeContact: avg(sessions.map(s => s.eye_contact_score)),
-      confidence: avg(sessions.map(s => s.confidence_score)),
-      attention: avg(sessions.map(s => s.attention_score)),
-      stress: avg(sessions.map(s => s.stress_score)),
+      // Existing browser consumers retain these historic aggregate fields.
+      overall: avg(sessions.map((s) => s.overall_score)),
+      eyeContact: avg(sessions.map((s) => s.eye_contact_score)),
+      confidence: avg(sessions.map((s) => s.confidence_score)),
+      attention: avg(sessions.map((s) => s.attention_score)),
+      stress: avg(sessions.map((s) => s.stress_score)),
+      // Additive, explicitly text-only fields for the native practice UI.
+      typedSessions: typedSessions.length,
+      typedOverall: avg(typedSessions.map((s) => s.overall_score)),
+      content: typedScoreAverage('content'),
+      fluency: typedScoreAverage('fluency'),
+      structure: typedScoreAverage('structure'),
+      relevance: typedScoreAverage('relevance'),
+      wording: typedScoreAverage('confidence'),
     };
 
     res.json({

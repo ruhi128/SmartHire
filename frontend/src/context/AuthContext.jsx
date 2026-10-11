@@ -91,8 +91,10 @@ export function AuthProvider({ children }) {
       const userData = { 
         id:    userId,
         email: cleanEmail, 
-        role, 
+        role,
         name,
+        avatar_url: data.avatar_url || data.profile?.avatar_url || null,
+        avatar_updated_at: data.avatar_updated_at || data.profile?.avatar_updated_at || null,
       };
 
       localStorage.setItem('user', JSON.stringify(userData));

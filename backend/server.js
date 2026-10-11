@@ -1,4 +1,9 @@
-require('dotenv').config();
+const path = require('path');
+
+// Always load the backend environment file regardless of the directory from
+// which Node is started. Deployment platforms can still provide env vars.
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -48,6 +53,7 @@ app.use('/api/companyoa', require('./routes/companyoa'));
 app.use('/api/companies', require('./routes/companies'));
 app.use('/api/upload', require('./routes/upload'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/mobile',        require('./routes/mobile'));
 
 // ── Health Check ──
 app.get('/health', (req, res) =>

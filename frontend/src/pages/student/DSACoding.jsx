@@ -7,6 +7,736 @@ import {
   Lightbulb, History, AlertCircle, Trophy, Zap, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { codeAPI } from '../../api/axios';
+
+
+// LeetCode-style function driver. Kept in this page so the DSA experience
+// does not require a separate frontend module. It generates a small program
+// around the learner's function before sending it to JDoodle.
+// Function-style execution helpers for the SmartHire DSA practice page.
+// Learners write the algorithm method only (as on LeetCode); this module adds
+// an isolated driver that constructs inputs, invokes the method, and emits a
+// JSON result marker for the UI to judge.
+
+const HARNESS_RESULT_MARKER = '__SMARTHIRE_RESULT__';
+const LEETCODE_SUPPORTED_LANGUAGES = ['python', 'javascript'];
+
+const call = (method, tests, compare = 'strict') => ({
+  kind: 'call',
+  method,
+  tests,
+  compare,
+});
+
+// Each test stores typed arguments rather than stdin text. This is intentional:
+// it lets the runner call the displayed function signature directly.
+const LEETCODE_SPECS = Object.freeze({
+  a1: call('twoSum', [
+    { args: [[2, 7, 11, 15], 9], expected: [0, 1] },
+    { args: [[3, 2, 4], 6], expected: [1, 2] },
+  ]),
+  a2: call('maxProfit', [
+    { args: [[7, 1, 5, 3, 6, 4]], expected: 5 },
+    { args: [[7, 6, 4, 3, 1]], expected: 0 },
+  ]),
+  a3: call('maxSubArray', [
+    { args: [[-2, 1, -3, 4, -1, 2, 1, -5, 4]], expected: 6 },
+    { args: [[1]], expected: 1 },
+  ]),
+  a4: call('maxArea', [
+    { args: [[1, 8, 6, 2, 5, 4, 8, 3, 7]], expected: 49 },
+    { args: [[1, 1]], expected: 1 },
+  ]),
+  a5: call('trap', [
+    { args: [[0, 1, 0, 2, 1, 0, 1, 3, 2, 1, 2, 1]], expected: 6 },
+    { args: [[4, 2, 0, 3, 2, 5]], expected: 9 },
+  ]),
+  a6: call('threeSum', [
+    { args: [[-1, 0, 1, 2, -1, -4]], expected: [[-1, -1, 2], [-1, 0, 1]] },
+  ], 'deep-unordered'),
+
+  s1: call('isPalindrome', [
+    { args: ['A man, a plan, a canal: Panama'], expected: true },
+    { args: ['race a car'], expected: false },
+  ]),
+  s2: call('lengthOfLongestSubstring', [
+    { args: ['abcabcbb'], expected: 3 },
+    { args: ['bbbbb'], expected: 1 },
+    { args: ['pwwkew'], expected: 3 },
+  ]),
+  s3: call('isAnagram', [
+    { args: ['anagram', 'nagaram'], expected: true },
+    { args: ['rat', 'car'], expected: false },
+  ]),
+  s4: call('longestPalindrome', [
+    { args: ['babad'], expected: ['bab', 'aba'] },
+    { args: ['cbbd'], expected: ['bb'] },
+  ], 'one-of'),
+  s5: call('groupAnagrams', [
+    {
+      args: [['eat', 'tea', 'tan', 'ate', 'nat', 'bat']],
+      expected: [['eat', 'tea', 'ate'], ['tan', 'nat'], ['bat']],
+    },
+  ], 'deep-unordered'),
+
+  l1: {
+    kind: 'linked-list',
+    method: 'reverseList',
+    tests: [
+      { args: [[1, 2, 3, 4, 5]], expected: [5, 4, 3, 2, 1] },
+      { args: [[1, 2]], expected: [2, 1] },
+    ],
+    compare: 'strict',
+  },
+  l2: {
+    kind: 'merge-lists',
+    method: 'mergeTwoLists',
+    tests: [
+      { args: [[1, 2, 4], [1, 3, 4]], expected: [1, 1, 2, 3, 4, 4] },
+    ],
+    compare: 'strict',
+  },
+  l3: {
+    kind: 'cycle-list',
+    method: 'hasCycle',
+    tests: [
+      { args: [[3, 2, 0, -4], 1], expected: true },
+      { args: [[1], -1], expected: false },
+    ],
+    compare: 'strict',
+  },
+  l4: {
+    kind: 'lru-cache',
+    className: 'LRUCache',
+    tests: [
+      {
+        args: [2, [
+          ['put', 1, 1], ['put', 2, 2], ['get', 1],
+          ['put', 3, 3], ['get', 2],
+        ]],
+        expected: [1, -1],
+      },
+    ],
+    compare: 'strict',
+  },
+
+  t1: {
+    kind: 'tree-call',
+    method: 'maxDepth',
+    tests: [
+      { args: [[3, 9, 20, null, null, 15, 7]], expected: 3 },
+      { args: [[1]], expected: 1 },
+    ],
+    compare: 'strict',
+  },
+  t2: {
+    kind: 'tree-result',
+    method: 'invertTree',
+    tests: [
+      { args: [[4, 2, 7, 1, 3, 6, 9]], expected: [4, 7, 2, 9, 6, 3, 1] },
+    ],
+    compare: 'strict',
+  },
+  t3: {
+    kind: 'tree-lca',
+    method: 'lowestCommonAncestor',
+    tests: [
+      { args: [[6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], 2, 8], expected: 6 },
+      { args: [[6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], 2, 4], expected: 2 },
+    ],
+    compare: 'strict',
+  },
+  t4: {
+    kind: 'tree-call',
+    method: 'levelOrder',
+    tests: [
+      { args: [[3, 9, 20, null, null, 15, 7]], expected: [[3], [9, 20], [15, 7]] },
+    ],
+    compare: 'strict',
+  },
+  t5: {
+    kind: 'tree-call',
+    method: 'maxPathSum',
+    tests: [
+      { args: [[-10, 9, 20, null, null, 15, 7]], expected: 42 },
+    ],
+    compare: 'strict',
+  },
+
+  g1: call('numIslands', [
+    {
+      args: [[['1', '1', '0'], ['0', '1', '0'], ['0', '0', '1']]],
+      expected: 2,
+    },
+  ]),
+  g2: {
+    kind: 'clone-graph',
+    method: 'cloneGraph',
+    tests: [
+      {
+        args: [[[2, 4], [1, 3], [2, 4], [1, 3]]],
+        expected: [[2, 4], [1, 3], [2, 4], [1, 3]],
+      },
+    ],
+    compare: 'strict',
+  },
+  g3: call('canFinish', [
+    { args: [2, [[1, 0]]], expected: true },
+    { args: [2, [[1, 0], [0, 1]]], expected: false },
+  ]),
+
+  d1: call('climbStairs', [
+    { args: [2], expected: 2 },
+    { args: [3], expected: 3 },
+    { args: [5], expected: 8 },
+  ]),
+  d2: call('coinChange', [
+    { args: [[1, 5, 11], 11], expected: 1 },
+    { args: [[2], 3], expected: -1 },
+    { args: [[1, 2, 5], 11], expected: 3 },
+  ]),
+  d3: call('longestCommonSubsequence', [
+    { args: ['abcde', 'ace'], expected: 3 },
+    { args: ['abc', 'abc'], expected: 3 },
+    { args: ['abc', 'def'], expected: 0 },
+  ]),
+  d4: call('knapsack', [
+    { args: [3, 5, [2, 3, 4], [3, 4, 5]], expected: 7 },
+    { args: [4, 8, [1, 3, 4, 5], [1, 4, 5, 7]], expected: 11 },
+  ]),
+  d5: call('wordBreak', [
+    { args: ['leetcode', ['leet', 'code']], expected: true },
+    { args: ['applepenapple', ['apple', 'pen']], expected: true },
+    { args: ['catsandog', ['cats', 'dog', 'sand', 'and', 'cat']], expected: false },
+  ]),
+
+  q1: call('isValid', [
+    { args: ['()[]{}'], expected: true },
+    { args: ['(]'], expected: false },
+    { args: ['{[]}'], expected: true },
+  ]),
+  q2: {
+    kind: 'min-stack',
+    className: 'MinStack',
+    tests: [
+      {
+        args: [[['push', -2], ['push', 0], ['push', -3], ['getMin'], ['pop'], ['getMin']]],
+        expected: [-3, -2],
+      },
+    ],
+    compare: 'strict',
+  },
+
+  b1: call('search', [
+    { args: [[-1, 0, 3, 5, 9, 12], 9], expected: 4 },
+    { args: [[-1, 0, 3, 5, 9, 12], 2], expected: -1 },
+  ]),
+  b2: call('findMin', [
+    { args: [[3, 4, 5, 1, 2]], expected: 1 },
+    { args: [[4, 5, 6, 7, 0, 1, 2]], expected: 0 },
+  ]),
+
+  h1: call('findKthLargest', [
+    { args: [[3, 2, 1, 5, 6, 4], 2], expected: 5 },
+    { args: [[3, 2, 3, 1, 2, 4, 5, 5, 6], 4], expected: 4 },
+  ]),
+  h2: call('topKFrequent', [
+    { args: [[1, 1, 1, 2, 2, 3], 2], expected: [1, 2] },
+    { args: [[1], 1], expected: [1] },
+  ], 'unordered-outer'),
+
+  ss1: call('merge', [
+    { args: [[[1, 3], [2, 6], [8, 10], [15, 18]]], expected: [[1, 6], [8, 10], [15, 18]] },
+    { args: [[[1, 4], [4, 5]]], expected: [[1, 5]] },
+  ]),
+
+  m1: call('hammingWeight', [
+    { args: [11], expected: 3 },
+    { args: [128], expected: 1 },
+  ]),
+  m2: call('reverseBits', [
+    { args: [43261596], expected: 964176192 },
+    { args: [4294967293], expected: 3221225471 },
+  ]),
+
+  bt1: call('subsets', [
+    {
+      args: [[1, 2, 3]],
+      expected: [[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]],
+    },
+  ], 'deep-unordered'),
+  bt2: call('permute', [
+    {
+      args: [[1, 2, 3]],
+      expected: [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]],
+    },
+  ], 'unordered-outer'),
+  sw1: call('maxSlidingWindow', [
+    { args: [[1, 3, -1, -3, 5, 3, 6, 7], 3], expected: [3, 3, 5, 5, 6, 7] },
+  ]),
+});
+
+function getLeetCodeSpec(problemId) {
+  return LEETCODE_SPECS[problemId] || null;
+}
+
+function isLeetCodeLanguage(language) {
+  return LEETCODE_SUPPORTED_LANGUAGES.includes(language);
+}
+
+function getDefaultArgs(problemId) {
+  const spec = getLeetCodeSpec(problemId);
+  return spec?.tests?.[0]?.args || [];
+}
+
+function formatCustomArgs(args) {
+  return JSON.stringify(args);
+}
+
+function parseCustomArgs(raw) {
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('Custom test data must be a JSON array of function arguments. Example: [[2,7,11,15],9]');
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error('Custom test data must be a JSON array of function arguments. Example: [[2,7,11,15],9]');
+  }
+  return parsed;
+}
+
+function pythonJsonLiteral(value) {
+  // JSON.stringify produces a quoted, escaped string literal that Python's
+  // json.loads can consume. The outer value is data, never executable code.
+  return JSON.stringify(JSON.stringify(value));
+}
+
+function javascriptJsonLiteral(value) {
+  return JSON.stringify(JSON.stringify(value));
+}
+
+const PYTHON_COMMON = `
+import json as __sm_json
+
+def __sm_emit(__sm_value):
+    print("${HARNESS_RESULT_MARKER}" + __sm_json.dumps(__sm_value, separators=(",", ":"), ensure_ascii=False))
+`;
+
+const PYTHON_LIST_HELPERS = `
+class __SmartListNode:
+    def __init__(self, val=0, next=None):
+        self.val = val
+        self.next = next
+
+# Make the conventional LeetCode helper available to user code as well.
+ListNode = __SmartListNode
+
+def __sm_make_list(__sm_values):
+    __sm_dummy = __SmartListNode()
+    __sm_tail = __sm_dummy
+    for __sm_value in __sm_values:
+        __sm_tail.next = __SmartListNode(__sm_value)
+        __sm_tail = __sm_tail.next
+    return __sm_dummy.next
+
+def __sm_list_to_array(__sm_head):
+    __sm_result, __sm_seen = [], set()
+    while __sm_head is not None and id(__sm_head) not in __sm_seen:
+        __sm_seen.add(id(__sm_head))
+        __sm_result.append(__sm_head.val)
+        __sm_head = __sm_head.next
+    return __sm_result
+`;
+
+const PYTHON_TREE_HELPERS = `
+class __SmartTreeNode:
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+TreeNode = __SmartTreeNode
+
+def __sm_build_tree(__sm_values):
+    if not __sm_values or __sm_values[0] is None:
+        return None
+    __sm_root = __SmartTreeNode(__sm_values[0])
+    __sm_queue = [__sm_root]
+    __sm_index = 1
+    while __sm_queue and __sm_index < len(__sm_values):
+        __sm_node = __sm_queue.pop(0)
+        if __sm_index < len(__sm_values):
+            __sm_left = __sm_values[__sm_index]
+            __sm_index += 1
+            if __sm_left is not None:
+                __sm_node.left = __SmartTreeNode(__sm_left)
+                __sm_queue.append(__sm_node.left)
+        if __sm_index < len(__sm_values):
+            __sm_right = __sm_values[__sm_index]
+            __sm_index += 1
+            if __sm_right is not None:
+                __sm_node.right = __SmartTreeNode(__sm_right)
+                __sm_queue.append(__sm_node.right)
+    return __sm_root
+
+def __sm_tree_to_array(__sm_root):
+    if __sm_root is None:
+        return []
+    __sm_result, __sm_queue = [], [__sm_root]
+    while __sm_queue:
+        __sm_node = __sm_queue.pop(0)
+        if __sm_node is None:
+            __sm_result.append(None)
+            continue
+        __sm_result.append(__sm_node.val)
+        __sm_queue.append(__sm_node.left)
+        __sm_queue.append(__sm_node.right)
+    while __sm_result and __sm_result[-1] is None:
+        __sm_result.pop()
+    return __sm_result
+
+def __sm_find_tree_node(__sm_root, __sm_value):
+    if __sm_root is None:
+        return None
+    if __sm_root.val == __sm_value:
+        return __sm_root
+    return __sm_find_tree_node(__sm_root.left, __sm_value) or __sm_find_tree_node(__sm_root.right, __sm_value)
+`;
+
+const PYTHON_GRAPH_HELPERS = `
+class Node:
+    def __init__(self, val=0, neighbors=None):
+        self.val = val
+        self.neighbors = [] if neighbors is None else neighbors
+
+def __sm_build_graph(__sm_adjacency):
+    if not __sm_adjacency:
+        return None
+    __sm_nodes = [Node(__sm_index + 1) for __sm_index in range(len(__sm_adjacency))]
+    for __sm_index, __sm_neighbors in enumerate(__sm_adjacency):
+        __sm_nodes[__sm_index].neighbors = [__sm_nodes[__sm_value - 1] for __sm_value in __sm_neighbors]
+    return __sm_nodes[0]
+
+def __sm_graph_to_adjacency(__sm_start):
+    if __sm_start is None:
+        return []
+    __sm_seen, __sm_queue, __sm_result = {}, [__sm_start], {}
+    while __sm_queue:
+        __sm_node = __sm_queue.pop(0)
+        if __sm_node.val in __sm_seen:
+            continue
+        __sm_seen[__sm_node.val] = True
+        __sm_result[__sm_node.val] = sorted(__sm_neighbor.val for __sm_neighbor in __sm_node.neighbors)
+        __sm_queue.extend(__sm_node.neighbors)
+    return [__sm_result[__sm_value] for __sm_value in sorted(__sm_result)]
+`;
+
+const JAVASCRIPT_COMMON = `
+function __smEmit(value) {
+  console.log('${HARNESS_RESULT_MARKER}' + JSON.stringify(value));
+}
+`;
+
+const JAVASCRIPT_LIST_HELPERS = `
+class ListNode {
+  constructor(val = 0, next = null) {
+    this.val = val;
+    this.next = next;
+  }
+}
+function __smMakeList(values) {
+  const dummy = new ListNode();
+  let tail = dummy;
+  for (const value of values) {
+    tail.next = new ListNode(value);
+    tail = tail.next;
+  }
+  return dummy.next;
+}
+function __smListToArray(head) {
+  const result = [];
+  const seen = new Set();
+  while (head && !seen.has(head)) {
+    seen.add(head);
+    result.push(head.val);
+    head = head.next;
+  }
+  return result;
+}
+`;
+
+const JAVASCRIPT_TREE_HELPERS = `
+class TreeNode {
+  constructor(val = 0, left = null, right = null) {
+    this.val = val;
+    this.left = left;
+    this.right = right;
+  }
+}
+function __smBuildTree(values) {
+  if (!values || values.length === 0 || values[0] === null) return null;
+  const root = new TreeNode(values[0]);
+  const queue = [root];
+  let index = 1;
+  while (queue.length && index < values.length) {
+    const node = queue.shift();
+    const left = values[index++];
+    if (left !== undefined && left !== null) {
+      node.left = new TreeNode(left);
+      queue.push(node.left);
+    }
+    if (index < values.length) {
+      const right = values[index++];
+      if (right !== null) {
+        node.right = new TreeNode(right);
+        queue.push(node.right);
+      }
+    }
+  }
+  return root;
+}
+function __smTreeToArray(root) {
+  if (!root) return [];
+  const result = [];
+  const queue = [root];
+  while (queue.length) {
+    const node = queue.shift();
+    if (!node) {
+      result.push(null);
+      continue;
+    }
+    result.push(node.val);
+    queue.push(node.left || null, node.right || null);
+  }
+  while (result.length && result[result.length - 1] === null) result.pop();
+  return result;
+}
+function __smFindTreeNode(root, value) {
+  if (!root) return null;
+  if (root.val === value) return root;
+  return __smFindTreeNode(root.left, value) || __smFindTreeNode(root.right, value);
+}
+`;
+
+const JAVASCRIPT_GRAPH_HELPERS = `
+class Node {
+  constructor(val = 0, neighbors = []) {
+    this.val = val;
+    this.neighbors = neighbors;
+  }
+}
+function __smBuildGraph(adjacency) {
+  if (!adjacency || adjacency.length === 0) return null;
+  const nodes = adjacency.map((_, index) => new Node(index + 1));
+  adjacency.forEach((neighbors, index) => {
+    nodes[index].neighbors = neighbors.map((value) => nodes[value - 1]);
+  });
+  return nodes[0];
+}
+function __smGraphToAdjacency(start) {
+  if (!start) return [];
+  const queue = [start];
+  const seen = new Map();
+  while (queue.length) {
+    const node = queue.shift();
+    if (seen.has(node.val)) continue;
+    seen.set(node.val, [...node.neighbors].map((neighbor) => neighbor.val).sort((a, b) => a - b));
+    queue.push(...node.neighbors);
+  }
+  return [...seen.keys()].sort((a, b) => a - b).map((value) => seen.get(value));
+}
+`;
+
+function buildPythonProgram(source, spec, args) {
+  const encodedArgs = pythonJsonLiteral(args);
+  const invoke = {
+    call: `__sm_emit(${spec.method}(*__sm_args))`,
+    'linked-list': `__sm_emit(__sm_list_to_array(${spec.method}(__sm_make_list(__sm_args[0]))))`,
+    'merge-lists': `__sm_emit(__sm_list_to_array(${spec.method}(__sm_make_list(__sm_args[0]), __sm_make_list(__sm_args[1]))))`,
+    'cycle-list': `
+__sm_nodes = [__SmartListNode(__sm_value) for __sm_value in __sm_args[0]]
+for __sm_index in range(len(__sm_nodes) - 1):
+    __sm_nodes[__sm_index].next = __sm_nodes[__sm_index + 1]
+if __sm_nodes and __sm_args[1] >= 0:
+    __sm_nodes[-1].next = __sm_nodes[__sm_args[1]]
+__sm_emit(${spec.method}(__sm_nodes[0] if __sm_nodes else None))`,
+    'lru-cache': `
+__sm_cache = ${spec.className}(__sm_args[0])
+__sm_output = []
+for __sm_operation in __sm_args[1]:
+    __sm_name, __sm_values = __sm_operation[0], __sm_operation[1:]
+    __sm_result = getattr(__sm_cache, __sm_name)(*__sm_values)
+    if __sm_name == 'get':
+        __sm_output.append(__sm_result)
+__sm_emit(__sm_output)`,
+    'min-stack': `
+__sm_stack = ${spec.className}()
+__sm_output = []
+for __sm_operation in __sm_args[0]:
+    __sm_name, __sm_values = __sm_operation[0], __sm_operation[1:]
+    __sm_result = getattr(__sm_stack, __sm_name)(*__sm_values)
+    if __sm_name in ('getMin', 'top'):
+        __sm_output.append(__sm_result)
+__sm_emit(__sm_output)`,
+    'tree-call': `
+__sm_root = __sm_build_tree(__sm_args[0])
+__sm_emit(${spec.method}(__sm_root))`,
+    'tree-result': `
+__sm_root = __sm_build_tree(__sm_args[0])
+__sm_emit(__sm_tree_to_array(${spec.method}(__sm_root)))`,
+    'tree-lca': `
+__sm_root = __sm_build_tree(__sm_args[0])
+__sm_p = __sm_find_tree_node(__sm_root, __sm_args[1])
+__sm_q = __sm_find_tree_node(__sm_root, __sm_args[2])
+__sm_result = ${spec.method}(__sm_root, __sm_p, __sm_q)
+__sm_emit(__sm_result.val if __sm_result is not None else None)`,
+    'clone-graph': `
+__sm_emit(__sm_graph_to_adjacency(${spec.method}(__sm_build_graph(__sm_args[0]))))`,
+  }[spec.kind];
+
+  if (!invoke) throw new Error(`No Python function runner is defined for ${spec.kind}.`);
+
+  const helpers = [
+    ['linked-list', 'merge-lists', 'cycle-list'].includes(spec.kind) ? PYTHON_LIST_HELPERS : '',
+    ['tree-call', 'tree-result', 'tree-lca'].includes(spec.kind) ? PYTHON_TREE_HELPERS : '',
+    spec.kind === 'clone-graph' ? PYTHON_GRAPH_HELPERS : '',
+  ].join('\n');
+
+  return `${source}\n${PYTHON_COMMON}\n${helpers}\n__sm_args = __sm_json.loads(${encodedArgs})\n${invoke}\n`;
+}
+
+function buildJavaScriptProgram(source, spec, args) {
+  const encodedArgs = javascriptJsonLiteral(args);
+  const invoke = {
+    call: `__smEmit(${spec.method}(...__smArgs));`,
+    'linked-list': `__smEmit(__smListToArray(${spec.method}(__smMakeList(__smArgs[0]))));`,
+    'merge-lists': `__smEmit(__smListToArray(${spec.method}(__smMakeList(__smArgs[0]), __smMakeList(__smArgs[1]))));`,
+    'cycle-list': `
+const __smNodes = __smArgs[0].map((value) => new ListNode(value));
+for (let index = 0; index < __smNodes.length - 1; index += 1) __smNodes[index].next = __smNodes[index + 1];
+if (__smNodes.length && __smArgs[1] >= 0) __smNodes[__smNodes.length - 1].next = __smNodes[__smArgs[1]];
+__smEmit(${spec.method}(__smNodes[0] || null));`,
+    'lru-cache': `
+const __smCache = new ${spec.className}(__smArgs[0]);
+const __smOutput = [];
+for (const __smOperation of __smArgs[1]) {
+  const [__smName, ...__smValues] = __smOperation;
+  const __smResult = __smCache[__smName](...__smValues);
+  if (__smName === 'get') __smOutput.push(__smResult);
+}
+__smEmit(__smOutput);`,
+    'min-stack': `
+const __smStack = new ${spec.className}();
+const __smOutput = [];
+for (const __smOperation of __smArgs[0]) {
+  const [__smName, ...__smValues] = __smOperation;
+  const __smResult = __smStack[__smName](...__smValues);
+  if (__smName === 'getMin' || __smName === 'top') __smOutput.push(__smResult);
+}
+__smEmit(__smOutput);`,
+    'tree-call': `
+const __smRoot = __smBuildTree(__smArgs[0]);
+__smEmit(${spec.method}(__smRoot));`,
+    'tree-result': `
+const __smRoot = __smBuildTree(__smArgs[0]);
+__smEmit(__smTreeToArray(${spec.method}(__smRoot)));`,
+    'tree-lca': `
+const __smRoot = __smBuildTree(__smArgs[0]);
+const __smResult = ${spec.method}(__smRoot, __smFindTreeNode(__smRoot, __smArgs[1]), __smFindTreeNode(__smRoot, __smArgs[2]));
+__smEmit(__smResult ? __smResult.val : null);`,
+    'clone-graph': `__smEmit(__smGraphToAdjacency(${spec.method}(__smBuildGraph(__smArgs[0]))));`,
+  }[spec.kind];
+
+  if (!invoke) throw new Error(`No JavaScript function runner is defined for ${spec.kind}.`);
+
+  const helpers = [
+    ['linked-list', 'merge-lists', 'cycle-list'].includes(spec.kind) ? JAVASCRIPT_LIST_HELPERS : '',
+    ['tree-call', 'tree-result', 'tree-lca'].includes(spec.kind) ? JAVASCRIPT_TREE_HELPERS : '',
+    spec.kind === 'clone-graph' ? JAVASCRIPT_GRAPH_HELPERS : '',
+  ].join('\n');
+
+  return `${source}\n${JAVASCRIPT_COMMON}\n${helpers}\nconst __smArgs = JSON.parse(${encodedArgs});\n${invoke}\n`;
+}
+
+function buildLeetCodeProgram({ source, language, problemId, args }) {
+  const spec = getLeetCodeSpec(problemId);
+  if (!spec) throw new Error('This problem does not yet have a function-runner specification.');
+  if (!isLeetCodeLanguage(language)) {
+    throw new Error('LeetCode-style execution is currently available for Python and JavaScript. Choose one of those languages for this problem.');
+  }
+  if (!Array.isArray(args)) throw new Error('Function arguments must be a JSON array.');
+
+  return language === 'python'
+    ? buildPythonProgram(source, spec, args)
+    : buildJavaScriptProgram(source, spec, args);
+}
+
+function parseHarnessOutput(stdout) {
+  const output = String(stdout || '');
+  const markerIndex = output.lastIndexOf(HARNESS_RESULT_MARKER);
+  if (markerIndex === -1) {
+    throw new Error('Your code finished without returning a result. Keep the required function name and return a value instead of reading stdin or printing the final answer.');
+  }
+
+  const payload = output.slice(markerIndex + HARNESS_RESULT_MARKER.length).trim().split(/\r?\n/, 1)[0];
+  try {
+    return JSON.parse(payload);
+  } catch {
+    throw new Error('The function runner could not read your returned value. Return JSON-compatible values such as numbers, strings, booleans, arrays, lists, or trees.');
+  }
+}
+
+function stable(value) {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stable(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function normalizeDeepUnordered(value) {
+  if (Array.isArray(value)) {
+    return value.map(normalizeDeepUnordered).sort((left, right) => stable(left).localeCompare(stable(right)));
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, normalizeDeepUnordered(value[key])]));
+  }
+  return value;
+}
+
+function normalizeOuterUnordered(value) {
+  if (!Array.isArray(value)) return value;
+  return [...value].sort((left, right) => stable(left).localeCompare(stable(right)));
+}
+
+function compareLeetCodeResult(actual, testCase, compare = 'strict') {
+  const expected = testCase.expected;
+
+  if (compare === 'deep-unordered') {
+    return stable(normalizeDeepUnordered(actual)) === stable(normalizeDeepUnordered(expected));
+  }
+
+  if (compare === 'unordered-outer') {
+    return stable(normalizeOuterUnordered(actual)) === stable(normalizeOuterUnordered(expected));
+  }
+
+  if (compare === 'one-of') {
+    return Array.isArray(expected) && expected.includes(actual);
+  }
+
+  return stable(actual) === stable(expected);
+}
+
+function formatLeetCodeValue(value) {
+  if (value === undefined) return 'undefined';
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
 
 const C = {
   bg:'var(--bg-base)', card:'var(--bg-card)', cardB:'var(--bg-card-raised)',
@@ -31,7 +761,6 @@ const PROBLEMS = [
     ],
     constraints:['2 ≤ nums.length ≤ 10⁴','-10⁹ ≤ nums[i] ≤ 10⁹','Exactly one solution exists'],
     hints:['Try using a hash map to store complements','For each number x, check if target-x exists in the map','O(n) time, O(n) space is optimal'],
-    testCases:[{input:'2\n2 7 11 15\n9',expected:'0 1'},{input:'2\n3 2 4\n6',expected:'1 2'}],
     starter:{
       python:'def twoSum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], i]\n        seen[num] = i\n    return []',
       javascript:'function twoSum(nums, target) {\n    const map = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (map.has(complement)) return [map.get(complement), i];\n        map.set(nums[i], i);\n    }\n    return [];\n}',
@@ -48,7 +777,6 @@ const PROBLEMS = [
     ],
     constraints:['1 ≤ prices.length ≤ 10⁵','0 ≤ prices[i] ≤ 10⁴'],
     hints:['Track the minimum price seen so far','At each step compute profit = price - min_price','Update max profit accordingly'],
-    testCases:[{input:'6\n7 1 5 3 6 4',expected:'5'},{input:'5\n7 6 4 3 1',expected:'0'}],
     starter:{
       python:'def maxProfit(prices):\n    min_price = float("inf")\n    max_profit = 0\n    for price in prices:\n        min_price = min(min_price, price)\n        max_profit = max(max_profit, price - min_price)\n    return max_profit',
       javascript:'function maxProfit(prices) {\n    let minPrice = Infinity, maxProfit = 0;\n    for (const p of prices) {\n        minPrice = Math.min(minPrice, p);\n        maxProfit = Math.max(maxProfit, p - minPrice);\n    }\n    return maxProfit;\n}',
@@ -65,7 +793,6 @@ const PROBLEMS = [
     ],
     constraints:['1 ≤ nums.length ≤ 10⁵','-10⁴ ≤ nums[i] ≤ 10⁴'],
     hints:["Kadane's: at each position, decide to extend or start new","curr = max(nums[i], curr + nums[i])"],
-    testCases:[{input:'9\n-2 1 -3 4 -1 2 1 -5 4',expected:'6'},{input:'1\n1',expected:'1'}],
     starter:{
       python:'def maxSubArray(nums):\n    curr = best = nums[0]\n    for n in nums[1:]:\n        curr = max(n, curr + n)\n        best = max(best, curr)\n    return best',
       javascript:'function maxSubArray(nums) {\n    let curr = nums[0], best = nums[0];\n    for (let i = 1; i < nums.length; i++) {\n        curr = Math.max(nums[i], curr + nums[i]);\n        best = Math.max(best, curr);\n    }\n    return best;\n}',
@@ -82,7 +809,6 @@ const PROBLEMS = [
     ],
     constraints:['2 ≤ height.length ≤ 10⁵','0 ≤ height[i] ≤ 10⁴'],
     hints:['Use two pointers starting at both ends','Move the pointer with smaller height inward','Area = min(h[l],h[r]) * (r-l)'],
-    testCases:[{input:'9\n1 8 6 2 5 4 8 3 7',expected:'49'},{input:'2\n1 1',expected:'1'}],
     starter:{
       python:'def maxArea(height):\n    l, r = 0, len(height) - 1\n    best = 0\n    while l < r:\n        best = max(best, min(height[l], height[r]) * (r - l))\n        if height[l] < height[r]: l += 1\n        else: r -= 1\n    return best',
       javascript:'function maxArea(h) {\n    let l=0, r=h.length-1, best=0;\n    while(l<r){\n        best=Math.max(best,Math.min(h[l],h[r])*(r-l));\n        if(h[l]<h[r])l++; else r--;\n    }\n    return best;\n}',
@@ -99,7 +825,6 @@ const PROBLEMS = [
     ],
     constraints:['1 ≤ height.length ≤ 2×10⁴','0 ≤ height[i] ≤ 10⁵'],
     hints:['Two pointer approach: track maxLeft and maxRight','Water at i = min(maxL, maxR) - height[i]','Move the side with smaller max inward'],
-    testCases:[{input:'12\n0 1 0 2 1 0 1 3 2 1 2 1',expected:'6'},{input:'6\n4 2 0 3 2 5',expected:'9'}],
     starter:{
       python:'def trap(height):\n    l, r = 0, len(height)-1\n    maxL = maxR = water = 0\n    while l < r:\n        if height[l] <= height[r]:\n            if height[l] >= maxL: maxL = height[l]\n            else: water += maxL - height[l]\n            l += 1\n        else:\n            if height[r] >= maxR: maxR = height[r]\n            else: water += maxR - height[r]\n            r -= 1\n    return water',
       javascript:'function trap(h){\n    let l=0,r=h.length-1,mL=0,mR=0,w=0;\n    while(l<r){\n        if(h[l]<=h[r]){if(h[l]>=mL)mL=h[l];else w+=mL-h[l];l++;}\n        else{if(h[r]>=mR)mR=h[r];else w+=mR-h[r];r--;}\n    }\n    return w;\n}',
@@ -113,7 +838,6 @@ const PROBLEMS = [
     examples:[{input:'nums = [-1,0,1,2,-1,-4]', output:'[[-1,-1,2],[-1,0,1]]'}],
     constraints:['3 ≤ nums.length ≤ 3000','-10⁵ ≤ nums[i] ≤ 10⁵'],
     hints:['Sort first, then use two pointers for each i','Skip duplicates carefully','Fix nums[i], find pair summing to -nums[i]'],
-    testCases:[{input:'6\n-1 0 1 2 -1 -4',expected:'-1 -1 2\n-1 0 1'}],
     starter:{
       python:'def threeSum(nums):\n    nums.sort()\n    res = []\n    for i in range(len(nums)-2):\n        if i > 0 and nums[i] == nums[i-1]: continue\n        l, r = i+1, len(nums)-1\n        while l < r:\n            s = nums[i]+nums[l]+nums[r]\n            if s == 0:\n                res.append([nums[i],nums[l],nums[r]])\n                while l<r and nums[l]==nums[l+1]: l+=1\n                while l<r and nums[r]==nums[r-1]: r-=1\n                l+=1; r-=1\n            elif s < 0: l+=1\n            else: r-=1\n    return res',
       javascript:'function threeSum(nums){\n    nums.sort((a,b)=>a-b); const res=[];\n    for(let i=0;i<nums.length-2;i++){\n        if(i>0&&nums[i]===nums[i-1])continue;\n        let l=i+1,r=nums.length-1;\n        while(l<r){\n            const s=nums[i]+nums[l]+nums[r];\n            if(s===0){res.push([nums[i],nums[l],nums[r]]);while(l<r&&nums[l]===nums[l+1])l++;while(l<r&&nums[r]===nums[r-1])r--;l++;r--;}\n            else if(s<0)l++; else r--;\n        }\n    }\n    return res;\n}',
@@ -131,7 +855,6 @@ const PROBLEMS = [
     ],
     constraints:['1 ≤ s.length ≤ 2×10⁵','s consists only of printable ASCII'],
     hints:['Use two pointers from each end','Skip non-alphanumeric characters','Compare lowercase versions'],
-    testCases:[{input:'A man, a plan, a canal: Panama',expected:'true'},{input:'race a car',expected:'false'}],
     starter:{
       python:'def isPalindrome(s):\n    l, r = 0, len(s)-1\n    while l < r:\n        while l < r and not s[l].isalnum(): l += 1\n        while l < r and not s[r].isalnum(): r -= 1\n        if s[l].lower() != s[r].lower(): return False\n        l += 1; r -= 1\n    return True',
       javascript:'function isPalindrome(s){\n    s=s.toLowerCase().replace(/[^a-z0-9]/g,"");\n    let l=0,r=s.length-1;\n    while(l<r){if(s[l]!==s[r])return false;l++;r--;}\n    return true;\n}',
@@ -148,7 +871,6 @@ const PROBLEMS = [
     ],
     constraints:['0 ≤ s.length ≤ 5×10⁴'],
     hints:['Sliding window with a hash map','When duplicate found, move left pointer past previous occurrence','Window size = r - l + 1'],
-    testCases:[{input:'abcabcbb',expected:'3'},{input:'bbbbb',expected:'1'},{input:'pwwkew',expected:'3'}],
     starter:{
       python:'def lengthOfLongestSubstring(s):\n    seen = {}\n    l = best = 0\n    for r, c in enumerate(s):\n        if c in seen and seen[c] >= l:\n            l = seen[c] + 1\n        seen[c] = r\n        best = max(best, r - l + 1)\n    return best',
       javascript:'function lengthOfLongestSubstring(s){\n    const m=new Map();let l=0,best=0;\n    for(let r=0;r<s.length;r++){\n        if(m.has(s[r])&&m.get(s[r])>=l)l=m.get(s[r])+1;\n        m.set(s[r],r);\n        best=Math.max(best,r-l+1);\n    }\n    return best;\n}',
@@ -165,7 +887,6 @@ const PROBLEMS = [
     ],
     constraints:['1 ≤ s.length, t.length ≤ 5×10⁴','s and t consist of lowercase English letters'],
     hints:['Count character frequencies','Compare frequency maps','Or sort both strings and compare'],
-    testCases:[{input:'anagram nagaram',expected:'true'},{input:'rat car',expected:'false'}],
     starter:{
       python:'def isAnagram(s, t):\n    if len(s) != len(t): return False\n    from collections import Counter\n    return Counter(s) == Counter(t)',
       javascript:'function isAnagram(s,t){\n    if(s.length!==t.length)return false;\n    const c={};\n    for(const x of s)c[x]=(c[x]||0)+1;\n    for(const x of t){if(!c[x])return false;c[x]--;}\n    return true;\n}',
@@ -182,7 +903,6 @@ const PROBLEMS = [
     ],
     constraints:['1 ≤ s.length ≤ 1000'],
     hints:['Expand around center for each character','Try both odd and even length palindromes','O(n²) with O(1) space using expand-around-center'],
-    testCases:[{input:'babad',expected:'bab'},{input:'cbbd',expected:'bb'}],
     starter:{
       python:'def longestPalindrome(s):\n    def expand(l, r):\n        while l>=0 and r<len(s) and s[l]==s[r]: l-=1; r+=1\n        return s[l+1:r]\n    best = ""\n    for i in range(len(s)):\n        for p in [expand(i,i), expand(i,i+1)]:\n            if len(p) > len(best): best = p\n    return best',
       javascript:'function longestPalindrome(s){\n    let best="";\n    function expand(l,r){\n        while(l>=0&&r<s.length&&s[l]===s[r]){l--;r++;}\n        return s.slice(l+1,r);\n    }\n    for(let i=0;i<s.length;i++){\n        for(const p of[expand(i,i),expand(i,i+1)])if(p.length>best.length)best=p;\n    }\n    return best;\n}',
@@ -196,7 +916,6 @@ const PROBLEMS = [
     examples:[{input:'strs = ["eat","tea","tan","ate","nat","bat"]', output:'[["bat"],["nat","tan"],["ate","eat","tea"]]'}],
     constraints:['1 ≤ strs.length ≤ 10⁴'],
     hints:['Sort each string as the key','Use a hash map from sorted_key → group'],
-    testCases:[{input:'6\neat tea tan ate nat bat',expected:'bat\nnat tan\nate eat tea'}],
     starter:{
       python:'def groupAnagrams(strs):\n    from collections import defaultdict\n    d = defaultdict(list)\n    for s in strs:\n        d[tuple(sorted(s))].append(s)\n    return list(d.values())',
       javascript:'function groupAnagrams(strs){\n    const m=new Map();\n    for(const s of strs){\n        const k=s.split("").sort().join("");\n        if(!m.has(k))m.set(k,[]);\n        m.get(k).push(s);\n    }\n    return [...m.values()];\n}',
@@ -214,7 +933,6 @@ const PROBLEMS = [
     ],
     constraints:['0 ≤ length ≤ 5000','-5000 ≤ Node.val ≤ 5000'],
     hints:['Iterative: use prev, curr, next pointers','Recursive: reverse(head.next) then relink head'],
-    testCases:[{input:'5\n1 2 3 4 5',expected:'5 4 3 2 1'},{input:'2\n1 2',expected:'2 1'}],
     starter:{
       python:'class ListNode:\n    def __init__(self,val=0,next=None): self.val=val;self.next=next\n\ndef reverseList(head):\n    prev = None\n    curr = head\n    while curr:\n        nxt = curr.next\n        curr.next = prev\n        prev = curr\n        curr = nxt\n    return prev',
       javascript:'function reverseList(head){\n    let prev=null, curr=head;\n    while(curr){\n        const nxt=curr.next;\n        curr.next=prev;\n        prev=curr;\n        curr=nxt;\n    }\n    return prev;\n}',
@@ -228,7 +946,6 @@ const PROBLEMS = [
     examples:[{input:'list1=[1,2,4], list2=[1,3,4]', output:'[1,1,2,3,4,4]'}],
     constraints:['0 ≤ length ≤ 50','-100 ≤ Node.val ≤ 100'],
     hints:['Use a dummy head node','Iteratively compare and attach the smaller node'],
-    testCases:[{input:'3\n1 2 4\n3\n1 3 4',expected:'1 1 2 3 4 4'}],
     starter:{
       python:'def mergeTwoLists(l1, l2):\n    dummy = ListNode(0)\n    curr = dummy\n    while l1 and l2:\n        if l1.val <= l2.val: curr.next=l1; l1=l1.next\n        else: curr.next=l2; l2=l2.next\n        curr=curr.next\n    curr.next = l1 or l2\n    return dummy.next',
       javascript:'function mergeTwoLists(l1,l2){\n    const d={val:0,next:null};let c=d;\n    while(l1&&l2){\n        if(l1.val<=l2.val){c.next=l1;l1=l1.next;}else{c.next=l2;l2=l2.next;}\n        c=c.next;\n    }\n    c.next=l1||l2;\n    return d.next;\n}',
@@ -242,7 +959,6 @@ const PROBLEMS = [
     examples:[{input:'head=[3,2,0,-4], pos=1 (cycle at index 1)', output:'true'}],
     constraints:['0 ≤ number of nodes ≤ 10⁴'],
     hints:["Floyd's Cycle Detection: slow moves 1 step, fast moves 2","If they meet, there's a cycle"],
-    testCases:[{input:'4\n3 2 0 -4\n1',expected:'true'},{input:'1\n1\n-1',expected:'false'}],
     starter:{
       python:'def hasCycle(head):\n    slow = fast = head\n    while fast and fast.next:\n        slow = slow.next\n        fast = fast.next.next\n        if slow is fast: return True\n    return False',
       javascript:'function hasCycle(head){\n    let slow=head,fast=head;\n    while(fast&&fast.next){\n        slow=slow.next;fast=fast.next.next;\n        if(slow===fast)return true;\n    }\n    return false;\n}',
@@ -256,7 +972,6 @@ const PROBLEMS = [
     examples:[{input:'LRUCache(2); put(1,1); put(2,2); get(1)→1; put(3,3)[evicts 2]; get(2)→-1', output:'-1 for evicted key'}],
     constraints:['1 ≤ capacity ≤ 3000','0 ≤ key, value ≤ 10⁴'],
     hints:['Use doubly linked list + hash map','Map: key → node; List: LRU order','On access: move node to front; On capacity: remove from back'],
-    testCases:[{input:'2\n4\nput 1 1\nput 2 2\nget 1\nput 3 3\nget 2',expected:'1\n-1'}],
     starter:{
       python:'class LRUCache:\n    def __init__(self, capacity):\n        from collections import OrderedDict\n        self.cap = capacity\n        self.cache = OrderedDict()\n    \n    def get(self, key):\n        if key not in self.cache: return -1\n        self.cache.move_to_end(key)\n        return self.cache[key]\n    \n    def put(self, key, value):\n        if key in self.cache: self.cache.move_to_end(key)\n        self.cache[key] = value\n        if len(self.cache) > self.cap:\n            self.cache.popitem(last=False)',
       javascript:'class LRUCache{\n    constructor(cap){this.cap=cap;this.m=new Map();}\n    get(k){if(!this.m.has(k))return -1;const v=this.m.get(k);this.m.delete(k);this.m.set(k,v);return v;}\n    put(k,v){if(this.m.has(k))this.m.delete(k);this.m.set(k,v);if(this.m.size>this.cap)this.m.delete(this.m.keys().next().value);}\n}',
@@ -271,7 +986,6 @@ const PROBLEMS = [
     examples:[{input:'root = [3,9,20,null,null,15,7]', output:'3'}],
     constraints:['0 ≤ nodes ≤ 10⁴','-100 ≤ Node.val ≤ 100'],
     hints:['DFS: max(depth(left), depth(right)) + 1','BFS: count levels'],
-    testCases:[{input:'3\n3 9 20 null null 15 7',expected:'3'},{input:'1\n1',expected:'1'}],
     starter:{
       python:'def maxDepth(root):\n    if not root: return 0\n    return 1 + max(maxDepth(root.left), maxDepth(root.right))',
       javascript:'function maxDepth(root){\n    if(!root)return 0;\n    return 1+Math.max(maxDepth(root.left),maxDepth(root.right));\n}',
@@ -285,7 +999,6 @@ const PROBLEMS = [
     examples:[{input:'root = [4,2,7,1,3,6,9]', output:'[4,7,2,9,6,3,1]'}],
     constraints:['0 ≤ nodes ≤ 100'],
     hints:['Recursively swap left and right children','Apply to every node'],
-    testCases:[{input:'7\n4 2 7 1 3 6 9',expected:'4 7 2 9 6 3 1'}],
     starter:{
       python:'def invertTree(root):\n    if not root: return None\n    root.left, root.right = invertTree(root.right), invertTree(root.left)\n    return root',
       javascript:'function invertTree(root){\n    if(!root)return null;\n    [root.left,root.right]=[invertTree(root.right),invertTree(root.left)];\n    return root;\n}',
@@ -299,7 +1012,6 @@ const PROBLEMS = [
     examples:[{input:'root=[6,2,8,0,4,7,9], p=2, q=8', output:'6'},{input:'p=2, q=4', output:'2'}],
     constraints:['2 ≤ nodes ≤ 10⁵','BST properties hold'],
     hints:['If both < root: go left; if both > root: go right; otherwise root is LCA'],
-    testCases:[{input:'6 2 8',expected:'6'},{input:'6 2 4',expected:'2'}],
     starter:{
       python:'def lowestCommonAncestor(root, p, q):\n    while root:\n        if p.val < root.val and q.val < root.val: root = root.left\n        elif p.val > root.val and q.val > root.val: root = root.right\n        else: return root',
       javascript:'function lowestCommonAncestor(root,p,q){\n    while(root){\n        if(p.val<root.val&&q.val<root.val)root=root.left;\n        else if(p.val>root.val&&q.val>root.val)root=root.right;\n        else return root;\n    }\n}',
@@ -313,7 +1025,6 @@ const PROBLEMS = [
     examples:[{input:'root = [3,9,20,null,null,15,7]', output:'[[3],[9,20],[15,7]]'}],
     constraints:['0 ≤ nodes ≤ 2000'],
     hints:['Use a queue','Process all nodes at current level before moving to next'],
-    testCases:[{input:'7\n3 9 20 null null 15 7',expected:'3\n9 20\n15 7'}],
     starter:{
       python:'from collections import deque\ndef levelOrder(root):\n    if not root: return []\n    q, res = deque([root]), []\n    while q:\n        level = []\n        for _ in range(len(q)):\n            node = q.popleft()\n            level.append(node.val)\n            if node.left: q.append(node.left)\n            if node.right: q.append(node.right)\n        res.append(level)\n    return res',
       javascript:'function levelOrder(root){\n    if(!root)return[];\n    const q=[root],res=[];\n    while(q.length){\n        const level=[];\n        for(let i=q.length;i>0;i--){\n            const n=q.shift();\n            level.push(n.val);\n            if(n.left)q.push(n.left);\n            if(n.right)q.push(n.right);\n        }\n        res.push(level);\n    }\n    return res;\n}',
@@ -327,7 +1038,6 @@ const PROBLEMS = [
     examples:[{input:'root = [-10,9,20,null,null,15,7]', output:'42', explanation:'Path: 15→20→7'}],
     constraints:['-1000 ≤ Node.val ≤ 1000'],
     hints:['DFS: at each node compute gain going left and right','Max gain through node = max(left,0) + max(right,0) + node.val','Update global max, but return only one direction to parent'],
-    testCases:[{input:'7\n-10 9 20 null null 15 7',expected:'42'}],
     starter:{
       python:'def maxPathSum(root):\n    res = [root.val]\n    def dfs(node):\n        if not node: return 0\n        l = max(dfs(node.left), 0)\n        r = max(dfs(node.right), 0)\n        res[0] = max(res[0], node.val + l + r)\n        return node.val + max(l, r)\n    dfs(root)\n    return res[0]',
       javascript:'function maxPathSum(root){\n    let res=root.val;\n    function dfs(n){\n        if(!n)return 0;\n        const l=Math.max(dfs(n.left),0),r=Math.max(dfs(n.right),0);\n        res=Math.max(res,n.val+l+r);\n        return n.val+Math.max(l,r);\n    }\n    dfs(root);return res;\n}',
@@ -342,7 +1052,6 @@ const PROBLEMS = [
     examples:[{input:'grid=[["1","1","0"],["0","1","0"],["0","0","1"]]', output:'2'}],
     constraints:['1 ≤ m,n ≤ 300'],
     hints:['DFS/BFS from every unvisited 1','Mark visited cells to avoid re-processing'],
-    testCases:[{input:'3 3\n1 1 0\n0 1 0\n0 0 1',expected:'2'}],
     starter:{
       python:'def numIslands(grid):\n    count = 0\n    def dfs(i, j):\n        if i<0 or i>=len(grid) or j<0 or j>=len(grid[0]) or grid[i][j]!="1": return\n        grid[i][j]="0"\n        for di,dj in [(0,1),(1,0),(0,-1),(-1,0)]: dfs(i+di,j+dj)\n    for i in range(len(grid)):\n        for j in range(len(grid[0])):\n            if grid[i][j]=="1": count+=1; dfs(i,j)\n    return count',
       javascript:'function numIslands(grid){\n    let count=0;\n    function dfs(i,j){\n        if(i<0||i>=grid.length||j<0||j>=grid[0].length||grid[i][j]!=="1")return;\n        grid[i][j]="0";\n        [[0,1],[1,0],[0,-1],[-1,0]].forEach(([di,dj])=>dfs(i+di,j+dj));\n    }\n    for(let i=0;i<grid.length;i++)\n        for(let j=0;j<grid[0].length;j++)\n            if(grid[i][j]==="1"){count++;dfs(i,j);}\n    return count;\n}',
@@ -356,7 +1065,6 @@ const PROBLEMS = [
     examples:[{input:'adjList = [[2,4],[1,3],[2,4],[1,3]]', output:'[[2,4],[1,3],[2,4],[1,3]]'}],
     constraints:['1 ≤ nodes ≤ 100','1 ≤ val ≤ 100'],
     hints:['Use hash map: original → clone','DFS/BFS: when visiting a node, clone it and recursively clone neighbors'],
-    testCases:[{input:'4\n1:2 4\n2:1 3\n3:2 4\n4:1 3',expected:'1:2 4\n2:1 3\n3:2 4\n4:1 3'}],
     starter:{
       python:'def cloneGraph(node):\n    if not node: return None\n    seen = {}\n    def dfs(n):\n        if n in seen: return seen[n]\n        clone = Node(n.val)\n        seen[n] = clone\n        for nb in n.neighbors: clone.neighbors.append(dfs(nb))\n        return clone\n    return dfs(node)',
       javascript:'function cloneGraph(node){\n    if(!node)return null;\n    const map=new Map();\n    function dfs(n){\n        if(map.has(n))return map.get(n);\n        const clone={val:n.val,neighbors:[]};\n        map.set(n,clone);\n        for(const nb of n.neighbors)clone.neighbors.push(dfs(nb));\n        return clone;\n    }\n    return dfs(node);\n}',
@@ -370,7 +1078,6 @@ const PROBLEMS = [
     examples:[{input:'numCourses=2, prerequisites=[[1,0]]', output:'true'},{input:'numCourses=2, prerequisites=[[1,0],[0,1]]', output:'false'}],
     constraints:['1 ≤ numCourses ≤ 2000'],
     hints:['Build adjacency list','DFS with 3 states: 0=unvisited, 1=visiting, 2=visited','If visiting node again → cycle → false'],
-    testCases:[{input:'2\n1\n1 0',expected:'true'},{input:'2\n2\n1 0\n0 1',expected:'false'}],
     starter:{
       python:'def canFinish(numCourses, prerequisites):\n    graph = [[] for _ in range(numCourses)]\n    for a,b in prerequisites: graph[a].append(b)\n    state = [0]*numCourses  # 0=unvisited 1=visiting 2=done\n    def dfs(u):\n        if state[u]==1: return False\n        if state[u]==2: return True\n        state[u]=1\n        for v in graph[u]:\n            if not dfs(v): return False\n        state[u]=2\n        return True\n    return all(dfs(i) for i in range(numCourses))',
       javascript:'function canFinish(n,pre){\n    const g=Array.from({length:n},()=>[]);\n    for(const[a,b]of pre)g[a].push(b);\n    const state=new Array(n).fill(0);\n    function dfs(u){\n        if(state[u]===1)return false;\n        if(state[u]===2)return true;\n        state[u]=1;\n        for(const v of g[u])if(!dfs(v))return false;\n        state[u]=2;return true;\n    }\n    for(let i=0;i<n;i++)if(!dfs(i))return false;\n    return true;\n}',
@@ -385,7 +1092,6 @@ const PROBLEMS = [
     examples:[{input:'n=2', output:'2'},{input:'n=3', output:'3'}],
     constraints:['1 ≤ n ≤ 45'],
     hints:['f(n) = f(n-1) + f(n-2) — Fibonacci!','Base cases: f(1)=1, f(2)=2'],
-    testCases:[{input:'2',expected:'2'},{input:'3',expected:'3'},{input:'5',expected:'8'}],
     starter:{
       python:'def climbStairs(n):\n    if n <= 2: return n\n    a, b = 1, 2\n    for _ in range(3, n+1): a, b = b, a+b\n    return b',
       javascript:'function climbStairs(n){\n    if(n<=2)return n;\n    let a=1,b=2;\n    for(let i=3;i<=n;i++){[a,b]=[b,a+b];}\n    return b;\n}',
@@ -399,7 +1105,6 @@ const PROBLEMS = [
     examples:[{input:'coins=[1,5,11], amount=11', output:'2', explanation:'5+5+1? No, 11 directly = 1 coin? Wait: coin 11 exists, return 1'},{input:'coins=[2], amount=3', output:'-1'}],
     constraints:['1 ≤ coins.length ≤ 12','0 ≤ amount ≤ 10⁴'],
     hints:['DP bottom-up: dp[i] = min coins to make i','dp[0]=0, dp[i]=min(dp[i-c]+1) for each coin c'],
-    testCases:[{input:'3\n1 5 11\n11',expected:'1'},{input:'1\n2\n3',expected:'-1'},{input:'3\n1 2 5\n11',expected:'3'}],
     starter:{
       python:'def coinChange(coins, amount):\n    dp = [float("inf")] * (amount+1)\n    dp[0] = 0\n    for i in range(1, amount+1):\n        for c in coins:\n            if c <= i:\n                dp[i] = min(dp[i], dp[i-c]+1)\n    return dp[amount] if dp[amount] != float("inf") else -1',
       javascript:'function coinChange(coins,amount){\n    const dp=new Array(amount+1).fill(Infinity);\n    dp[0]=0;\n    for(let i=1;i<=amount;i++)\n        for(const c of coins)\n            if(c<=i)dp[i]=Math.min(dp[i],dp[i-c]+1);\n    return dp[amount]===Infinity?-1:dp[amount];\n}',
@@ -413,7 +1118,6 @@ const PROBLEMS = [
     examples:[{input:'text1="abcde", text2="ace"', output:'3', explanation:'"ace" is LCS'}],
     constraints:['1 ≤ text1.length, text2.length ≤ 1000'],
     hints:['2D DP table','if text1[i-1]==text2[j-1]: dp[i][j] = dp[i-1][j-1]+1','else: max(dp[i-1][j], dp[i][j-1])'],
-    testCases:[{input:'abcde ace',expected:'3'},{input:'abc abc',expected:'3'},{input:'abc def',expected:'0'}],
     starter:{
       python:'def longestCommonSubsequence(text1, text2):\n    m, n = len(text1), len(text2)\n    dp = [[0]*(n+1) for _ in range(m+1)]\n    for i in range(1,m+1):\n        for j in range(1,n+1):\n            if text1[i-1]==text2[j-1]: dp[i][j]=dp[i-1][j-1]+1\n            else: dp[i][j]=max(dp[i-1][j],dp[i][j-1])\n    return dp[m][n]',
       javascript:'function longestCommonSubsequence(t1,t2){\n    const m=t1.length,n=t2.length;\n    const dp=Array.from({length:m+1},()=>new Array(n+1).fill(0));\n    for(let i=1;i<=m;i++)\n        for(let j=1;j<=n;j++)\n            dp[i][j]=t1[i-1]===t2[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);\n    return dp[m][n];\n}',
@@ -427,7 +1131,6 @@ const PROBLEMS = [
     examples:[{input:'n=3, weights=[2,3,4], values=[3,4,5], W=5', output:'7', explanation:'Items 0+1: weight=5, value=7'}],
     constraints:['1 ≤ n ≤ 100','1 ≤ W ≤ 1000'],
     hints:['dp[i][w] = max value using first i items with capacity w','Either skip item i or include it'],
-    testCases:[{input:'3 5\n2 3 4\n3 4 5',expected:'7'},{input:'4 8\n1 3 4 5\n1 4 5 7',expected:'13'}],
     starter:{
       python:'def knapsack(n, W, weights, values):\n    dp = [[0]*(W+1) for _ in range(n+1)]\n    for i in range(1,n+1):\n        for w in range(W+1):\n            dp[i][w] = dp[i-1][w]\n            if weights[i-1] <= w:\n                dp[i][w] = max(dp[i][w], dp[i-1][w-weights[i-1]]+values[i-1])\n    return dp[n][W]',
       javascript:'function knapsack(n,W,weights,values){\n    const dp=Array.from({length:n+1},()=>new Array(W+1).fill(0));\n    for(let i=1;i<=n;i++)\n        for(let w=0;w<=W;w++){\n            dp[i][w]=dp[i-1][w];\n            if(weights[i-1]<=w)dp[i][w]=Math.max(dp[i][w],dp[i-1][w-weights[i-1]]+values[i-1]);\n        }\n    return dp[n][W];\n}',
@@ -441,7 +1144,6 @@ const PROBLEMS = [
     examples:[{input:'s="leetcode", wordDict=["leet","code"]', output:'true'}],
     constraints:['1 ≤ s.length ≤ 300'],
     hints:['dp[i] = can s[0..i] be segmented','dp[i] = true if dp[j] and s[j..i] in dict for some j'],
-    testCases:[{input:'leetcode 2 leet code',expected:'true'},{input:'applepenapple 3 apple pen',expected:'true'},{input:'catsandog 5 cats dog sand and an',expected:'false'}],
     starter:{
       python:'def wordBreak(s, wordDict):\n    words = set(wordDict)\n    dp = [False]*(len(s)+1)\n    dp[0] = True\n    for i in range(1,len(s)+1):\n        for j in range(i):\n            if dp[j] and s[j:i] in words:\n                dp[i] = True\n                break\n    return dp[len(s)]',
       javascript:'function wordBreak(s,wordDict){\n    const words=new Set(wordDict);\n    const dp=new Array(s.length+1).fill(false);\n    dp[0]=true;\n    for(let i=1;i<=s.length;i++)\n        for(let j=0;j<i;j++)\n            if(dp[j]&&words.has(s.slice(j,i))){dp[i]=true;break;}\n    return dp[s.length];\n}',
@@ -456,7 +1158,6 @@ const PROBLEMS = [
     examples:[{input:'s = "()[]{}"', output:'true'},{input:'s = "(]"', output:'false'}],
     constraints:['1 ≤ s.length ≤ 10⁴'],
     hints:['Use a stack','Push opening brackets, pop and match on closing'],
-    testCases:[{input:'()[]{}',expected:'true'},{input:'(]',expected:'false'},{input:'{[]}',expected:'true'}],
     starter:{
       python:'def isValid(s):\n    stack = []\n    pairs = {")":"(","]":"[","}":"{"}\n    for c in s:\n        if c in "([{": stack.append(c)\n        elif not stack or stack[-1] != pairs[c]: return False\n        else: stack.pop()\n    return len(stack) == 0',
       javascript:'function isValid(s){\n    const stack=[],pairs={")":"(","]":"[","}":"{"};\n    for(const c of s){\n        if("([{".includes(c))stack.push(c);\n        else if(!stack.length||stack[stack.length-1]!==pairs[c])return false;\n        else stack.pop();\n    }\n    return stack.length===0;\n}',
@@ -470,7 +1171,6 @@ const PROBLEMS = [
     examples:[{input:'MinStack(); push(-2); push(0); push(-3); getMin()→-3; pop(); top()→0; getMin()→-2', output:'-3, 0, -2'}],
     constraints:['At most 3×10⁴ operations'],
     hints:['Use an auxiliary stack to track minimums','Push min to aux stack only when needed'],
-    testCases:[{input:'5\npush -2\npush 0\npush -3\ngetMin\npop\ngetMin',expected:'-3\n-2'}],
     starter:{
       python:'class MinStack:\n    def __init__(self):\n        self.stack = []\n        self.min_stack = []\n    def push(self, val):\n        self.stack.append(val)\n        self.min_stack.append(min(val, self.min_stack[-1] if self.min_stack else val))\n    def pop(self):\n        self.stack.pop()\n        self.min_stack.pop()\n    def top(self): return self.stack[-1]\n    def getMin(self): return self.min_stack[-1]',
       javascript:'class MinStack{\n    constructor(){this.s=[];this.m=[];}\n    push(v){this.s.push(v);this.m.push(Math.min(v,this.m.length?this.m[this.m.length-1]:v));}\n    pop(){this.s.pop();this.m.pop();}\n    top(){return this.s[this.s.length-1];}\n    getMin(){return this.m[this.m.length-1];}\n}',
@@ -485,7 +1185,6 @@ const PROBLEMS = [
     examples:[{input:'nums=[-1,0,3,5,9,12], target=9', output:'4'}],
     constraints:['1 ≤ nums.length ≤ 10⁴','All values distinct, sorted ascending'],
     hints:['mid = (l+r)//2','If target == nums[mid], return mid','If target < nums[mid], search left; else search right'],
-    testCases:[{input:'6\n-1 0 3 5 9 12\n9',expected:'4'},{input:'6\n-1 0 3 5 9 12\n2',expected:'-1'}],
     starter:{
       python:'def search(nums, target):\n    l, r = 0, len(nums)-1\n    while l <= r:\n        mid = (l+r)//2\n        if nums[mid] == target: return mid\n        elif nums[mid] < target: l = mid+1\n        else: r = mid-1\n    return -1',
       javascript:'function search(nums,target){\n    let l=0,r=nums.length-1;\n    while(l<=r){\n        const mid=l+r>>1;\n        if(nums[mid]===target)return mid;\n        else if(nums[mid]<target)l=mid+1;\n        else r=mid-1;\n    }\n    return -1;\n}',
@@ -499,7 +1198,6 @@ const PROBLEMS = [
     examples:[{input:'nums = [3,4,5,1,2]', output:'1'},{input:'nums = [4,5,6,7,0,1,2]', output:'0'}],
     constraints:['1 ≤ nums.length ≤ 5000','All values unique'],
     hints:['Binary search on the pivot','If nums[mid] > nums[r], min is in right half','Else min is in left half including mid'],
-    testCases:[{input:'5\n3 4 5 1 2',expected:'1'},{input:'7\n4 5 6 7 0 1 2',expected:'0'}],
     starter:{
       python:'def findMin(nums):\n    l, r = 0, len(nums)-1\n    while l < r:\n        mid = (l+r)//2\n        if nums[mid] > nums[r]: l = mid+1\n        else: r = mid\n    return nums[l]',
       javascript:'function findMin(nums){\n    let l=0,r=nums.length-1;\n    while(l<r){\n        const m=l+r>>1;\n        if(nums[m]>nums[r])l=m+1;\n        else r=m;\n    }\n    return nums[l];\n}',
@@ -514,7 +1212,6 @@ const PROBLEMS = [
     examples:[{input:'nums=[3,2,1,5,6,4], k=2', output:'5'},{input:'nums=[3,2,3,1,2,4,5,5,6], k=4', output:'4'}],
     constraints:['1 ≤ k ≤ nums.length ≤ 10⁵'],
     hints:['Min-heap of size k: maintain k largest','heap.top() is kth largest','Or use QuickSelect for O(n) average'],
-    testCases:[{input:'6\n3 2 1 5 6 4\n2',expected:'5'},{input:'9\n3 2 3 1 2 4 5 5 6\n4',expected:'4'}],
     starter:{
       python:'import heapq\ndef findKthLargest(nums, k):\n    heap = nums[:k]\n    heapq.heapify(heap)\n    for n in nums[k:]:\n        if n > heap[0]:\n            heapq.heapreplace(heap, n)\n    return heap[0]',
       javascript:'function findKthLargest(nums,k){\n    nums.sort((a,b)=>b-a);\n    return nums[k-1];\n}',
@@ -528,7 +1225,6 @@ const PROBLEMS = [
     examples:[{input:'nums=[1,1,1,2,2,3], k=2', output:'[1,2]'}],
     constraints:['1 ≤ nums.length ≤ 10⁵'],
     hints:['Count frequencies with hash map','Use min-heap of size k on (freq, num)','Or use bucket sort: bucket[freq] = nums'],
-    testCases:[{input:'6\n1 1 1 2 2 3\n2',expected:'1 2'},{input:'1\n1\n1',expected:'1'}],
     starter:{
       python:'def topKFrequent(nums, k):\n    from collections import Counter\n    import heapq\n    count = Counter(nums)\n    return heapq.nlargest(k, count.keys(), key=count.get)',
       javascript:'function topKFrequent(nums,k){\n    const c={};\n    for(const x of nums)c[x]=(c[x]||0)+1;\n    return Object.keys(c).sort((a,b)=>c[b]-c[a]).slice(0,k).map(Number);\n}',
@@ -543,7 +1239,6 @@ const PROBLEMS = [
     examples:[{input:'intervals=[[1,3],[2,6],[8,10],[15,18]]', output:'[[1,6],[8,10],[15,18]]'}],
     constraints:['1 ≤ intervals.length ≤ 10⁴'],
     hints:['Sort by start time','If curr.start <= prev.end, merge by updating prev.end'],
-    testCases:[{input:'4\n1 3\n2 6\n8 10\n15 18',expected:'1 6\n8 10\n15 18'},{input:'2\n1 4\n4 5',expected:'1 5'}],
     starter:{
       python:'def merge(intervals):\n    intervals.sort(key=lambda x: x[0])\n    res = [intervals[0]]\n    for s, e in intervals[1:]:\n        if s <= res[-1][1]: res[-1][1] = max(res[-1][1], e)\n        else: res.append([s, e])\n    return res',
       javascript:'function merge(intervals){\n    intervals.sort((a,b)=>a[0]-b[0]);\n    const res=[intervals[0]];\n    for(const[s,e] of intervals.slice(1)){\n        if(s<=res[res.length-1][1])res[res.length-1][1]=Math.max(res[res.length-1][1],e);\n        else res.push([s,e]);\n    }\n    return res;\n}',
@@ -558,7 +1253,6 @@ const PROBLEMS = [
     examples:[{input:'n = 00000000000000000000000000001011', output:'3'},{input:'n = 11111111111111111111111111111101', output:'31'}],
     constraints:['1 ≤ n ≤ 2³¹-1'],
     hints:['n & (n-1) clears the lowest set bit','Count iterations until n becomes 0'],
-    testCases:[{input:'11',expected:'3'},{input:'128',expected:'1'}],
     starter:{
       python:'def hammingWeight(n):\n    count = 0\n    while n:\n        n &= n-1\n        count += 1\n    return count',
       javascript:'function hammingWeight(n){\n    let c=0;\n    while(n){n=n&(n-1);c++;}\n    return c;\n}',
@@ -572,7 +1266,6 @@ const PROBLEMS = [
     examples:[{input:'n = 00000010100101000001111010011100', output:'00111001011110000010100101000000 = 964176192'}],
     constraints:['Input is 32-bit unsigned integer'],
     hints:['Iterate 32 times','Extract LSB and shift into result from left'],
-    testCases:[{input:'43261596',expected:'964176192'},{input:'4294967293',expected:'3221225471'}],
     starter:{
       python:'def reverseBits(n):\n    res = 0\n    for _ in range(32):\n        res = (res << 1) | (n & 1)\n        n >>= 1\n    return res',
       javascript:'function reverseBits(n){\n    let r=0;\n    for(let i=0;i<32;i++){r=(r*2)+(n&1);n>>=1;}\n    return r>>>0;\n}',
@@ -587,7 +1280,6 @@ const PROBLEMS = [
     examples:[{input:'nums = [1,2,3]', output:'[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]'}],
     constraints:['1 ≤ nums.length ≤ 10'],
     hints:['Backtrack: for each element decide include or exclude','Or iterate: for each new number, add it to all existing subsets'],
-    testCases:[{input:'3\n1 2 3',expected:'8 subsets'}],
     starter:{
       python:'def subsets(nums):\n    res = [[]]\n    for n in nums:\n        res += [sub + [n] for sub in res]\n    return res',
       javascript:'function subsets(nums){\n    let res=[[]];\n    for(const n of nums)res=[...res,...res.map(s=>[...s,n])];\n    return res;\n}',
@@ -601,7 +1293,6 @@ const PROBLEMS = [
     examples:[{input:'nums = [1,2,3]', output:'[[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]]'}],
     constraints:['1 ≤ nums.length ≤ 6'],
     hints:['Backtrack: swap element at current position with all elements at i..n','Or: for each element, insert it in all positions of sub-permutation'],
-    testCases:[{input:'3\n1 2 3',expected:'6 permutations'}],
     starter:{
       python:'def permute(nums):\n    res = []\n    def bt(start):\n        if start == len(nums): res.append(nums[:]); return\n        for i in range(start, len(nums)):\n            nums[start], nums[i] = nums[i], nums[start]\n            bt(start+1)\n            nums[start], nums[i] = nums[i], nums[start]\n    bt(0)\n    return res',
       javascript:'function permute(nums){\n    const res=[];\n    function bt(start){\n        if(start===nums.length){res.push([...nums]);return;}\n        for(let i=start;i<nums.length;i++){\n            [nums[start],nums[i]]=[nums[i],nums[start]];\n            bt(start+1);\n            [nums[start],nums[i]]=[nums[i],nums[start]];\n        }\n    }\n    bt(0);return res;\n}',
@@ -616,7 +1307,6 @@ const PROBLEMS = [
     examples:[{input:'nums=[1,3,-1,-3,5,3,6,7], k=3', output:'[3,3,5,5,6,7]'}],
     constraints:['1 ≤ nums.length ≤ 10⁵','1 ≤ k ≤ nums.length'],
     hints:['Use monotonic deque storing indices','Deque front = max of current window','Remove indices outside window from front, smaller values from back'],
-    testCases:[{input:'8\n1 3 -1 -3 5 3 6 7\n3',expected:'3 3 5 5 6 7'}],
     starter:{
       python:'from collections import deque\ndef maxSlidingWindow(nums, k):\n    dq, res = deque(), []\n    for i, n in enumerate(nums):\n        while dq and dq[0] < i-k+1: dq.popleft()\n        while dq and nums[dq[-1]] < n: dq.pop()\n        dq.append(i)\n        if i >= k-1: res.append(nums[dq[0]])\n    return res',
       javascript:'function maxSlidingWindow(nums,k){\n    const dq=[],res=[];\n    for(let i=0;i<nums.length;i++){\n        while(dq.length&&dq[0]<i-k+1)dq.shift();\n        while(dq.length&&nums[dq[dq.length-1]]<nums[i])dq.pop();\n        dq.push(i);\n        if(i>=k-1)res.push(nums[dq[0]]);\n    }\n    return res;\n}',
@@ -641,26 +1331,15 @@ const getCode   = (id, lang) => { try { return localStorage.getItem(`dsa_code_${
 const saveCode  = (id, lang, code) => { try { localStorage.setItem(`dsa_code_${id}_${lang}`, code); } catch {} };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// JUDGE0 execution — calls your self-hosted backend
+// JDoodle execution — always call the configured backend API origin
 // ═══════════════════════════════════════════════════════════════════════════
-const runViaJudge0 = async (code, language, stdin = '') => {
-  const token = localStorage.getItem('token') || '';
-  const resp  = await Promise.race([
-    fetch('/api/code/run', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ code, language, stdin }),
-    }),
-    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000)),
-  ]);
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(err.error || err.fix || `HTTP ${resp.status}`);
-  }
-  const d = await resp.json();
-  if (d.verdict === 'Judge0 Offline') throw new Error('Judge0 not running');
-  return d;
+const runViaJDoodle = async (code, language, stdin = '') => {
+  const { data } = await codeAPI.run({ code, language, stdin });
+  return data;
 };
+
+const getRunnerErrorMessage = (error) =>
+  error?.response?.data?.error || error?.message || 'The JDoodle code runner could not complete this request.';
 
 // JS browser fallback
 const runJSBrowser = (code) => new Promise((resolve) => {
@@ -689,17 +1368,35 @@ export default function DSACoding() {
   const [submitOutput,setSubOutput]   = useState(null);
   const [customInput, setCustomInput] = useState('');
   const [solved,      setSolvedState] = useState(getSolved());
-  const [judge0OK,    setJudge0OK]    = useState(null); // null=unchecked, true/false
+  const [jdoodleStatus, setJDoodleStatus] = useState({
+    available: null,
+    configured: false,
+    engine: 'JDoodle Cloud API',
+    message: '',
+  });
   const [submissions, setSubmissions] = useState([]);
   const editorRef = useRef(null);
+  const jdoodleOK = jdoodleStatus.available;
 
-  // Check Judge0 status on mount
+  // Check the non-secret JDoodle runner status on mount. codeAPI uses the same
+  // REACT_APP_API_URL and authentication behavior as the rest of the app.
   useEffect(() => {
-    const token = localStorage.getItem('token') || '';
-    fetch('/api/code/status', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then(r => r.json())
-      .then(d => setJudge0OK(d.available))
-      .catch(() => setJudge0OK(false));
+    codeAPI.status()
+      .then(({ data }) => setJDoodleStatus({
+        available: data?.available === true,
+        configured: data?.configured === true,
+        engine: data?.engine || 'JDoodle Cloud API',
+        message: data?.message || '',
+      }))
+      .catch((error) => {
+        const data = error?.response?.data || {};
+        setJDoodleStatus({
+          available: false,
+          configured: false,
+          engine: data.engine || 'JDoodle Cloud API',
+          message: data.error || data.message || 'The backend code-runner status endpoint could not be reached.',
+        });
+      });
   }, []);
 
   const openProblem = (prob) => {
@@ -709,7 +1406,9 @@ export default function DSACoding() {
     setRunOutput(null);
     setSubOutput(null);
     setTab('problem');
-    setCustomInput(prob.examples?.[0]?.input?.replace(/.*= /g,'') || '');
+    // The custom box contains function arguments, not stdin. This avoids the
+    // old greedy example parser turning Two Sum into just "9".
+    setCustomInput(formatCustomArgs(getDefaultArgs(prob.id)));
     setScreen('problem');
     // Load submission history from localStorage
     try {
@@ -738,69 +1437,132 @@ export default function DSACoding() {
     if (selected) saveCode(selected.id, lang, val || '');
   };
 
-  // ── RUN CODE (custom input, no test cases) ────────────────────────────
+  // ── RUN CODE (custom function arguments) ─────────────────────────────
   const runCode = async () => {
     if (!code.trim()) return toast.error('Write some code first!');
+    if (!selected) return;
     setRunning(true); setRunOutput(null);
+
     try {
-      let result;
-      if (lang === 'javascript' && judge0OK === false) {
-        result = await runJSBrowser(code);
-      } else {
-        result = await runViaJudge0(code, lang, customInput);
+      const spec = getLeetCodeSpec(selected.id);
+      if (!spec) throw new Error('This problem is not configured for function-style execution yet.');
+      const args = parseCustomArgs(customInput);
+      const program = buildLeetCodeProgram({ source: code, language: lang, problemId: selected.id, args });
+
+      // Browser execution remains an explicitly labelled JavaScript preview
+      // only when JDoodle is unavailable. It runs the same generated function
+      // driver, so Run never falls back to the obsolete stdin contract.
+      const result = lang === 'javascript' && jdoodleOK === false
+        ? await runJSBrowser(program)
+        : await runViaJDoodle(program, lang, '');
+
+      if (result?.verdict && result.verdict !== 'Accepted') {
+        setRunOutput({
+          type: 'run',
+          ...result,
+          stderr: result.stderr || 'Your function could not be executed for this test case.',
+        });
+        return;
       }
-      setRunOutput({ type:'run', ...result });
-    } catch (err) {
-      if (lang === 'javascript') {
-        const r = await runJSBrowser(code);
-        setRunOutput({ type:'run', ...r });
-      } else {
-        setRunOutput({ type:'run', verdict:'Judge0 Offline', stdout:'', stderr:
-          'Judge0 CE is not running.\n\nStart it:\n  cd SmartHire/judge0\n  docker-compose up -d\n\nThen restart backend.' });
-      }
-    } finally { setRunning(false); }
+
+      const returned = parseHarnessOutput(result?.stdout);
+      setRunOutput({
+        type: 'run',
+        ...result,
+        verdict: 'Accepted',
+        stdout: `Return value: ${formatLeetCodeValue(returned)}`,
+        rawStdout: result?.stdout || '',
+        returned,
+      });
+    } catch (error) {
+      setRunOutput({
+        type: 'run',
+        verdict: 'Function Runner Error',
+        stdout: '',
+        stderr: getRunnerErrorMessage(error),
+        engine: 'JDoodle Cloud API',
+      });
+    } finally {
+      setRunning(false);
+    }
   };
 
-  // ── SUBMIT CODE (run against all test cases) ──────────────────────────
+  // ── SUBMIT CODE (invoke the selected function for every typed test) ────
   const submitCode = async () => {
     if (!code.trim() || !selected) return;
     setSubmitting(true); setSubOutput(null);
 
-    // For JS use browser execution; others need Judge0
-    const usesBrowser = lang === 'javascript' && judge0OK === false;
+    // Browser preview is deliberately limited to Run Code. A local browser
+    // evaluation must never create a misleading accepted cloud submission.
+    const usesBrowser = lang === 'javascript' && jdoodleOK === false;
 
     try {
-      let passed = 0, total = selected.testCases?.length || 0;
-      const results = [];
+      const spec = getLeetCodeSpec(selected.id);
+      if (!spec) throw new Error('This problem is not configured for function-style execution yet.');
+      if (!isLeetCodeLanguage(lang)) {
+        throw new Error('LeetCode-style execution is currently available for Python and JavaScript. Choose one of those languages for this problem.');
+      }
+      if (usesBrowser) {
+        throw new Error('JDoodle is unavailable. Browser preview supports Run Code only; submit after the JDoodle runner is available.');
+      }
 
-      if (usesBrowser && lang === 'javascript') {
-        // Wrap each test case
-        for (const tc of (selected.testCases || [])) {
-          const wrappedCode = `${code}\n// Test\nconst _input = ${JSON.stringify(tc.input)};\nconsole.log(JSON.stringify(typeof solve !== 'undefined' ? solve : null));`;
-          const r = await runJSBrowser(code);
-          const got = r.stdout.trim();
-          const exp = tc.expected.trim();
-          const ok  = got === exp || r.verdict === 'Accepted';
-          if (ok) passed++;
-          results.push({ input: tc.input, expected: exp, got, passed: ok, verdict: r.verdict });
+      let passed = 0;
+      const total = spec.tests.length;
+      const results = [];
+      let executionError = false;
+
+      // Every test receives a freshly generated driver and fresh structured
+      // arguments, matching LeetCode's independent-test behavior.
+      for (const tc of spec.tests) {
+        const program = buildLeetCodeProgram({
+          source: code,
+          language: lang,
+          problemId: selected.id,
+          args: tc.args,
+        });
+        const r = await runViaJDoodle(program, lang, '');
+        const common = {
+          input: formatCustomArgs(tc.args),
+          expected: formatLeetCodeValue(tc.expected),
+          time: r.time,
+          memory: r.memory,
+          engine: r.engine,
+          verdict: r.verdict,
+        };
+
+        if (r?.verdict && r.verdict !== 'Accepted') {
+          executionError = true;
+          results.push({
+            ...common,
+            got: undefined,
+            passed: false,
+            error: r.stderr || 'Your function could not be executed for this test case.',
+          });
+          break;
         }
-      } else {
-        // Use Judge0 for each test case
-        for (const tc of (selected.testCases || [])) {
-          try {
-            const r = await runViaJudge0(code, lang, tc.input);
-            const got = (r.stdout || '').trim();
-            const exp = tc.expected.trim();
-            const ok  = got === exp;
-            if (ok) passed++;
-            results.push({ input:tc.input, expected:exp, got, passed:ok, verdict:r.verdict, time:r.time, memory:r.memory });
-          } catch {
-            results.push({ input:tc.input, expected:tc.expected, got:'Error', passed:false, verdict:'Error' });
-          }
+
+        try {
+          const actual = parseHarnessOutput(r?.stdout);
+          const ok = compareLeetCodeResult(actual, tc, spec.compare);
+          if (ok) passed += 1;
+          results.push({
+            ...common,
+            got: formatLeetCodeValue(actual),
+            passed: ok,
+          });
+        } catch (error) {
+          executionError = true;
+          results.push({
+            ...common,
+            got: undefined,
+            passed: false,
+            error: getRunnerErrorMessage(error),
+          });
+          break;
         }
       }
 
-      const status = passed === total ? 'Accepted' : 'Wrong Answer';
+      const status = executionError ? 'Runtime Error' : passed === total ? 'Accepted' : 'Wrong Answer';
       const subRecord = {
         id: Date.now(),
         lang, status, passed, total,
@@ -808,7 +1570,8 @@ export default function DSACoding() {
         results,
       };
 
-      // Save to localStorage
+      // Save only the non-secret client-side history; source execution stays
+      // behind the configured backend API and never exposes JDoodle secrets.
       const prev = JSON.parse(localStorage.getItem(`dsa_subs_${selected.id}`) || '[]');
       const newSubs = [subRecord, ...prev].slice(0, 10);
       localStorage.setItem(`dsa_subs_${selected.id}`, JSON.stringify(newSubs));
@@ -824,9 +1587,10 @@ export default function DSACoding() {
 
       setSubOutput({ type:'submit', status, passed, total, results });
       setTab('submissions');
-    } catch (err) {
-      setSubOutput({ type:'submit', status:'Error', error: err.message });
-      toast.error('Submission error: ' + err.message);
+    } catch (error) {
+      const message = getRunnerErrorMessage(error);
+      setSubOutput({ type:'submit', status:'Error', error: message });
+      toast.error('Submission error: ' + message);
     } finally { setSubmitting(false); }
   };
 
@@ -858,13 +1622,18 @@ export default function DSACoding() {
             {PROBLEMS.length} problems — Arrays, Strings, Trees, Graphs, DP, and more
           </p>
         </div>
-        {/* Judge0 status badge */}
-        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background: judge0OK===true?'rgba(22,163,74,0.1)':judge0OK===false?'rgba(220,38,38,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${judge0OK===true?C.green:judge0OK===false?C.red:C.gray}33`, borderRadius:10 }}>
-          <div style={{ width:8, height:8, borderRadius:'50%', background: judge0OK===true?C.green:judge0OK===false?C.red:C.gray, animation: judge0OK===null?'pulse 1.5s ease-in-out infinite':undefined }}/>
-          <span style={{ fontSize:12, fontWeight:600, color: judge0OK===true?C.green:judge0OK===false?C.red:C.light }}>
-            {judge0OK===null ? 'Checking Judge0...' : judge0OK ? 'Judge0 Running ✓' : 'Judge0 Offline'}
+        {/* JDoodle status badge */}
+        <div title={jdoodleStatus.message} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', background: jdoodleOK===true?'rgba(22,163,74,0.1)':jdoodleOK===false?'rgba(220,38,38,0.1)':'rgba(100,116,139,0.1)', border:`1px solid ${jdoodleOK===true?C.green:jdoodleOK===false?C.red:C.gray}33`, borderRadius:10 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background: jdoodleOK===true?C.green:jdoodleOK===false?C.red:C.gray, animation: jdoodleOK===null?'pulse 1.5s ease-in-out infinite':undefined }}/>
+          <span style={{ fontSize:12, fontWeight:600, color: jdoodleOK===true?C.green:jdoodleOK===false?C.red:C.light }}>
+            {jdoodleOK===null
+              ? 'Checking JDoodle...'
+              : jdoodleStatus.configured
+                ? 'JDoodle Configured ✓'
+                : jdoodleOK
+                  ? 'Local runner (dev)'
+                  : 'JDoodle unavailable'}
           </span>
-          {judge0OK===false && <a href="https://github.com/judge0/judge0" target="_blank" rel="noreferrer" style={{ fontSize:11, color:C.cyan, textDecoration:'none' }}>setup guide</a>}
         </div>
       </div>
 
@@ -961,6 +1730,9 @@ export default function DSACoding() {
 
   // ── PROBLEM EDITOR ────────────────────────────────────────────────────────
   const isSolved = selected && !!solvedMap[selected.id];
+  const activeSpec = selected ? getLeetCodeSpec(selected.id) : null;
+  const functionLanguageSupported = isLeetCodeLanguage(lang);
+  const functionName = activeSpec?.method || activeSpec?.className || 'solution';
 
   return (
     <div style={{ height:'100vh', display:'flex', flexDirection:'column', background:C.bg, overflow:'hidden' }}>
@@ -973,9 +1745,17 @@ export default function DSACoding() {
         <span style={{ fontSize:14, fontWeight:700, color:C.white }}>{selected?.no}. {selected?.title}</span>
         <span style={{ padding:'2px 10px', borderRadius:999, fontSize:11, fontWeight:700, background:`${DC[selected?.difficulty]}18`, color:DC[selected?.difficulty] }}>{selected?.difficulty}</span>
         {isSolved && <span style={{ display:'flex', alignItems:'center', gap:4, fontSize:11, color:C.green, fontWeight:700 }}><CheckCircle size={12}/>Solved</span>}
-        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
-          <div style={{ width:7, height:7, borderRadius:'50%', background:judge0OK?C.green:C.red }}/>
-          <span style={{ fontSize:11, color:judge0OK?C.green:C.red }}>{judge0OK?'Judge0 Ready':'Judge0 Offline'}</span>
+        <div title={jdoodleStatus.message} style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ width:7, height:7, borderRadius:'50%', background:jdoodleOK===true?C.green:jdoodleOK===null?C.gray:C.red }}/>
+          <span style={{ fontSize:11, color:jdoodleOK===true?C.green:jdoodleOK===null?C.gray:C.red }}>
+            {jdoodleOK===null
+              ? 'Checking JDoodle...'
+              : jdoodleStatus.configured
+                ? 'JDoodle configured'
+                : jdoodleOK
+                  ? 'Local runner (dev)'
+                  : 'JDoodle unavailable'}
+          </span>
         </div>
       </div>
 
@@ -1007,13 +1787,21 @@ export default function DSACoding() {
           {/* Editor toolbar */}
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', background:'var(--bg-input)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
             <select value={lang} onChange={e=>changeLang(e.target.value)} style={st.sel}>
-              {LANGS.map(l=><option key={l} value={l}>{LANG_LABELS[l]}</option>)}
+              {LANGS.map(l=>(
+                <option key={l} value={l} disabled={!isLeetCodeLanguage(l)}>
+                  {LANG_LABELS[l]}{!isLeetCodeLanguage(l) ? ' — function runner coming soon' : ''}
+                </option>
+              ))}
             </select>
             <button onClick={resetCode} title="Reset to starter code" style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:7, color:C.gray, fontSize:12, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
               <RotateCcw size={12}/> Reset
             </button>
-            <span style={{ marginLeft:'auto', fontSize:11, color:C.gray }}>
-              {lang==='javascript'&&!judge0OK ? '⚡ Browser execution' : '🐳 Judge0 CE'}
+            <span style={{ marginLeft:'auto', fontSize:11, color:functionLanguageSupported ? C.gray : C.amber }}>
+              {!functionLanguageSupported
+                ? 'Function runner coming soon for this language'
+                : lang === 'javascript' && jdoodleOK === false
+                  ? '⚡ Browser preview only'
+                  : `☁ ${jdoodleStatus.engine || 'JDoodle Cloud API'}`}
             </span>
           </div>
 
@@ -1032,13 +1820,16 @@ export default function DSACoding() {
 
           {/* Bottom panel */}
           <div style={{ flexShrink:0, padding:'10px 16px', background:'var(--bg-input)', borderTop:'1px solid var(--border)', display:'flex', flexDirection:'column', gap:8 }}>
-            {/* Custom input */}
+            {/* Custom function arguments */}
             <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
               <div style={{ flex:1 }}>
-                <p style={{ margin:'0 0 4px', fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Custom Input (for Run)</p>
+                <p style={{ margin:'0 0 3px', fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Custom Test Arguments (JSON)</p>
+                <p style={{ margin:'0 0 5px', fontSize:11, color:C.gray }}>
+                  Calls <code style={{ color:C.cyan }}>{functionName}</code> directly. Enter one JSON array containing its arguments — not stdin.
+                </p>
                 <textarea value={customInput} onChange={e=>setCustomInput(e.target.value)} rows={2}
                   style={{ width:'100%', background:'var(--bg-card-high)', border:'1px solid rgba(79,70,229,0.12)', borderRadius:7, padding:'6px 10px', fontSize:12, color:C.white, outline:'none', fontFamily:'monospace', resize:'vertical', boxSizing:'border-box' }}
-                  placeholder="Enter test input..."/>
+                  placeholder={formatCustomArgs(getDefaultArgs(selected?.id))}/>
               </div>
             </div>
 
@@ -1132,7 +1923,15 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
             <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:'var(--bg-card-high)', borderRadius:6, marginBottom:4 }}>
               {r.passed ? <CheckCircle size={12} color={C.green}/> : <XCircle size={12} color={C.red}/>}
               <span style={{ fontSize:12, color:r.passed?C.green:C.red, fontWeight:600 }}>Test {i+1}</span>
-              {!r.passed && <span style={{ fontSize:11, color:C.gray }}>Expected: <code style={{ color:C.amber }}>{r.expected}</code> Got: <code style={{ color:C.red }}>{r.got || 'error'}</code></span>}
+              {!r.passed && (
+                <span style={{ fontSize:11, color:C.gray }}>
+                  {r.error ? (
+                    <>Error: <code style={{ color:C.red }}>{r.error}</code></>
+                  ) : (
+                    <>Expected: <code style={{ color:C.amber }}>{r.expected}</code> Got: <code style={{ color:C.red }}>{r.got === undefined ? 'No returned value' : r.got}</code></>
+                  )}
+                </span>
+              )}
               {r.time && <span style={{ marginLeft:'auto', fontSize:11, color:C.gray }}>{r.time}</span>}
             </div>
           ))}

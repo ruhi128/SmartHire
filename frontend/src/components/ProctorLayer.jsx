@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as faceapi from 'face-api.js';
 import toast from 'react-hot-toast';
-import { AlertTriangle, Camera, CameraOff, Maximize, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Camera, CameraOff, Maximize, ShieldCheck, ShieldAlert, GripHorizontal, Minimize2, Maximize2 } from 'lucide-react';
 
 const MODEL_URL = `${process.env.PUBLIC_URL || ''}/models`;
 
@@ -34,6 +34,44 @@ export default function ProctorLayer({
   const [hardStrikes, setHardStrikes] = useState(0);
   const [camStatus, setCamStatus] = useState('loading'); // loading|ready|denied|error|no_face|multi_face
   const [banner, setBanner] = useState(null);
+
+  // Draggable & collapsible PIP states (default top-left, avoids bottom-right submit buttons)
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [camPos, setCamPos] = useState({ x: 20, y: 72 });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, camX: 20, camY: 72 });
+
+  const handleDragStart = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+      camX: camPos.x,
+      camY: camPos.y,
+    };
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (moveEvent) => {
+      if (!isDraggingRef.current) return;
+      const dx = moveEvent.clientX - dragStartRef.current.mouseX;
+      const dy = moveEvent.clientY - dragStartRef.current.mouseY;
+      const newX = Math.max(8, Math.min(window.innerWidth - 180, dragStartRef.current.camX + dx));
+      const newY = Math.max(50, Math.min(window.innerHeight - 80, dragStartRef.current.camY + dy));
+      setCamPos({ x: newX, y: newY });
+    };
+
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -114,22 +152,56 @@ export default function ProctorLayer({
 
     const blockClipboard = (e) => {
       e.preventDefault();
+      e.stopPropagation();
+      if (e.clipboardData) {
+        try {
+          e.clipboardData.clearData();
+          e.clipboardData.setData('text/plain', '');
+        } catch (_) {}
+      }
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch (_) {}
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText('').catch(() => {});
+      }
       const t = e.type; // copy | cut | paste
       record(t, `${t.charAt(0).toUpperCase() + t.slice(1)} is disabled during the exam`);
     };
     const onContextMenu = (e) => {
       e.preventDefault();
+      e.stopPropagation();
       record('context_menu', 'Right-click is disabled during the exam', { silent: true });
+    };
+
+    const onKeyDown = (e) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (isCmdOrCtrl) {
+        const key = e.key.toLowerCase();
+        if (key === 'c' || key === 'x' || key === 'u' || key === 'p' || key === 's') {
+          e.preventDefault();
+          e.stopPropagation();
+          try {
+            window.getSelection()?.removeAllRanges();
+          } catch (_) {}
+          if (navigator.clipboard?.writeText) {
+            navigator.clipboard.writeText('').catch(() => {});
+          }
+          if (key === 'c') record('copy', 'Copying content is blocked during the exam');
+          else if (key === 'x') record('cut', 'Cutting content is blocked during the exam');
+        }
+      }
     };
 
     document.addEventListener('fullscreenchange', onFsChange);
     document.addEventListener('webkitfullscreenchange', onFsChange);
     window.addEventListener('blur', onWindowBlur);
     document.addEventListener('visibilitychange', onVisibility);
-    document.addEventListener('copy', blockClipboard);
-    document.addEventListener('cut', blockClipboard);
-    document.addEventListener('paste', blockClipboard);
-    document.addEventListener('contextmenu', onContextMenu);
+    document.addEventListener('copy', blockClipboard, true);
+    document.addEventListener('cut', blockClipboard, true);
+    document.addEventListener('paste', blockClipboard, true);
+    document.addEventListener('contextmenu', onContextMenu, true);
+    document.addEventListener('keydown', onKeyDown, true);
 
     setIsFullscreen(!!fsElement());
 
@@ -199,10 +271,11 @@ export default function ProctorLayer({
       document.removeEventListener('webkitfullscreenchange', onFsChange);
       window.removeEventListener('blur', onWindowBlur);
       document.removeEventListener('visibilitychange', onVisibility);
-      document.removeEventListener('copy', blockClipboard);
-      document.removeEventListener('cut', blockClipboard);
-      document.removeEventListener('paste', blockClipboard);
-      document.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('copy', blockClipboard, true);
+      document.removeEventListener('cut', blockClipboard, true);
+      document.removeEventListener('paste', blockClipboard, true);
+      document.removeEventListener('contextmenu', onContextMenu, true);
+      document.removeEventListener('keydown', onKeyDown, true);
       if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }
       const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
       if (exit && (document.fullscreenElement || document.webkitFullscreenElement)) exit.call(document).catch(() => {});
@@ -230,15 +303,91 @@ export default function ProctorLayer({
         </div>
       )}
 
-      {/* Camera PIP */}
+      {/* Camera PIP (Draggable & Collapsible — positioned top-left away from submit buttons) */}
       {requireCamera && (
-        <div style={{ position:'fixed', bottom:18, right:18, zIndex:1200, width:168, borderRadius:14, overflow:'hidden', background:'#0f172a', border:`2px solid ${camMeta.ring}`, boxShadow:'0 8px 24px rgba(15,23,42,0.28)' }}>
-          <video ref={videoRef} muted playsInline style={{ width:'100%', height:118, objectFit:'cover', display:'block', transform:'scaleX(-1)', background:'#0f172a' }}/>
-          <div style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 9px', background:'#0f172a' }}>
-            <CamIcon size={13} color={camMeta.color}/>
-            <span style={{ fontSize:11, fontWeight:700, color:camMeta.color }}>{camMeta.label}</span>
-            <span style={{ marginLeft:'auto', width:7, height:7, borderRadius:'50%', background:camMeta.ring, boxShadow:`0 0 6px ${camMeta.ring}` }}/>
+        <div
+          style={{
+            position: 'fixed',
+            left: camPos.x,
+            top: camPos.y,
+            zIndex: 1200,
+            width: isMinimized ? 'auto' : 172,
+            borderRadius: 14,
+            overflow: 'hidden',
+            background: '#0f172a',
+            border: `2px solid ${camMeta.ring}`,
+            boxShadow: '0 10px 28px rgba(0,0,0,0.45)',
+          }}
+        >
+          {/* Header Bar: Drag Handle, Status & Minimize Toggle */}
+          <div
+            onMouseDown={handleDragStart}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 9px',
+              background: '#090d16',
+              borderBottom: isMinimized ? 'none' : '1px solid rgba(255,255,255,0.08)',
+              cursor: 'grab',
+              userSelect: 'none',
+            }}
+            title="Drag to reposition camera anywhere"
+          >
+            <GripHorizontal size={12} color="#64748b" style={{ flexShrink: 0 }} />
+            <CamIcon size={12} color={camMeta.color} style={{ flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: camMeta.color, whiteSpace: 'nowrap' }}>
+              {camMeta.label}
+            </span>
+            <span
+              style={{
+                marginLeft: 4,
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: camMeta.ring,
+                boxShadow: `0 0 6px ${camMeta.ring}`,
+                flexShrink: 0,
+              }}
+            />
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMinimized(m => !m);
+              }}
+              title={isMinimized ? 'Expand camera view' : 'Minimize camera view'}
+              style={{
+                marginLeft: 10,
+                background: 'transparent',
+                border: 'none',
+                padding: '2px 4px',
+                borderRadius: 4,
+                color: '#94a3b8',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {isMinimized ? <Maximize2 size={12} /> : <Minimize2 size={12} />}
+            </button>
           </div>
+
+          {/* Video Feed */}
+          <video
+            ref={videoRef}
+            muted
+            playsInline
+            style={{
+              width: isMinimized ? 1 : '100%',
+              height: isMinimized ? 0 : 118,
+              objectFit: 'cover',
+              display: isMinimized ? 'none' : 'block',
+              transform: 'scaleX(-1)',
+              background: '#0f172a',
+            }}
+          />
         </div>
       )}
 

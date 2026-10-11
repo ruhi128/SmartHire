@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
-  timeout: 120000,  // 30s — longer timeout for Judge0 code execution
+  timeout: 120000,  // 120s — allows server-side JDoodle execution and submissions
   headers: {
     'Content-Type': 'application/json',
   },
@@ -29,7 +29,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status  = error.response?.status;
-    const message = error.response?.data?.error || error.message;
+    const suppressGlobalError = Boolean(error.config?.suppressGlobalError);
 
     if (status === 401) {
       // Token expired or invalid — clear storage and redirect to login
@@ -40,13 +40,13 @@ api.interceptors.response.use(
       setTimeout(() => { window.location.href = '/login'; }, 1500);
     } else if (status === 403) {
       // Don't show the generic message when the user just needs to verify email
-      if (!error.response?.data?.needsVerification) {
+      if (!suppressGlobalError && !error.response?.data?.needsVerification) {
         toast.error('You do not have permission to do that.');
       }
     } else if (status === 429) {
-      toast.error('Too many requests. Please slow down.');
+      if (!suppressGlobalError) toast.error('Too many requests. Please slow down.');
     } else if (status >= 500) {
-      toast.error('Server error. Please try again later.');
+      if (!suppressGlobalError) toast.error('Server error. Please try again later.');
     }
 
     return Promise.reject(error);
@@ -61,6 +61,13 @@ export const authAPI = {
   login:       (email, pass)   => api.post('/api/auth/login', { email, password: pass }),
   verifyEmail: (email, code)   => api.post('/api/auth/verify-email', { email, code }),
   resendCode:  (email)         => api.post('/api/auth/resend-code', { email }),
+  // Avatar bytes stay private. Browser callers request a Blob because a
+  // regular <img> cannot attach SmartHire's bearer token.
+  getAvatar:    ()              => api.get('/api/auth/avatar', { responseType: 'blob', suppressGlobalError: true }),
+  uploadAvatar: (formData)      => api.post('/api/auth/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  removeAvatar: ()              => api.delete('/api/auth/avatar'),
 };
 
 // Notifications
@@ -121,6 +128,15 @@ export const dsaAPI = {
   run:           (data)          => api.post('/api/dsa/run', data),
   submit:        (data)          => api.post('/api/dsa/submit', data),
   getPerformance: ()             => api.get('/api/dsa/performance'),
+};
+
+// JDoodle-backed code runner. Using this shared client applies both the
+// configured REACT_APP_API_URL and the authentication interceptor.
+export const codeAPI = {
+  // The DSA page renders provider/configuration errors inline, so avoid a
+  // duplicate generic global toast for expected code-runner failures.
+  status:        ()              => api.get('/api/code/status', { suppressGlobalError: true }),
+  run:           (data)          => api.post('/api/code/run', data, { suppressGlobalError: true }),
 };
 
 // Mock OA

@@ -41,9 +41,13 @@ const { data: company, error: companyErr } = await supabase
   .eq('recruiter_id', req.user.id)
   .maybeSingle();
 
-console.log('REQ USER:', req.user);
-console.log('COMPANY:', company);
-console.log('COMPANY ERROR:', companyErr);
+  if (companyErr) {
+    console.error('Could not find recruiter company:', companyErr);
+    return res.status(500).json({ error: 'Could not verify the recruiter company' });
+  }
+  if (!company) {
+    return res.status(400).json({ error: 'No company is linked to this recruiter account. Contact the placement team before submitting an OA.' });
+  }
 
   // Insert test
   const { data: test, error: testErr } = await supabase

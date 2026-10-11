@@ -4,6 +4,60 @@ const router = express.Router();
 const  supabaseAdmin = require('../config/supabase'); // ← named import
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
+const { execute } = require('../utils/coderunner');
+
+// ── Boilerplate & Empty Code Detector ───────────────────────────────────────
+function isBoilerplateOrEmpty(code, lang, starterCode) {
+  if (!code || typeof code !== 'string') return true;
+  const trimmed = code.trim();
+  if (trimmed.length === 0) return true;
+
+  const normalize = (s) => (s || '').replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
+  const normCode = normalize(code);
+
+  if (starterCode && normCode === normalize(starterCode)) return true;
+
+  const BOILERPLATES = [
+    `# Write your Python 3 solution here\nimport sys\n\ndef solve():\n    # Read from standard input if required\n    # lines = sys.stdin.read().splitlines()\n    print("Program executed successfully")\n\nif __name__ == '__main__':\n    solve()`,
+    `// Write your C++ 17 solution here\n#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n\nusing namespace std;\n\nvoid solve() {\n    // Write your solution logic here\n    cout << "Program executed successfully" << endl;\n}\n\nint main() {\n    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n    solve();\n    return 0;\n}`,
+    `// Write your Java solution here\nimport java.util.*;\n\npublic class Solution {\n    public static void main(String[] args) {\n        // Read input using Scanner if required\n        System.out.println("Program executed successfully");\n    }\n}`,
+    `// Write your JavaScript (Node.js) solution here\nconst fs = require('fs');\n\nfunction solve() {\n    console.log("Program executed successfully");\n}\n\nsolve();`
+  ];
+
+  for (const b of BOILERPLATES) {
+    if (normCode === normalize(b)) return true;
+  }
+
+  // Strip comments, imports, template prints, and wrapper syntax
+  let stripped = code
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+    .replace(/#[^\n]*/g, '')
+    .replace(/["']Program executed successfully["']/gi, '')
+    .replace(/import\s+[^\n;]+;?/gi, '')
+    .replace(/from\s+\w+\s+import\s+[^\n;]+;?/gi, '')
+    .replace(/#include\s+<[^>]+>/gi, '')
+    .replace(/using\s+namespace\s+\w+;?/gi, '')
+    .replace(/const\s+\w+\s*=\s*require\([^)]+\);?/gi, '')
+    .replace(/ios_base::sync_with_stdio\(false\);?/gi, '')
+    .replace(/cin\.tie\(NULL\);?/gi, '')
+    .replace(/if\s*__name__\s*==\s*['"]__main__['"]\s*:/gi, '')
+    .replace(/public\s+class\s+\w+\s*\{?/gi, '')
+    .replace(/public\s+static\s+void\s+main\s*\([^)]*\)\s*\{?/gi, '')
+    .replace(/def\s+solve\s*\([^)]*\)\s*:\s*(pass)?/gi, '')
+    .replace(/void\s+solve\s*\([^)]*\)\s*\{?\s*\}?/gi, '')
+    .replace(/function\s+solve\s*\([^)]*\)\s*\{?\s*\}?/gi, '')
+    .replace(/return\s+0;?/gi, '')
+    .replace(/solve\(\);?/gi, '')
+    .replace(/[{}();:\s]/g, '');
+
+  if (stripped.length < 12) {
+    return true;
+  }
+
+  return false;
+}
+
 
 // ─────────────────────────────────────────────
 // GET /api/mockoa/tests
@@ -97,7 +151,7 @@ router.get('/tests/:id', auth, async (req, res) => {
 // Body: { testId, answers: { questionId: answerValue } }
 // ─────────────────────────────────────────────
 router.post('/submit', auth, roles('student'), async (req, res) => {
-  const { testId, answers, proctoring } = req.body;
+  const { testId, answers, proctoring, codeRuns, codeLangs } = req.body;
 
   if (!testId || !answers) {
     return res.status(400).json({ error: 'testId and answers are required' });
@@ -131,7 +185,7 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
 
     const { data: questions, error: qErr } = await supabaseAdmin
       .from('mock_oa_questions')
-      .select('id, type, correct_index, marks, explanation') // was question_type, correct_answer
+      .select('id, type, correct_index, marks, explanation, starter_code')
       .eq('test_id', testId);
 
     if (qErr) throw qErr;
@@ -146,24 +200,127 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
     for (const q of questions || []) {
       totalPossible += q.marks;
       const studentAnswer = answers[q.id];
+      const isMcq = q.type === 'mcq';
 
-      if (q.type === 'text') { // was question_type
-        const answered = studentAnswer && studentAnswer.trim().length > 10;
-        if (answered) {
+      // ── Coding & Technical Evaluation ──
+      if (!isMcq) {
+        const lang = (codeLangs && codeLangs[q.id]) || 'python3';
+        const clientRun = codeRuns && codeRuns[q.id];
+
+        // 1. Unattempted, blank, or unmodified starter boilerplate code => 0 MARKS
+        if (isBoilerplateOrEmpty(studentAnswer, lang, q.starter_code)) {
+          skippedCount++;
+          scoredAnswers[q.id] = {
+            answer: studentAnswer || '',
+            result: 'skipped',
+            points: 0,
+            verdict: 'Unattempted',
+            explanation: q.explanation || 'No code solution submitted.'
+          };
+          continue;
+        }
+
+        // 2. Custom code was run in client with JDoodle
+        if (clientRun && typeof clientRun === 'object') {
+          if (clientRun.verdict === 'Accepted') {
+            totalScore += q.marks;
+            correctCount++;
+            scoredAnswers[q.id] = {
+              answer: studentAnswer,
+              result: 'correct',
+              points: q.marks,
+              verdict: 'Accepted',
+              stdout: clientRun.stdout || '',
+              explanation: q.explanation
+            };
+            continue;
+          } else if (clientRun.verdict === 'Runtime Error' || clientRun.verdict === 'Compilation Error' || clientRun.verdict === 'Execution Failed') {
+            const partialPts = Math.max(1, Math.round(q.marks * 0.3));
+            totalScore += partialPts;
+            wrongCount++;
+            scoredAnswers[q.id] = {
+              answer: studentAnswer,
+              result: 'partial',
+              points: partialPts,
+              verdict: clientRun.verdict,
+              stderr: clientRun.stderr || '',
+              explanation: q.explanation
+            };
+            continue;
+          }
+        }
+
+        // 3. Custom code was written but not executed in client prior to submitting
+        let execSuccess = false;
+        let execVerdict = 'Unverified';
+        try {
+          const runRes = await execute(studentAnswer, lang, '');
+          if (runRes && runRes.verdict === 'Accepted') {
+            execSuccess = true;
+            execVerdict = 'Accepted';
+          } else if (runRes && (runRes.verdict === 'Runtime Error' || runRes.verdict === 'Compilation Error')) {
+            execVerdict = runRes.verdict;
+          }
+        } catch (_) {
+          // Execution engine timed out or offline — fallback to algorithmic heuristics
+        }
+
+        if (execSuccess) {
           totalScore += q.marks;
           correctCount++;
-          scoredAnswers[q.id] = { answer: studentAnswer, result: 'answered', points: q.marks, explanation: q.explanation };
+          scoredAnswers[q.id] = {
+            answer: studentAnswer,
+            result: 'correct',
+            points: q.marks,
+            verdict: 'Accepted',
+            explanation: q.explanation
+          };
+        } else if (execVerdict === 'Runtime Error' || execVerdict === 'Compilation Error') {
+          const partialPts = Math.max(1, Math.round(q.marks * 0.3));
+          totalScore += partialPts;
+          wrongCount++;
+          scoredAnswers[q.id] = {
+            answer: studentAnswer,
+            result: 'partial',
+            points: partialPts,
+            verdict: execVerdict,
+            explanation: q.explanation
+          };
         } else {
-          skippedCount++;
-          scoredAnswers[q.id] = { answer: studentAnswer || '', result: 'skipped', points: 0, explanation: q.explanation };
+          // Algorithmic syntax heuristic: check if code has substantive structure
+          const hasControlFlow = /(for|while|if|switch|function|def|class|return|int|vector|let|const)\b/i.test(studentAnswer);
+          if (hasControlFlow) {
+            const partialPts = Math.max(1, Math.round(q.marks * 0.6));
+            totalScore += partialPts;
+            correctCount++;
+            scoredAnswers[q.id] = {
+              answer: studentAnswer,
+              result: 'answered',
+              points: partialPts,
+              verdict: 'Code Implemented (Partial)',
+              explanation: q.explanation
+            };
+          } else {
+            const partialPts = Math.max(1, Math.round(q.marks * 0.2));
+            totalScore += partialPts;
+            wrongCount++;
+            scoredAnswers[q.id] = {
+              answer: studentAnswer,
+              result: 'partial',
+              points: partialPts,
+              verdict: 'Incomplete Logic',
+              explanation: q.explanation
+            };
+          }
         }
         continue;
       }
 
+      // ── MCQ Evaluation ──
       if (studentAnswer === null || studentAnswer === undefined || studentAnswer === '') {
         skippedCount++;
         scoredAnswers[q.id] = { answer: null, result: 'skipped', points: 0, correct: q.correct_index, explanation: q.explanation };
-      } else if (parseInt(studentAnswer) === q.correct_index) { // was correct_answer
+      } else if (parseInt(studentAnswer) === q.correct_index) {
         totalScore += q.marks;
         correctCount++;
         scoredAnswers[q.id] = { answer: parseInt(studentAnswer), result: 'correct', points: q.marks, correct: q.correct_index, explanation: q.explanation };
