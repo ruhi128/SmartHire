@@ -38,7 +38,9 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401 && onUnauthorized) {
+    // Device-token cleanup during an intentional logout must not recursively
+    // invoke logout again when the server has already expired the session.
+    if (error.response?.status === 401 && !error.config?.skipUnauthorizedLogout && onUnauthorized) {
       await onUnauthorized();
     }
     return Promise.reject(error);

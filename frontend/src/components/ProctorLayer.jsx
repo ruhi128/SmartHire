@@ -5,8 +5,8 @@
 // All violations are reported through onViolation; onTerminate fires when the
 // hard-strike threshold is reached (parent should auto-submit).
 import { useEffect, useRef, useState, useCallback } from 'react';
-import * as faceapi from 'face-api.js';
 import toast from 'react-hot-toast';
+import { loadFaceApi } from '../utils/loadFaceApi';
 import { AlertTriangle, Camera, CameraOff, Maximize, ShieldCheck, ShieldAlert, GripHorizontal, Minimize2, Maximize2 } from 'lucide-react';
 
 const MODEL_URL = `${process.env.PUBLIC_URL || ''}/models`;
@@ -207,13 +207,21 @@ export default function ProctorLayer({
 
     // ── Camera + face detection ───────────────────────────────────────────
     let cancelled = false;
+    let faceapi = null;
+
     async function startCamera() {
       if (!requireCamera) { setCamStatus('ready'); return; }
       try {
+        faceapi = await loadFaceApi();
+        if (cancelled) return;
         await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
       } catch (err) {
-        if (!cancelled) { setCamStatus('error'); record('camera_blocked', 'Face-detection model failed to load', { silent: true }); }
-        // continue without face detection; camera stream may still show
+        faceapi = null;
+        if (!cancelled) {
+          setCamStatus('error');
+          record('camera_blocked', 'Face-detection model failed to load', { silent: true });
+        }
+        // Continue without face detection so the camera stream can still show.
       }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: false });
@@ -232,12 +240,12 @@ export default function ProctorLayer({
     }
 
     function camStatusIsModelReady() {
-      return faceapi.nets.tinyFaceDetector.isLoaded;
+      return Boolean(faceapi?.nets?.tinyFaceDetector?.isLoaded);
     }
 
     async function runDetection() {
       const video = videoRef.current;
-      if (!video || video.readyState < 2) return;
+      if (!faceapi || !video || video.readyState < 2) return;
       try {
         const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 });
         const faces = await faceapi.detectAllFaces(video, opts);

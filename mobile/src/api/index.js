@@ -18,17 +18,21 @@ const liveAuthApi = {
   removeAvatar: () => result(api.delete('/api/auth/avatar')),
 };
 
-const liveDeviceApi = {
-  register: (data) => result(api.post('/api/mobile/devices', data)),
-  unregister: (expo_push_token) => result(api.delete('/api/mobile/devices', { data: { expo_push_token } })),
-};
-
 const liveNotificationsApi = {
   list: (params) => result(api.get('/api/notifications', { params })),
   unreadCount: () => result(api.get('/api/notifications/unread-count')),
   markRead: (id) => result(api.patch(`/api/notifications/${id}/read`)),
   markAllRead: () => result(api.patch('/api/notifications/read-all')),
   remove: (id) => result(api.delete(`/api/notifications/${id}`)),
+  // The server derives the recipient from the bearer token; the app never
+  // sends a user ID with a device registration.
+  registerDevice: (data) => result(api.post('/api/notifications/devices', data)),
+  // Prevent an expired token during a user-initiated logout from re-entering
+  // the unauthorized handler while the local push record is being cleared.
+  unregisterDevice: (expoPushToken) => result(api.delete('/api/notifications/devices', {
+    data: { expoPushToken },
+    skipUnauthorizedLogout: true,
+  })),
 };
 
 const liveStudentApi = {
@@ -165,7 +169,9 @@ const demoAuthApi = {
 
 const demoNotificationsApi = {
   ...mockApi.notificationsApi,
-  remove: async (id) => ({ success: true, message: `Notification ${id} is local-only and will reset when demo mode restarts.` }),
+  // Demo mode is intentionally network-free and never asks the OS for a token.
+  registerDevice: async () => ({ skipped: true }),
+  unregisterDevice: async () => ({ skipped: true }),
 };
 
 const demoJobsApi = {
@@ -239,7 +245,6 @@ const demoAdminApi = {
 };
 
 export const authApi = DEMO_MODE ? demoAuthApi : liveAuthApi;
-export const deviceApi = DEMO_MODE ? mockApi.deviceApi : liveDeviceApi;
 export const notificationsApi = DEMO_MODE ? demoNotificationsApi : liveNotificationsApi;
 export const studentApi = DEMO_MODE ? {
   ...mockApi.studentApi,

@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * Local, non-secret checks before creating an EAS build.
+ * Local, non-secret checks before building/testing the connected mobile app.
  * Examples:
  *   npm run preflight
  *   npm run preflight -- --release
- *   npm run preflight -- --release --push --android
+ *
+ * SmartHire preserves a persisted authenticated inbox and adds optional Expo
+ * Push / FCM delivery for Android. This script checks only public/native
+ * configuration; it never asks for Firebase service-account credentials.
  */
 const fs = require('fs');
 const path = require('path');
@@ -13,9 +16,6 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const args = new Set(process.argv.slice(2));
 const release = args.has('--release');
-const requirePush = args.has('--push');
-const checkAndroid = args.has('--android') || (!args.has('--ios') && !args.has('--android'));
-const checkIos = args.has('--ios') || (!args.has('--ios') && !args.has('--android'));
 const errors = [];
 const warnings = [];
 
@@ -76,19 +76,23 @@ if (!fs.existsSync(appPath)) {
 }
 
 let app;
+let packageManifest;
 try {
   app = JSON.parse(fs.readFileSync(appPath, 'utf8')).expo;
+  packageManifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 } catch (error) {
-  console.error(`ERROR: Cannot parse app.json: ${error.message}`);
+  console.error(`ERROR: Cannot parse mobile configuration: ${error.message}`);
   process.exit(1);
 }
 
 const localEnv = readEnvFile(path.join(root, '.env'));
 const apiUrl = configuredValue('EXPO_PUBLIC_API_URL', localEnv).replace(/\/$/, '');
-const envProjectId = configuredValue('EXPO_PUBLIC_EAS_PROJECT_ID', localEnv);
-const appProjectId = app?.extra?.eas?.projectId || '';
-const projectId = envProjectId || appProjectId;
-const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const plugins = app?.plugins || [];
+const pluginNames = plugins.map((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin));
+const dependencies = packageManifest?.dependencies || {};
+const projectId = app?.extra?.eas?.projectId || '';
+const googleServicesFile = app?.android?.googleServicesFile || '';
+const googleServicesPath = googleServicesFile ? path.resolve(root, googleServicesFile) : '';
 
 add(placeholder(app?.ios?.bundleIdentifier), 'Set a permanent ios.bundleIdentifier in app.json. It cannot be changed after the App Store app record is created.');
 add(placeholder(app?.android?.package), 'Set a permanent android.package in app.json. It cannot be changed after the Google Play app record is created.');
@@ -102,35 +106,27 @@ add(release && apiUrl && !/^https:\/\//i.test(apiUrl), 'A release build must use
 add(release && apiUrl && isLoopbackUrl(apiUrl), 'A release build cannot use a localhost or loopback EXPO_PUBLIC_API_URL.');
 add(!release && apiUrl && isLoopbackUrl(apiUrl), 'localhost only works in a simulator/emulator, not on a physical device.', warnings);
 
-if (requirePush) {
-  add(!uuid.test(projectId) || placeholder(projectId), 'Run `npm run eas:init`, keep the generated EAS project UUID in app.json, and set EXPO_PUBLIC_EAS_PROJECT_ID in mobile/.env before push testing.');
-  if (checkAndroid) {
-    const configuredGoogleServices = app?.android?.googleServicesFile;
-    add(!configuredGoogleServices, 'For Android push, add android.googleServicesFile (normally "./google-services.json") to app.json.');
-    if (configuredGoogleServices) {
-      const googleServicesPath = path.resolve(root, configuredGoogleServices);
-      add(!fs.existsSync(googleServicesPath), `Android Firebase configuration is missing: ${configuredGoogleServices}`);
-      if (fs.existsSync(googleServicesPath)) {
-        try {
-          const googleServices = JSON.parse(fs.readFileSync(googleServicesPath, 'utf8'));
-          const firebasePackage = googleServices?.client?.[0]?.client_info?.android_client_info?.package_name;
-          add(Boolean(firebasePackage && firebasePackage !== app?.android?.package), `google-services.json is registered for ${firebasePackage}, but app.json uses ${app?.android?.package}.`);
-        } catch {
-          add('Could not parse the configured google-services.json file.');
-        }
-      }
-    }
-  }
-  if (checkIos) {
-    warnings.push('For iOS push, confirm that the final bundle ID has Push Notifications enabled in Apple Developer and that APNs credentials are configured in EAS.');
-  }
-}
+// Image Picker is a native module. Keeping both package and plugin makes a
+// clean Android build include ExponentImagePicker.
+add(!dependencies['expo-image-picker'], 'Install expo-image-picker: npx expo install expo-image-picker.');
+add(!pluginNames.includes('expo-image-picker'), 'Keep the expo-image-picker plugin in mobile/app.json, then make a clean native rebuild.');
 
-console.log(`\nSmartHire mobile preflight (${release ? 'release' : 'development'}${requirePush ? ', push' : ''})`);
+// Android remote push requires these SDK-compatible packages, the notification
+// config plugin, a stable EAS project ID, and Firebase's public app config.
+add(!dependencies['expo-notifications'], 'Install expo-notifications: npx expo install expo-notifications.');
+add(!dependencies['expo-device'], 'Install expo-device: npx expo install expo-device.');
+add(!pluginNames.includes('expo-notifications'), 'Keep the expo-notifications plugin in mobile/app.json, then make a clean native rebuild.');
+add(placeholder(projectId), 'Set expo.extra.eas.projectId in app.json (run npm run eas:init if this project is not linked).');
+add(!googleServicesFile, 'Set android.googleServicesFile to your Firebase Android google-services.json path in app.json.');
+add(Boolean(googleServicesFile) && !fs.existsSync(googleServicesPath), `Download Firebase's google-services.json for ${app?.android?.package || 'the Android package'} to ${googleServicesFile || './google-services.json'}. Do not use a Firebase service-account key here.`);
+
+console.log(`\nSmartHire mobile preflight (${release ? 'release' : 'development'})`);
 console.log(`• API URL: ${apiUrl ? 'configured' : 'missing'}`);
-console.log(`• EAS project ID: ${uuid.test(projectId) ? 'valid UUID' : 'not configured / placeholder'}`);
 console.log(`• Android package: ${app?.android?.package || 'missing'}`);
-console.log(`• iOS bundle ID: ${app?.ios?.bundleIdentifier || 'missing'}`);
+console.log(`• EAS project ID: ${projectId ? 'configured' : 'missing'}`);
+console.log(`• Android Firebase app config: ${googleServicesFile && fs.existsSync(googleServicesPath) ? 'found' : 'missing'}`);
+console.log(`• Remote delivery: Expo Push + Firebase Cloud Messaging (Android); backend gate: EXPO_PUSH_ENABLED=true after setup`);
+console.log(`• Image picker native setup: ${dependencies['expo-image-picker'] && pluginNames.includes('expo-image-picker') ? 'configured' : 'needs attention'}`);
 
 if (warnings.length) {
   console.log('\nWarnings:');
@@ -139,8 +135,8 @@ if (warnings.length) {
 if (errors.length) {
   console.error('\nBlocking items:');
   errors.forEach((message) => console.error(`  • ${message}`));
-  console.error('\nFix the blocking items before the corresponding build or test.\n');
+  console.error('\nFix the blocking items before the corresponding build or physical-device test.\n');
   process.exit(1);
 }
 
-console.log('\nPreflight passed. This checks configuration only; it does not replace device, API, or store-review testing.\n');
+console.log('\nPreflight passed. This checks configuration only; verify delivery on a physical Android device installed from an EAS development/preview build.\n');

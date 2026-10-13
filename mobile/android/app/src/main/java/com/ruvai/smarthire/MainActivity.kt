@@ -1,4 +1,4 @@
-package com.yourorganisation.smarthire
+package com.ruvai.smarthire
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

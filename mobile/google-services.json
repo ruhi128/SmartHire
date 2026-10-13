@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723109463582",
+    "project_id": "smarthire-b6d08",
+    "storage_bucket": "smarthire-b6d08.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723109463582:android:d1f3e74f7494fdaa97d00f",
+        "android_client_info": {
+          "package_name": "com.ruvai.smarthire"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBHm4Qa8HKUTL1qoCTn11NKI3c148Qx2R0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-package com.yourorganisation.smarthire
+package com.ruvai.smarthire
 
 import android.app.Application
 import android.content.res.Configuration

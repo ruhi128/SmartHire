@@ -7,9 +7,11 @@ import {
   CheckCircle, Clock, Loader2, MicOff, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { loadFaceApi } from '../../utils/loadFaceApi';
 
 const CYAN = '#4f46e5', GREEN = '#16a34a', AMBER = '#d97706',
       RED  = '#dc2626', VIOLET = '#4f46e5';
+const FACE_MODEL_URL = `${process.env.PUBLIC_URL || ''}/models`;
 
 const QUESTIONS = [
   'Tell me about yourself and your technical background.',
@@ -520,12 +522,12 @@ export default function MockInterview() {
   useEffect(() => {
     const load = async () => {
       try {
-        const fa = await import('face-api.js');
+        const fa = await loadFaceApi();
         faceapi.current = fa;
         await Promise.all([
-          fa.nets.tinyFaceDetector.loadFromUri('/models'),
-          fa.nets.faceExpressionNet.loadFromUri('/models'),
-          fa.nets.faceLandmark68Net.loadFromUri('/models'),
+          fa.nets.tinyFaceDetector.loadFromUri(FACE_MODEL_URL),
+          fa.nets.faceExpressionNet.loadFromUri(FACE_MODEL_URL),
+          fa.nets.faceLandmark68Net.loadFromUri(FACE_MODEL_URL),
         ]);
         setModelsLoaded(true);
         setFaceApiLoaded(true);

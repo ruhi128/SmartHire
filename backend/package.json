@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Smart Campus Recruitment & Assessment System — Backend API",
+  "description": "Smart Campus Recruitment & Assessment System \u2014 Backend API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,7 +10,9 @@
     "validate:interview-route": "node ./scripts/validate-interview-route.js",
     "validate:student-route": "node ./scripts/validate-student-route.js",
     "validate:auth-avatar-route": "node ./scripts/validate-auth-avatar-route.js",
-    "check:mobile-push-config": "node ./scripts/check-mobile-push-config.js"
+    "validate:notifications-push": "node ./scripts/validate-notifications-push.js",
+    "process:expo-push-receipts": "node ./scripts/process-expo-push-receipts.js",
+    "validate:dsa-practice": "node ./scripts/validate-dsa-practice.js"
   },
   "keywords": [],
   "author": "",

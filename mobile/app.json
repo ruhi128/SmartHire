@@ -21,12 +21,13 @@
     "android": {
       "package": "com.ruvai.smarthire",
       "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B1736"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO"
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "plugins": [
@@ -40,17 +41,19 @@
         }
       ],
       [
-        "expo-notifications",
+        "expo-image-picker",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#4F46E5",
-          "defaultChannel": "default"
+          "photosPermission": "Allow SmartHire to access your photos so you can set a profile photo.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       [
-        "expo-image-picker",
+        "expo-notifications",
         {
-          "photosPermission": "Allow SmartHire to access your photos so you can set a profile photo."
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#0B1736",
+          "defaultChannel": "smarthire-updates"
         }
       ],
       "expo-font"

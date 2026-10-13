@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.yourorganisation.smarthire'
+    namespace 'com.ruvai.smarthire'
     defaultConfig {
-        applicationId 'com.yourorganisation.smarthire'
+        applicationId 'com.ruvai.smarthire'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

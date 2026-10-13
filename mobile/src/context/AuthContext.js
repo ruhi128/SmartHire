@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { authApi } from '../api';
+import { authApi, notificationsApi } from '../api';
 import { configureApiSession } from '../api/client';
 import { DEMO_ACCOUNTS, DEMO_MODE } from '../config/runtime';
 import { clearStoredSession, getStoredSession, saveStoredSession } from '../storage/session';
-import { registerForPushNotificationsAsync, unregisterForPushNotificationsAsync } from '../services/pushNotifications';
+import { clearStoredPushRegistration, getStoredPushRegistration } from '../storage/pushRegistration';
 
 const AuthContext = createContext(null);
 
@@ -12,11 +12,29 @@ export function AuthProvider({ children }) {
   const [initializing, setInitializing] = useState(true);
 
   const logout = useCallback(async ({ unregisterDevice = true } = {}) => {
-    // A local demo session must not trigger native permission/token work.
-    if (unregisterDevice && !DEMO_MODE && !session?.demo) await unregisterForPushNotificationsAsync().catch(() => {});
-    await clearStoredSession();
-    setSession(null);
-  }, [session?.demo]);
+    const activeSession = session;
+    try {
+      // An intentional user logout removes the matching server-side device
+      // record while its bearer token is still valid. An auth-expiry logout
+      // explicitly skips this request to avoid interceptor recursion.
+      if (unregisterDevice && !DEMO_MODE && activeSession?.token && activeSession?.user?.id) {
+        const registration = await getStoredPushRegistration();
+        if (registration?.userId === activeSession.user.id && registration.expoPushToken) {
+          await notificationsApi.unregisterDevice(registration.expoPushToken).catch((error) => {
+            // Logout must still complete when offline or if a server migration
+            // has not yet been applied. The local record is cleared below.
+            console.warn('Could not unregister SmartHire device notifications:', error?.message || 'unknown error');
+          });
+        }
+      }
+    } finally {
+      // Clear the local token record for both user-initiated and expiry paths.
+      // A future authenticated registration can safely associate this device.
+      await clearStoredPushRegistration().catch(() => {});
+      await clearStoredSession();
+      setSession(null);
+    }
+  }, [session]);
 
   useEffect(() => {
     let mounted = true;
@@ -43,16 +61,6 @@ export function AuthProvider({ children }) {
     });
   }, [session, logout]);
 
-  // Register after every real authenticated or restored session. Keeping this
-  // in the auth provider covers cold launches and avoids duplicate permission
-  // prompts/registration attempts in individual login screens. Demo mode is
-  // intentionally excluded before any Expo/native or network work begins.
-  useEffect(() => {
-    if (DEMO_MODE || session?.demo || !session?.token || !session?.user?.id) return undefined;
-    registerForPushNotificationsAsync().catch(() => {});
-    return undefined;
-  }, [session?.token, session?.user?.id, session?.demo]);
-
   const signIn = useCallback(async (email, password) => {
     const normalizedEmail = email.trim().toLowerCase();
     const response = await authApi.login(normalizedEmail, password);
@@ -78,7 +86,7 @@ export function AuthProvider({ children }) {
     };
     await saveStoredSession(nextSession);
     // Make the newly issued token available to API calls immediately (for example
-    // device-token registration right after sign-in), before React commits state.
+    // a first authenticated inbox request right after sign-in), before React commits state.
     configureApiSession({
       tokenGetter: async () => nextSession.token,
       unauthorizedHandler: async () => logout({ unregisterDevice: false }),
