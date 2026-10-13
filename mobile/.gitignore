@@ -18,3 +18,4 @@ firebase-service-account*.json
 # Do not add a blanket rule for google-services.json or GoogleService-Info.plist:
 # they contain public app identifiers and must be available to the EAS build after
 # the team has reviewed its source-control policy.
+./google-services.json
