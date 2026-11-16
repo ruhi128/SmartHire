@@ -19,3 +19,4 @@ firebase-service-account*.json
 # they contain public app identifiers and must be available to the EAS build after
 # the team has reviewed its source-control policy.
 ./google-services.json
+

@@ -40,7 +40,7 @@ function avatarMimeType(asset = {}) {
   if (/\.png$/.test(name)) return 'image/png';
   if (/\.webp$/.test(name)) return 'image/webp';
   if (/\.jpe?g$/.test(name)) return 'image/jpeg';
-  return 'application/octet-stream';
+  return 'image/jpeg';
 }
 
 function stringValue(value) {
@@ -234,7 +234,7 @@ export default function ProfileScreen({ navigation }) {
       const body = new FormData();
       body.append('avatar', {
         uri: asset.uri,
-        name: asset.fileName || asset.name || 'profile-photo.jpg',
+        name: asset.fileName || asset.name || `profile-photo.${avatarMimeType(asset) === 'image/png' ? 'png' : avatarMimeType(asset) === 'image/webp' ? 'webp' : 'jpg'}`,
         type: avatarMimeType(asset),
       });
       const response = await authApi.uploadAvatar(body);

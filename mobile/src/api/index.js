@@ -12,9 +12,10 @@ const liveAuthApi = {
   verifyEmail: (email, code) => result(api.post('/api/auth/verify-email', { email, code })),
   resendCode: (email) => result(api.post('/api/auth/resend-code', { email })),
   changePassword: (new_password) => result(api.post('/api/auth/change-password', { new_password })),
-  uploadAvatar: (formData) => result(api.post('/api/auth/avatar', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })),
+  // NOTE: never set 'Content-Type: multipart/form-data' manually in React
+  // Native — axios/fetch must generate it with the multipart boundary, or
+  // Android uploads arrive unparseable at multer. Same for every upload below.
+  uploadAvatar: (formData) => result(api.post('/api/auth/avatar', formData)),
   removeAvatar: () => result(api.delete('/api/auth/avatar')),
 };
 
@@ -39,14 +40,10 @@ const liveStudentApi = {
   dashboard: () => result(api.get('/api/students/dashboard')),
   profile: () => result(api.get('/api/students/profile')),
   updateProfile: (data) => result(api.put('/api/students/profile', data)),
-  uploadResume: (formData) => result(api.post('/api/students/resume', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })),
+  uploadResume: (formData) => result(api.post('/api/students/resume', formData)),
   // ATS source PDFs are parsed transiently by the server and are never saved
   // as the profile resume or uploaded to storage.
-  extractAtsPdf: (formData) => result(api.post('/api/students/ats/extract-pdf', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })),
+  extractAtsPdf: (formData) => result(api.post('/api/students/ats/extract-pdf', formData)),
   all: (params) => result(api.get('/api/students/all', { params })),
   byId: (id) => result(api.get(`/api/students/${id}`)),
 };
@@ -61,9 +58,7 @@ const liveJobsApi = {
   // Job PDFs are uploaded before the job record is created, matching the web
   // workflow. The authenticated server stores the file and returns its public
   // URL; no storage credential is ever present in the app.
-  uploadDoc: (formData) => result(api.post('/api/upload/job-doc', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })),
+  uploadDoc: (formData) => result(api.post('/api/upload/job-doc', formData)),
   // GET /api/jobs is already scoped to the authenticated recruiter's company.
   myJobs: () => result(api.get('/api/jobs')),
 };

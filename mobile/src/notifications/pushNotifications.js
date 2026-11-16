@@ -126,11 +126,16 @@ export async function requestExpoPushRegistration() {
       ...registrationMetadata(),
     };
   } catch (error) {
-    console.warn('SmartHire device-notification registration failed:', error?.message || 'unknown error');
+    const detail = String(error?.message || 'unknown error').slice(0, 180);
+    console.warn('SmartHire device-notification registration failed:', detail);
     return {
       available: true,
       status: 'error',
-      message: 'Could not register this device. Confirm Firebase setup and use an installed EAS development or preview build.',
+      // Surface the real native error (e.g. "Default FirebaseApp is not
+      // initialized") - the generic wording alone made field diagnosis
+      // impossible. Common causes: Firebase google-services not wired into
+      // the native build, or running in Expo Go / an emulator.
+      message: `Could not register this device. Confirm Firebase setup and use an installed EAS development or preview build. (${detail})`,
     };
   }
 }

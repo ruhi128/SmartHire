@@ -4,6 +4,7 @@ const router = express.Router();
 const supabaseAdmin = require('../config/supabase');
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
+const crypto = require('crypto');
 const { execute } = require('../utils/coderunner');
 // ─────────────────────────────────────────────
 // LeetCode-style typed-function execution
@@ -12,7 +13,15 @@ const { execute } = require('../utils/coderunner');
 // a per-test driver, runs it through the existing server-side JDoodle bridge,
 // reads one JSON return marker, and compares typed values. No JDoodle secret
 // ever reaches the mobile client.
-const FUNCTION_RESULT_MARKER = '__SMARTHIRE_RESULT__';
+const FUNCTION_RESULT_MARKER_PREFIX = '__SMARTHIRE_RESULT__';
+// Backwards-compatible alias for the static prefix; real runs use a fresh
+// per-run marker (createFunctionRunnerContext) so learner code that prints
+// the well-known prefix cannot spoof a result.
+const FUNCTION_RESULT_MARKER = FUNCTION_RESULT_MARKER_PREFIX;
+
+function createFunctionRunnerContext() {
+  return { marker: `${FUNCTION_RESULT_MARKER_PREFIX}_${crypto.randomBytes(16).toString('hex')}` };
+}
 const FUNCTION_LANGUAGES = Object.freeze(['python', 'javascript']);
 const FUNCTION_KINDS = new Set([
   'call', 'linked-list', 'merge-lists', 'cycle-list', 'lru-cache',
@@ -405,12 +414,21 @@ function pythonJsonLiteral(value) {
   return JSON.stringify(JSON.stringify(value));
 }
 
-const PYTHON_COMMON = `
+// Captured BEFORE learner code runs so monkey-patching json.dumps or
+// sys.stdout.write in the submission cannot break/spoof result transport.
+const PYTHON_PRELUDE = `
 import json as __sm_json
-
-def __sm_emit(__sm_value):
-    print("${FUNCTION_RESULT_MARKER}" + __sm_json.dumps(__sm_value, separators=(",", ":"), ensure_ascii=False))
+import sys as __sm_sys
+__sm_dumps = __sm_json.dumps
+__sm_write = __sm_sys.stdout.write
 `;
+
+function pythonCommon(marker) {
+  return `
+def __sm_emit(__sm_value):
+    __sm_write("${marker}" + __sm_dumps(__sm_value, separators=(",", ":"), ensure_ascii=False) + "\\n")
+`;
+}
 
 const PYTHON_LIST_HELPERS = `
 class __SmartListNode:
@@ -520,11 +538,19 @@ def __sm_graph_to_adjacency(__sm_start):
     return [__sm_result[__sm_value] for __sm_value in sorted(__sm_result)]
 `;
 
-const JAVASCRIPT_COMMON = `
+// Captured BEFORE learner code runs (see PYTHON_PRELUDE).
+const JAVASCRIPT_PRELUDE = `
+const __smWrite = process.stdout.write.bind(process.stdout);
+const __smStringify = JSON.stringify;
+`;
+
+function javascriptCommon(marker) {
+  return `
 function __smEmit(value) {
-  console.log('${FUNCTION_RESULT_MARKER}' + JSON.stringify(value));
+  __smWrite('${marker}' + __smStringify(value) + '\\n');
 }
 `;
+}
 
 const JAVASCRIPT_LIST_HELPERS = `
 // Assign on globalThis rather than declaring a lexical binding so a learner's
@@ -640,7 +666,7 @@ function __smGraphToAdjacency(start) {
 }
 `;
 
-function buildPythonFunctionProgram(source, spec, args) {
+function buildPythonFunctionProgram(source, spec, args, context = createFunctionRunnerContext()) {
   const encodedArgs = pythonJsonLiteral(args);
   const invoke = {
     call: `__sm_emit(${spec.method}(*__sm_args))`,
@@ -693,10 +719,10 @@ __sm_emit(__sm_graph_to_adjacency(${spec.method}(__sm_build_graph(__sm_args[0]))
     ['tree-call', 'tree-result', 'tree-lca'].includes(spec.kind) ? PYTHON_TREE_HELPERS : '',
     spec.kind === 'clone-graph' ? PYTHON_GRAPH_HELPERS : '',
   ].join('\n');
-  return `${source}\n${PYTHON_COMMON}\n${helpers}\n__sm_args = __sm_json.loads(${encodedArgs})\n${invoke}\n`;
+  return `${PYTHON_PRELUDE}\n${source}\n${pythonCommon(context.marker)}\n${helpers}\n__sm_args = __sm_json.loads(${encodedArgs})\n${invoke}\n`;
 }
 
-function buildJavaScriptFunctionProgram(source, spec, args) {
+function buildJavaScriptFunctionProgram(source, spec, args, context = createFunctionRunnerContext()) {
   const encodedArgs = JSON.stringify(JSON.stringify(args));
   const invoke = {
     call: `__smEmit(${spec.method}(...__smArgs));`,
@@ -744,29 +770,29 @@ __smEmit(__smResult ? __smResult.val : null);`,
     ['tree-call', 'tree-result', 'tree-lca'].includes(spec.kind) ? JAVASCRIPT_TREE_HELPERS : '',
     spec.kind === 'clone-graph' ? JAVASCRIPT_GRAPH_HELPERS : '',
   ].join('\n');
-  return `${source}\n${JAVASCRIPT_COMMON}\n${helpers}\nconst __smArgs = JSON.parse(${encodedArgs});\n${invoke}\n`;
+  return `${JAVASCRIPT_PRELUDE}\n${source}\n${javascriptCommon(context.marker)}\n${helpers}\nconst __smArgs = JSON.parse(${encodedArgs});\n${invoke}\n`;
 }
 
-function buildFunctionProgram(source, language, spec, args) {
+function buildFunctionProgram(source, language, spec, args, context = createFunctionRunnerContext()) {
   const normalizedLanguage = assertTypedLanguage(spec, language);
   if (!Array.isArray(args)) {
     throw createFunctionRunnerError('Custom test data must be a JSON array of function arguments.', 'FUNCTION_ARGUMENTS_INVALID');
   }
   return normalizedLanguage === 'python'
-    ? buildPythonFunctionProgram(source, spec, args)
-    : buildJavaScriptFunctionProgram(source, spec, args);
+    ? buildPythonFunctionProgram(source, spec, args, context)
+    : buildJavaScriptFunctionProgram(source, spec, args, context);
 }
 
-function parseFunctionOutput(stdout) {
+function parseFunctionOutput(stdout, marker = FUNCTION_RESULT_MARKER) {
   const output = String(stdout || '');
-  const markerIndex = output.lastIndexOf(FUNCTION_RESULT_MARKER);
+  const markerIndex = output.lastIndexOf(marker);
   if (markerIndex === -1) {
     throw createFunctionRunnerError(
       'Your code finished without returning a result. Keep the required function or class name and return a JSON-compatible value; do not read stdin or print the final answer.',
       'FUNCTION_RESULT_MISSING'
     );
   }
-  const payload = output.slice(markerIndex + FUNCTION_RESULT_MARKER.length).trim().split(/\r?\n/, 1)[0];
+  const payload = output.slice(markerIndex + marker.length).trim().split(/\r?\n/, 1)[0];
   try {
     return JSON.parse(payload);
   } catch {
@@ -780,11 +806,11 @@ function parseFunctionOutput(stdout) {
 // The marker is an internal transport detail. Keep a learner's own diagnostic
 // prints visible for Run, but do not show the serialized harness marker in the
 // mobile editor UI alongside the separately rendered returned value.
-function stripFunctionResultMarker(stdout) {
+function stripFunctionResultMarker(stdout, marker = FUNCTION_RESULT_MARKER) {
   return String(stdout || '')
     .split(/\r?\n/)
     .map((line) => {
-      const markerIndex = line.indexOf(FUNCTION_RESULT_MARKER);
+      const markerIndex = line.indexOf(marker);
       return markerIndex === -1 ? line : line.slice(0, markerIndex).trimEnd();
     })
     .filter(Boolean)
@@ -837,13 +863,14 @@ function displayTypedValue(value) {
 }
 
 async function executeTypedFunctionCase(code, language, spec, args) {
-  const program = buildFunctionProgram(code, language, spec, args);
+  const context = createFunctionRunnerContext();
+  const program = buildFunctionProgram(code, language, spec, args, context);
   const execution = await execute(program, language, '');
   // Deliberately omit `actual` when the runner did not complete. Callers use
   // property presence to distinguish an unavailable return value from a valid
   // JSON return such as null, false, 0, or an empty array.
   if (execution.verdict !== 'Accepted') return execution;
-  return { ...execution, actual: parseFunctionOutput(execution.stdout) };
+  return { ...execution, actual: parseFunctionOutput(execution.stdout, context.marker) };
 }
 
 
@@ -923,8 +950,11 @@ router.get('/problems/:id', auth, async (req, res) => {
       .limit(10);
 
     const functionExecution = functionExecutionForClient(problem);
+    // Never expose trusted test cases (expected outputs / runner metadata
+    // beyond the public function-execution summary) to learners.
+    const { test_cases: _trustedTestCases, ...publicProblem } = problem;
     res.json({
-      problem: { ...problem, function_execution: functionExecution },
+      problem: { ...publicProblem, function_execution: functionExecution },
       submissions: submissions || [],
     });
   } catch (err) {
@@ -1008,13 +1038,11 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
 
         totalRuntime += parseFloat(execution.time) || 0;
         totalMemory += parseFloat(execution.memory) || 0;
+        // Graded (private) test inputs/expected values stay server-side;
+        // the client learns only pass/fail and its own returned value.
         results.push({
           testCase: i + 1,
           passed,
-          input: displayTypedValue(test.args),
-          args: test.args,
-          expected: displayTypedValue(test.expected),
-          expectedValue: test.expected,
           output: hasActual ? displayTypedValue(execution.actual) : (execution.stderr || execution.stdout || ''),
           actual: hasActual ? execution.actual : null,
           runtime: execution.time,
@@ -1293,14 +1321,19 @@ router.get('/performance', auth, roles('student'), async (req, res) => {
     const difficultyMap = { Easy: { solved: 0, total: 0 }, Medium: { solved: 0, total: 0 }, Hard: { solved: 0, total: 0 } };
     const seenProblems = new Map();
 
+    // A problem counts as solved when ANY submission was Accepted, even if
+    // the most recent attempt was wrong (rows arrive newest-first).
+    const solvedProblemIds = new Set(
+      submissions.filter((sub) => sub.status === 'Accepted' && sub.dsa_problems).map((sub) => sub.dsa_problems.id),
+    );
     for (const sub of submissions) {
       const prob = sub.dsa_problems;
       if (!prob) continue;
       const diff = prob.difficulty;
       if (!seenProblems.has(prob.id)) {
-        seenProblems.set(prob.id, sub.status);
+        seenProblems.set(prob.id, solvedProblemIds.has(prob.id) ? 'Accepted' : sub.status);
         difficultyMap[diff].total++;
-        if (sub.status === 'Accepted') difficultyMap[diff].solved++;
+        if (solvedProblemIds.has(prob.id)) difficultyMap[diff].solved++;
       }
     }
 

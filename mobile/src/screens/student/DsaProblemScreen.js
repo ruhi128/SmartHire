@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { dsaApi } from '../../api';
 import AppHeader from '../../components/AppHeader';
 import { AppButton, Badge, Card, ErrorState, FormInput, LoadingState, SectionTitle } from '../../components/Ui';
@@ -35,6 +36,11 @@ function demoStarter(problem, language) {
   const source = problem?.starter_code || {};
   return exactStarter(problem, language) || source.javascript || source.python || '';
 }
+
+// Same contract as the website editor (DSACoding.jsx getCode/saveCode):
+// code is auto-saved per problem + language on the device and restored on
+// reopen; Reset restores the exact starter snippet for that language.
+const draftKey = (problemId, language) => `dsa_code_${problemId}_${language}`;
 
 function formatJson(value) {
   try {
@@ -86,11 +92,31 @@ export default function DsaProblemScreen({ navigation, route }) {
 
   useEffect(() => {
     if (!problem) return;
+    let cancelled = false;
+    const starter = DEMO_MODE
+      ? demoStarter(problem, language)
+      : exactStarter(problem, language, functionExecution);
+    // Restore the saved draft for this problem/language, like the website.
+    AsyncStorage.getItem(draftKey(problem.id, language))
+      .then((saved) => { if (!cancelled) setCode(saved || starter); })
+      .catch(() => { if (!cancelled) setCode(starter); });
+    return () => { cancelled = true; };
+  }, [problem?.id, language]);
+
+  const changeCode = (value) => {
+    setCode(value);
+    if (problem) AsyncStorage.setItem(draftKey(problem.id, language), value || '').catch(() => {});
+  };
+
+  const resetCode = () => {
+    if (!problem) return;
     const starter = DEMO_MODE
       ? demoStarter(problem, language)
       : exactStarter(problem, language, functionExecution);
     setCode(starter);
-  }, [problem?.id, language]);
+    setOutput(null);
+    AsyncStorage.removeItem(draftKey(problem.id, language)).catch(() => {});
+  };
 
   useEffect(() => {
     if (!problem) return;
@@ -226,7 +252,14 @@ export default function DsaProblemScreen({ navigation, route }) {
           </Card>
         ) : null}
 
-        <SectionTitle title="Code editor" />
+        {Array.isArray(problem.hints) && problem.hints.length ? <>
+          <SectionTitle title="Hints" />
+          <Card>
+            {problem.hints.map((hint, index) => <Text key={index} style={styles.constraint}>• {hint}</Text>)}
+          </Card>
+        </> : null}
+
+        <SectionTitle title="Code editor" action={<Pressable onPress={resetCode} accessibilityRole="button" accessibilityLabel="Reset to starter code"><Text style={styles.resetText}>Reset to starter code</Text></Pressable>} />
         <View style={styles.languageRow}>
           {LANGUAGES.map(([value, label]) => {
             const isSupported = DEMO_MODE || (typedAvailable && usableTypedLanguages.includes(value));
@@ -249,7 +282,7 @@ export default function DsaProblemScreen({ navigation, route }) {
           <TextInput
             editable={canExecute}
             value={code}
-            onChangeText={setCode}
+            onChangeText={changeCode}
             multiline
             autoCapitalize="none"
             autoCorrect={false}
@@ -307,14 +340,26 @@ export default function DsaProblemScreen({ navigation, route }) {
               <Text style={styles.resultsTitle}>Test cases</Text>
               {output.results.map((result, index) => <View key={`${result.testCase || index}-${index}`} style={[styles.testResult, result.passed ? styles.testPassed : styles.testFailed]}>
                 <Text style={[styles.testTitle, result.passed ? styles.testPassedText : styles.testFailedText]}>Test {result.testCase || index + 1}: {result.passed ? 'Passed' : (result.verdict || 'Failed')}</Text>
-                <Text style={styles.testLine}>Arguments: {displayValue(result.input ?? result.args)}</Text>
-                <Text style={styles.testLine}>Expected: {displayValue(result.expected)}</Text>
+                {(result.input ?? result.args) !== undefined ? <Text style={styles.testLine}>Arguments: {displayValue(result.input ?? result.args)}</Text> : null}
+                {result.expected !== undefined ? <Text style={styles.testLine}>Expected: {displayValue(result.expected)}</Text> : null}
                 <Text style={styles.testLine}>Actual: {displayValue(result.output ?? result.actual)}</Text>
                 {result.stderr ? <Text style={styles.testError}>{result.stderr}</Text> : null}
               </View>)}
             </View> : null}
           </Card>
         ) : null}
+
+        {Array.isArray(data?.submissions) && data.submissions.length ? <>
+          <SectionTitle title="Your submissions" />
+          <Card>
+            {data.submissions.map((sub) => (
+              <View key={sub.id} style={styles.submissionRow}>
+                <Text style={styles.submissionMain}>{sub.status || 'Submitted'} · {sub.language || ''}</Text>
+                <Text style={styles.submissionMeta}>{sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : ''}</Text>
+              </View>
+            ))}
+          </Card>
+        </> : null}
 
         <Text style={styles.note}>{DEMO_MODE
           ? 'Local demo feedback is deterministic and does not run your code on a server. Do not enter passwords, keys, or other sensitive data.'
@@ -377,4 +422,8 @@ const styles = StyleSheet.create({
   testLine: { color: colors.text, fontFamily: 'monospace', fontSize: 11, lineHeight: 16 },
   testError: { color: colors.danger, fontFamily: 'monospace', fontSize: 11, lineHeight: 16, marginTop: 5 },
   note: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 14 },
+  resetText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  submissionRow: { paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: colors.border },
+  submissionMain: { color: colors.text, fontWeight: '700', fontSize: 13 },
+  submissionMeta: { color: colors.muted, fontSize: 11, marginTop: 2 },
 });

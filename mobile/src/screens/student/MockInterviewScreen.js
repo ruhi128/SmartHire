@@ -8,6 +8,7 @@ import { interviewApi } from '../../api';
 import { apiErrorMessage } from '../../api/client';
 import { colors, spacing } from '../../constants/theme';
 import { analyzeInterviewAnswer, INTERVIEW_QUESTIONS, scoreInterview } from '../../utils/interviewAnalysis';
+import { LAPTOP_FEATURES, showLaptopRequired } from '../../components/LaptopRequired';
 
 function formatClock(value = 0) {
   const seconds = Math.max(0, Math.floor(Number(value) || 0));
@@ -62,7 +63,13 @@ export default function MockInterviewScreen({ navigation }) {
     return unsubscribe;
   }, [navigation, phase, saving]);
 
+  // Laptop-only: new mock-interview sessions start on the website. This
+  // screen remains reachable from old links, so its Start button prompts
+  // instead of beginning a phone session.
   const startPractice = () => {
+    showLaptopRequired(LAPTOP_FEATURES.mockInterview);
+    return;
+    // eslint-disable-next-line no-unreachable
     savingRef.current = false;
     setAnswers({});
     setCurrentIndex(0);

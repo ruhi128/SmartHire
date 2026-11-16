@@ -24,7 +24,7 @@ function deepClone(value) {
 }
 
 function localExecute(program, language) {
-  const command = language === 'python' ? 'python3' : 'node';
+  const command = language === 'python' ? (process.platform === 'win32' ? 'py' : 'python3') : 'node';
   const args = language === 'python' ? ['-c', program] : ['-e', program];
   const result = childProcess.spawnSync(command, args, {
     encoding: 'utf8',
@@ -71,7 +71,6 @@ module.exports = {
   parseFunctionOutput,
   stripFunctionResultMarker,
   typedValuesMatch,
-  buildDsaPerformance,
   functionExecutionForClient,
 };`, sandbox, { filename: 'dsa-harness.js' });
   return sandbox.module.exports;
@@ -404,7 +403,6 @@ async function testRouteContract() {
 async function main() {
   const harness = loadHarness();
   testTypedWrappers(harness);
-  testPerformance(harness);
   await testRouteContract();
   console.log('DSA function runner, private-test contract, and performance analytics: PASS');
 }

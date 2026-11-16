@@ -5,6 +5,7 @@ import { Badge, EmptyState, ErrorState, LoadingState } from '../../components/Ui
 import { companyOaApi } from '../../api';
 import { colors, spacing } from '../../constants/theme';
 import useAsyncData from '../../utils/useAsyncData';
+import { LAPTOP_FEATURES, showLaptopRequired } from '../../components/LaptopRequired';
 
 export default function CompanyOaListScreen({ navigation, route }) {
   const refreshKey = route?.params?.refreshKey;
@@ -18,11 +19,11 @@ export default function CompanyOaListScreen({ navigation, route }) {
     <Screen scroll={false} contentContainerStyle={styles.page}>
       <View style={styles.heading}>
         <Text style={styles.title}>Company OA</Text>
-        <Text style={styles.subtitle}>Only approved assessments matching your eligibility are shown. Each official Company OA allows one timed, mobile-native attempt.</Text>
+        <Text style={styles.subtitle}>Only approved assessments matching your eligibility are shown. Each official Company OA allows one attempt, taken on the SmartHire website using a laptop.</Text>
       </View>
       <View style={styles.notice}>
         <Ionicons name="shield-checkmark-outline" size={18} color={colors.info} />
-        <Text style={styles.noticeText}>Stay in SmartHire while you take an assessment. Leaving the app three times submits the active attempt, matching the website’s tab-switch safeguard.</Text>
+        <Text style={styles.noticeText}>Company OAs are proctored and timed on the website. Open SmartHire on a laptop when you are ready — your one attempt starts there, not on the phone.</Text>
       </View>
       <FlatList
         data={tests}
@@ -38,7 +39,7 @@ export default function CompanyOaListScreen({ navigation, route }) {
               accessibilityState={{ disabled: alreadyAttempted }}
               accessibilityLabel={alreadyAttempted ? `${item.title}, already attempted` : `Start ${item.title}`}
               disabled={alreadyAttempted}
-              onPress={() => navigation.navigate('CompanyOaAttempt', { testId: item.id, title: item.title })}
+              onPress={() => showLaptopRequired(LAPTOP_FEATURES.companyOa)}
               style={({ pressed }) => [styles.card, alreadyAttempted && styles.cardDisabled, pressed && styles.pressed]}
             >
               <View style={styles.icon}><Ionicons name="business-outline" size={23} color={colors.success} /></View>
@@ -49,7 +50,7 @@ export default function CompanyOaListScreen({ navigation, route }) {
                 </View>
                 <Text style={styles.company}>{item.companies?.name || 'Company'}</Text>
                 <Text style={styles.meta}>{item.duration || 0} min · Min. CGPA {item.min_cgpa ?? 0}</Text>
-                {alreadyAttempted ? <Badge tone="info" style={styles.attempt}>Attempt completed · {item.best_pct || 0}%{item.best_grade ? ` · Grade ${item.best_grade}` : ''}</Badge> : <Text style={styles.startAction}>Start Company OA</Text>}
+                {alreadyAttempted ? <Badge tone="info" style={styles.attempt}>Attempt completed · {item.best_pct || 0}%{item.best_grade ? ` · Grade ${item.best_grade}` : ''}</Badge> : <Text style={styles.startAction}>Take this Company OA on a laptop →</Text>}
               </View>
               <Ionicons name={alreadyAttempted ? 'checkmark-circle' : 'chevron-forward'} size={20} color={alreadyAttempted ? colors.success : colors.primary} />
             </Pressable>

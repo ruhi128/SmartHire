@@ -47,6 +47,17 @@ api.interceptors.response.use(
   }
 );
 
+// Resolve a backend-relative path (e.g. "/api/auth/avatar?v=...") against the
+// configured API origin. Absolute URLs pass through unchanged. Avatar <Image>
+// sources across the student/recruiter/admin screens depend on this export.
+export function apiUrl(path) {
+  if (!path) return '';
+  const value = String(path);
+  if (/^https?:\/\//i.test(value)) return value;
+  if (!configuredBaseUrl) return value;
+  return `${configuredBaseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
+}
+
 export function apiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
   const errors = error?.response?.data?.errors;
   if (Array.isArray(errors) && errors[0]?.msg) return errors[0].msg;

@@ -1,24 +1,9 @@
-import TimedAssessmentAttempt from '../../components/TimedAssessmentAttempt';
-import { companyOaApi } from '../../api';
+import { LaptopRequiredNotice, LAPTOP_FEATURES } from '../../components/LaptopRequired';
 
-async function loadCompanyOa(testId) {
-  return companyOaApi.take(testId);
-}
-
-async function submitCompanyOa({ testId, answers, timeTaken, autoSubmitted }) {
-  return companyOaApi.attempt(testId, { answers, timeTaken, autoSubmitted });
-}
-
-export default function CompanyOaAttemptScreen({ navigation, route }) {
-  return (
-    <TimedAssessmentAttempt
-      navigation={navigation}
-      testId={route?.params?.testId}
-      fallbackTitle={route?.params?.title || 'Company OA'}
-      loadAssessment={loadCompanyOa}
-      submitAssessment={submitCompanyOa}
-      resultRoute="CompanyOaResult"
-      assessmentLabel="Company OA"
-    />
-  );
+// Laptop-only: official Company OA attempts are taken on the SmartHire
+// website (see CompanyOaListScreen). This route stays registered so old
+// links/bookmarks land on an explanation instead of consuming the student's
+// single attempt on the phone.
+export default function CompanyOaAttemptScreen({ navigation }) {
+  return <LaptopRequiredNotice feature={LAPTOP_FEATURES.companyOa} navigation={navigation} />;
 }

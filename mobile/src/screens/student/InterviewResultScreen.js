@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import { AppButton, Card, SectionTitle } from '../../components/Ui';
 import { colors, spacing } from '../../constants/theme';
+import { LAPTOP_FEATURES, showLaptopRequired } from '../../components/LaptopRequired';
 
 function formatDuration(value = 0) {
   const seconds = Math.max(0, Math.floor(Number(value) || 0));
@@ -62,7 +63,7 @@ export default function InterviewResultScreen({ navigation, route }) {
       {(feedback.tips || []).length ? <><SectionTitle title="Tips" /><BulletCard values={feedback.tips} color={colors.primary} /></> : null}
 
       <AppButton title="View interview history" onPress={() => navigation.navigate('InterviewHub', { refreshKey: Date.now() })} style={styles.button} />
-      <AppButton title="Start another practice" variant="outline" onPress={() => navigation.replace('MockInterview')} style={styles.secondaryButton} />
+      <AppButton title="Start another practice" variant="outline" onPress={() => showLaptopRequired(LAPTOP_FEATURES.mockInterview)} style={styles.secondaryButton} />
     </Screen>
   );
 }

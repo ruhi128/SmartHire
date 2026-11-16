@@ -6,6 +6,7 @@ import { interviewApi } from '../../api';
 import useAsyncData from '../../utils/useAsyncData';
 import { colors, spacing } from '../../constants/theme';
 import { formatDate } from '../../utils/format';
+import { LAPTOP_FEATURES, showLaptopRequired } from '../../components/LaptopRequired';
 
 export default function InterviewHubScreen({ navigation, route }) {
   const refreshKey = route?.params?.refreshKey;
@@ -33,10 +34,10 @@ export default function InterviewHubScreen({ navigation, route }) {
               <View style={styles.heroIcon}><Ionicons name="chatbubbles-outline" size={31} color={colors.white} /></View>
               <View style={styles.heroContent}>
                 <Text style={styles.title}>Mock interview</Text>
-                <Text style={styles.subtitle}>Practise common interview prompts on your phone, then keep text-only feedback and responses in your SmartHire history.</Text>
+                <Text style={styles.subtitle}>Review your past sessions and feedback here. New mock interviews are started on the SmartHire website using a laptop.</Text>
               </View>
             </View>
-            <AppButton title="Start typed practice" onPress={() => navigation.navigate('MockInterview')} style={styles.startButton} />
+            <AppButton title="Start a mock interview on a laptop" onPress={() => showLaptopRequired(LAPTOP_FEATURES.mockInterview)} style={styles.startButton} />
             <Card style={styles.boundary}>
               <View style={styles.boundaryTop}><Ionicons name="document-text-outline" size={18} color={colors.info} /><Text style={styles.boundaryTitle}>Text-only practice</Text></View>
               <Text style={styles.boundaryBody}>Mobile practice evaluates only what you type. It does not record or infer camera, microphone, facial-expression, eye-contact, emotion, identity, attention, or employability information.</Text>
@@ -53,7 +54,7 @@ export default function InterviewHubScreen({ navigation, route }) {
             <SectionTitle title="Past sessions" />
           </>
         )}
-        ListEmptyComponent={<EmptyState title="No interview practice yet" body="Start a typed practice session to save your responses and text-feedback summary here." action={<AppButton title="Start typed practice" compact onPress={() => navigation.navigate('MockInterview')} />} />}
+        ListEmptyComponent={<EmptyState title="No interview practice yet" body="Start a mock interview on the SmartHire website using a laptop; your sessions and feedback will appear here." action={<AppButton title="Start on a laptop" compact onPress={() => showLaptopRequired(LAPTOP_FEATURES.mockInterview)} />} />}
         renderItem={({ item }) => {
           const typed = item.practiceMode === 'typed-practice';
           return (

@@ -2,7 +2,10 @@
 # OS junk
 .DS_Store
 
-# Local secrets doc (never commit)
+# Local secrets (never commit real environment files or credential notes)
+.env
+.env.*
+!.env.example
 ENV_VALUES.local.md
 *.local.md
 

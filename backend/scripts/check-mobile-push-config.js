@@ -27,10 +27,10 @@ if (placeholder(process.env.JWT_SECRET) || String(process.env.JWT_SECRET || '').
   errors.push('JWT_SECRET is missing, a placeholder, or shorter than 32 characters.');
 }
 
-const pushEnabled = process.env.MOBILE_PUSH_ENABLED === 'true';
-const rawFlag = process.env.MOBILE_PUSH_ENABLED;
+const pushEnabled = process.env.EXPO_PUSH_ENABLED === 'true';
+const rawFlag = process.env.EXPO_PUSH_ENABLED;
 if (rawFlag && !['true', 'false'].includes(rawFlag)) {
-  errors.push('MOBILE_PUSH_ENABLED must be exactly true or false.');
+  errors.push('EXPO_PUSH_ENABLED must be exactly true or false.');
 }
 
 console.log('\nSmartHire backend mobile-push configuration check');
@@ -38,9 +38,9 @@ console.log(`• Environment source: ${fs.existsSync(envPath) ? '.env file loade
 console.log(`• Push delivery: ${pushEnabled ? 'ENABLED' : 'disabled (safe default)'}`);
 
 if (pushEnabled) {
-  warnings.push('Confirm that migration 005_mobile_push_devices.sql is applied to this exact Supabase project.');
+  warnings.push('Confirm that migrations 009_enable_mobile_push_devices.sql and 010_add_expo_push_receipt_jobs.sql are applied to this exact Supabase project (005/007 are historical only).');
   warnings.push('Confirm a physical device shows “Enabled” in Account → Notifications and has received a real workflow notification.');
-  warnings.push('Confirm the API deployment logs show no [push] delivery failed messages for the test.');
+  warnings.push('Confirm the API deployment logs show no [expo-push] delivery failures for the test, and that `npm run process:expo-push-receipts` is scheduled every 15 minutes.');
 } else {
   warnings.push('In-app notifications remain active. Do not enable push until the physical-device validation checklist is complete.');
 }

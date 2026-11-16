@@ -5,6 +5,7 @@ import { Badge, EmptyState, ErrorState, LoadingState } from '../../components/Ui
 import { mockOaApi } from '../../api';
 import { colors, spacing } from '../../constants/theme';
 import useAsyncData from '../../utils/useAsyncData';
+import { LAPTOP_FEATURES, showLaptopRequired } from '../../components/LaptopRequired';
 
 export default function MockOaListScreen({ navigation, route }) {
   const refreshKey = route?.params?.refreshKey;
@@ -18,7 +19,7 @@ export default function MockOaListScreen({ navigation, route }) {
     <Screen scroll={false} contentContainerStyle={styles.page}>
       <View style={styles.heading}>
         <Text style={styles.title}>Mock OA</Text>
-        <Text style={styles.subtitle}>Practice approved company-style online assessments right from your phone. Timers, review flags, and practice integrity signals follow the website workflow.</Text>
+        <Text style={styles.subtitle}>Browse approved company-style online assessments and your practice history here. Attempts are taken on the SmartHire website using a laptop.</Text>
       </View>
       <FlatList
         data={tests}
@@ -31,8 +32,8 @@ export default function MockOaListScreen({ navigation, route }) {
           return (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${priorAttempts ? 'Attempt again' : 'Start'} ${item.title}`}
-              onPress={() => navigation.navigate('MockOaAttempt', { testId: item.id, title: item.title })}
+              accessibilityLabel={`${item.title}. Attempts are taken on a laptop` }
+              onPress={() => showLaptopRequired(LAPTOP_FEATURES.mockOa)}
               style={({ pressed }) => [styles.card, pressed && styles.pressed]}
             >
               <View style={styles.icon}><Ionicons name="document-text-outline" size={23} color={colors.warning} /></View>
@@ -44,7 +45,7 @@ export default function MockOaListScreen({ navigation, route }) {
                 <Text style={styles.company}>{item.companies?.name || 'Practice assessment'}</Text>
                 <Text style={styles.meta}>{item.question_count || 0} questions · {item.duration || 0} min</Text>
                 {priorAttempts ? <Text style={styles.attempt}>Attempts: {priorAttempts}{item.bestScore !== null ? ` · Best ${item.bestScore}` : ''}</Text> : null}
-                <Text style={styles.startAction}>{priorAttempts ? 'Start another practice attempt' : 'Start Mock OA'}</Text>
+                <Text style={styles.startAction}>{priorAttempts ? 'Take another attempt on a laptop →' : 'Take this Mock OA on a laptop →'}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.primary} />
             </Pressable>

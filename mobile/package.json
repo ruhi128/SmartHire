@@ -19,7 +19,9 @@
     "build:android:production": "npx eas-cli@latest build --platform android --profile production",
     "build:ios:development": "npx eas-cli@latest build --platform ios --profile development",
     "build:ios:preview": "npx eas-cli@latest build --platform ios --profile preview",
-    "build:ios:production": "npx eas-cli@latest build --platform ios --profile production"
+    "build:ios:production": "npx eas-cli@latest build --platform ios --profile production",
+    "validate:laptop-gate": "node ./scripts/validate-laptop-gate.js",
+    "validate:avatar-upload": "node ./scripts/validate-avatar-upload.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

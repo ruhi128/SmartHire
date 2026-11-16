@@ -1,3 +1,10 @@
+// Force-delete the autolinking cache so it always regenerates with correct
+// paths on the build machine. Prevents a Windows-generated
+// android/build/generated/autolinking/autolinking.json (absolute C:\\ paths)
+// from reaching EAS's Linux builder via EAS build-cache restoration, which
+// caused: "No matching variant of project :react-native-*-* ... No variants
+// exist" for react-native-async-storage, react-native-safe-area-context and
+// react-native-screens. See https://github.com/expo/expo/issues/42370
 pluginManagement {
   def reactNativeGradlePlugin = new File(
     providers.exec {
@@ -20,6 +27,20 @@ pluginManagement {
 plugins {
   id("com.facebook.react.settings")
   id("expo-autolinking-settings")
+}
+
+// Force-delete the autolinking cache so it regenerates with correct paths on
+// this build machine. Prevents a Windows-generated
+// android/build/generated/autolinking/autolinking.json (absolute Windows
+// paths) from reaching EAS's Linux builder via EAS build-cache restoration,
+// which caused: "No matching variant of project :react-native-*-* ... No
+// variants exist". Must stay AFTER pluginManagement{}/plugins{} (Gradle
+// rejects plain statements before them); it still runs before the
+// autolinking extensions below resolve any modules.
+// See https://github.com/expo/expo/issues/42370
+def autolinkingCacheDir = new File(rootDir, "build/generated/autolinking")
+if (!System.getProperty("os.name").toLowerCase().contains("windows")) {
+  autolinkingCacheDir.deleteDir()
 }
 
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->

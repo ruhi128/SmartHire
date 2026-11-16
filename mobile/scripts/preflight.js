@@ -87,6 +87,7 @@ try {
 
 const localEnv = readEnvFile(path.join(root, '.env'));
 const apiUrl = configuredValue('EXPO_PUBLIC_API_URL', localEnv).replace(/\/$/, '');
+const webUrl = configuredValue('EXPO_PUBLIC_WEB_URL', localEnv).replace(/\/$/, '');
 const plugins = app?.plugins || [];
 const pluginNames = plugins.map((plugin) => (Array.isArray(plugin) ? plugin[0] : plugin));
 const dependencies = packageManifest?.dependencies || {};
@@ -105,6 +106,10 @@ add(Boolean(apiUrl) && hasEmbeddedUrlCredentials(apiUrl), 'Do not embed credenti
 add(release && apiUrl && !/^https:\/\//i.test(apiUrl), 'A release build must use an HTTPS EXPO_PUBLIC_API_URL.');
 add(release && apiUrl && isLoopbackUrl(apiUrl), 'A release build cannot use a localhost or loopback EXPO_PUBLIC_API_URL.');
 add(!release && apiUrl && isLoopbackUrl(apiUrl), 'localhost only works in a simulator/emulator, not on a physical device.', warnings);
+// The Mock OA / Company OA / Mock Interview laptop prompt opens this URL.
+// A placeholder ships a dead "Open website" button, so it blocks release.
+add(release && placeholder(webUrl), 'Set EXPO_PUBLIC_WEB_URL to the real deployed website URL (currently missing/placeholder) in mobile/.env and eas.json, then rebuild.');
+add(Boolean(webUrl) && !placeholder(webUrl) && !/^https:\/\//i.test(webUrl), 'EXPO_PUBLIC_WEB_URL must be an absolute https:// URL for release builds.');
 
 // Image Picker is a native module. Keeping both package and plugin makes a
 // clean Android build include ExponentImagePicker.
@@ -122,6 +127,7 @@ add(Boolean(googleServicesFile) && !fs.existsSync(googleServicesPath), `Download
 
 console.log(`\nSmartHire mobile preflight (${release ? 'release' : 'development'})`);
 console.log(`• API URL: ${apiUrl ? 'configured' : 'missing'}`);
+console.log(`• Website URL (laptop prompt): ${webUrl && !placeholder(webUrl) ? 'configured' : 'missing/placeholder'}`);
 console.log(`• Android package: ${app?.android?.package || 'missing'}`);
 console.log(`• EAS project ID: ${projectId ? 'configured' : 'missing'}`);
 console.log(`• Android Firebase app config: ${googleServicesFile && fs.existsSync(googleServicesPath) ? 'found' : 'missing'}`);
