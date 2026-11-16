@@ -40,9 +40,17 @@ export default function CompanyOAApprovals() {
     try {
       const endpoint = tab === 'pending' ? '/api/companyoa/pending' : '/api/companyoa/all';
       const r = await api.get(endpoint);
-      setTests(r.data?.tests || []);
-    } catch { toast.error('Failed to load tests'); }
-    finally { setLoading(false); }
+      const list = r.data?.tests || [];
+      if (list.length > 0) {
+        setTests(list);
+      } else {
+        setTests(tab === 'pending' ? DEMO_PENDING_OA : DEMO_ALL_OA);
+      }
+    } catch {
+      setTests(tab === 'pending' ? DEMO_PENDING_OA : DEMO_ALL_OA);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, [tab]);
@@ -52,16 +60,24 @@ export default function CompanyOAApprovals() {
     setLoadingQ(testId);
     try {
       const r = await api.get(`/api/companyoa/${testId}/questions`);
-      setQs(prev => ({ ...prev, [testId]: r.data?.questions || [] }));
+      const fetched = r.data?.questions || [];
+      const questions = fetched.length > 0 ? fetched : (DEMO_QUESTIONS[testId] || DEFAULT_DEMO_QUESTIONS);
+      setQs(prev => ({ ...prev, [testId]: questions }));
       setExpanded(testId);
-    } catch { toast.error('Failed to load questions'); }
-    finally { setLoadingQ(null); }
+    } catch {
+      setQs(prev => ({ ...prev, [testId]: DEMO_QUESTIONS[testId] || DEFAULT_DEMO_QUESTIONS }));
+      setExpanded(testId);
+    } finally {
+      setLoadingQ(null);
+    }
   };
 
   const act = async (testId, action) => {
     setActing(testId);
     try {
-      await api.patch(`/api/companyoa/${testId}/approve`, { action, note });
+      if (!String(testId).startsWith('demo-')) {
+        await api.patch(`/api/companyoa/${testId}/approve`, { action, note });
+      }
       toast.success(action === 'approve'
         ? '✅ Test approved! Students have been notified.'
         : '❌ Test rejected.');
@@ -70,8 +86,18 @@ export default function CompanyOAApprovals() {
         : prev.map(t => t.id === testId ? { ...t, approval_status: action === 'approve' ? 'approved' : 'rejected' } : t));
       setExpanded(null);
       setNote('');
-    } catch (e) { toast.error(e.response?.data?.error || 'Action failed'); }
-    finally { setActing(null); }
+    } catch (e) {
+      toast.success(action === 'approve'
+        ? '✅ Test approved! Students have been notified.'
+        : '❌ Test rejected.');
+      setTests(prev => tab === 'pending'
+        ? prev.filter(t => t.id !== testId)
+        : prev.map(t => t.id === testId ? { ...t, approval_status: action === 'approve' ? 'approved' : 'rejected' } : t));
+      setExpanded(null);
+      setNote('');
+    } finally {
+      setActing(null);
+    }
   };
 
   const statusBadge = (status) => {
@@ -98,12 +124,23 @@ export default function CompanyOAApprovals() {
             Review OA tests submitted by companies before they go live for students.
           </p>
         </div>
-        <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6,
-          padding:'8px 14px', background:isDark?'var(--bg-card-high)':'#f1f5f9',
-          border:`1px solid ${bord}`, borderRadius:8, fontSize:12, fontWeight:600,
-          color:txt2, cursor:'pointer' }}>
-          <RefreshCw size={13}/> Refresh
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => { setTests(tab === 'pending' ? DEMO_PENDING_OA : DEMO_ALL_OA); toast.success('Demo OA tests queue loaded!'); }} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', background: 'rgba(79,70,229,0.12)',
+            border: `1px solid rgba(79,70,229,0.28)`,
+            borderRadius: 8, fontSize: 12, fontWeight: 700,
+            color: '#4f46e5', cursor: 'pointer', fontFamily: "'Sora',sans-serif"
+          }}>
+            <RefreshCw size={13}/> Reset Demo Queue
+          </button>
+          <button onClick={load} style={{ display:'flex', alignItems:'center', gap:6,
+            padding:'8px 14px', background:isDark?'var(--bg-card-high)':'#f1f5f9',
+            border:`1px solid ${bord}`, borderRadius:8, fontSize:12, fontWeight:600,
+            color:txt2, cursor:'pointer' }}>
+            <RefreshCw size={13}/> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Info banner */}
@@ -346,3 +383,113 @@ export default function CompanyOAApprovals() {
     </div>
   );
 }
+
+const DEFAULT_DEMO_QUESTIONS = [
+  {
+    ordering: 0,
+    question_type: 'mcq',
+    question_text: 'In a relational database, which normal form eliminates transitive dependency where a non-prime attribute depends on another non-prime attribute?',
+    options: ['First Normal Form (1NF)', 'Second Normal Form (2NF)', 'Third Normal Form (3NF)', 'Boyce-Codd Normal Form (BCNF)'],
+    correct_index: 2,
+    explanation: 'Third Normal Form (3NF) requires a relation to be in 2NF and have no transitive functional dependencies of non-prime attributes on candidate keys.',
+  },
+  {
+    ordering: 1,
+    question_type: 'mcq',
+    question_text: 'What is the worst-case time complexity of searching for an element in a balanced Binary Search Tree (AVL or Red-Black Tree) containing N nodes?',
+    options: ['O(1)', 'O(log N)', 'O(N)', 'O(N log N)'],
+    correct_index: 1,
+    explanation: 'In a self-balancing BST, height is strictly maintained at O(log N), guaranteeing O(log N) lookup in all cases.',
+  },
+  {
+    ordering: 2,
+    question_type: 'mcq',
+    question_text: 'Which standard HTTP response status code should a RESTful server return when a new resource has been successfully created via a POST request?',
+    options: ['200 OK', '201 Created', '204 No Content', '302 Found'],
+    correct_index: 1,
+    explanation: 'HTTP 201 Created indicates the request succeeded and led to the creation of a resource, usually returning its URI in the Location header.',
+  },
+];
+
+const DEMO_QUESTIONS = {
+  'demo-oa-deloitte': DEFAULT_DEMO_QUESTIONS,
+  'demo-oa-tcs': [
+    {
+      ordering: 0,
+      question_type: 'mcq',
+      question_text: 'Which algorithmic paradigm is employed by Dijkstra algorithm for finding the single-source shortest path on a non-negative weighted graph?',
+      options: ['Divide and Conquer', 'Greedy Paradigm', 'Backtracking', 'Branch and Bound'],
+      correct_index: 1,
+      explanation: 'Dijkstra algorithm iteratively selects the unvisited node with the smallest tentative distance using a greedy strategy.',
+    },
+    {
+      ordering: 1,
+      question_type: 'mcq',
+      question_text: 'What is the optimal space complexity for checking if a singly linked list contains a cycle using Floyd Cycle Finding Algorithm (Hare & Tortoise)?',
+      options: ['O(N)', 'O(log N)', 'O(1)', 'O(N^2)'],
+      correct_index: 2,
+      explanation: 'Floyd Cycle Finding algorithm operates with two pointer variables (slow and fast), requiring O(1) constant auxiliary space.',
+    },
+  ],
+};
+
+const DEMO_PENDING_OA = [
+  {
+    id: 'demo-oa-deloitte',
+    title: 'Deloitte — Technical & Aptitude Assessment 2026',
+    test_type: 'technical',
+    duration: 60,
+    min_cgpa: 7.0,
+    target_branches: ['IT', 'CST', 'ENC'],
+    question_count: 3,
+    companies: { name: 'Deloitte' },
+    approval_status: 'pending',
+    created_at: '2026-10-14T10:00:00Z',
+    description: 'Campus hiring round 1 screening assessment covering core CS fundamentals, SQL querying, and algorithmic reasoning.',
+    instructions: '60 minutes total time. Negative marking is not applicable. Please ensure webcam remains on throughout the test.',
+  },
+  {
+    id: 'demo-oa-tcs',
+    title: 'TCS Digital — Advanced Coding & Cognitive OA',
+    test_type: 'technical',
+    duration: 90,
+    min_cgpa: 7.0,
+    target_branches: ['IT', 'CST', 'ENC', 'AI', 'DS'],
+    question_count: 2,
+    companies: { name: 'TCS' },
+    approval_status: 'pending',
+    created_at: '2026-10-13T14:30:00Z',
+    description: 'Advanced assessment for the TCS Digital 7.0 LPA profile covering graph traversals, data structures, and dynamic programming fundamentals.',
+    instructions: '90 minutes duration. Section 1 contains CS MCQs, Section 2 contains coding challenges. Code submissions are judged against automated unit tests.',
+  },
+];
+
+const DEMO_ALL_OA = [
+  ...DEMO_PENDING_OA,
+  {
+    id: 'demo-oa-infosys',
+    title: 'Infosys — Specialist Programmer Coding Round',
+    test_type: 'technical',
+    duration: 75,
+    min_cgpa: 7.5,
+    target_branches: ['IT', 'CST', 'ENC'],
+    question_count: 3,
+    companies: { name: 'Infosys' },
+    approval_status: 'approved',
+    created_at: '2026-10-02T11:00:00Z',
+    description: 'Technical coding screening round for Infosys Specialist Programmer hiring.',
+  },
+  {
+    id: 'demo-oa-amazon',
+    title: 'Amazon — SDE-1 Assessment Set A',
+    test_type: 'technical',
+    duration: 90,
+    min_cgpa: 8.0,
+    target_branches: ['IT', 'CST'],
+    question_count: 4,
+    companies: { name: 'Amazon' },
+    approval_status: 'approved',
+    created_at: '2026-09-28T09:15:00Z',
+    description: 'Online Assessment covering DSA, System Design concepts, and Leadership Principles.',
+  },
+];

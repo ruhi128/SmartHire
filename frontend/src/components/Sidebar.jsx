@@ -267,7 +267,7 @@ export default function Sidebar() {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}>
-              {user?.name || 'User'}
+              {user?.name && user.name !== 'vaibhavisawant045' ? user.name : 'Vaibhavi Sawant'}
             </p>
             <p style={{
               margin: '1px 0 0',

@@ -1105,7 +1105,8 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
     let overallStatus = 'Accepted';
     const results = [];
 
-    for (let i = 0; i < testCases.length; i += 1) {
+    // Run each test case through JDoodle
+    for (let i = 0; i < testCases.length; i++) {
       const tc = testCases[i];
       try {
         const result = await execute(code, language, tc.input);

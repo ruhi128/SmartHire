@@ -42,6 +42,7 @@ function createResponse() {
 }
 
 function createSupabase() {
+  const state = { userExists: true, userInserts: 0, profileUpserts: [] };
   const result = (data, error = null) => Promise.resolve({ data, error });
   const avatarColumnError = {
     code: 'PGRST204',
@@ -49,6 +50,8 @@ function createSupabase() {
   };
 
   return {
+    testState: state,
+    auth: { admin: { createUser: async () => ({ data: { user: { id: account.id } }, error: null }) } },
     from(table) {
       const query = {
         selectedFields: '',
@@ -60,12 +63,19 @@ function createSupabase() {
         order() { return this; },
         limit() { return this; },
         update() { return this; },
-        insert() { return this; },
+        insert() {
+          if (table === 'users') state.userInserts += 1;
+          return result(null);
+        },
+        upsert(payload, options) {
+          if (table === 'student_profiles') state.profileUpserts.push({ payload, options });
+          return result(null);
+        },
         maybeSingle() {
           if (table === 'users' && /avatar_(?:path|updated_at)/.test(this.selectedFields)) {
             return result(null, avatarColumnError);
           }
-          if (table === 'users') return result({ ...account });
+          if (table === 'users') return result(state.userExists ? { ...account } : null);
           if (table === 'student_profiles') return result({ ...profile });
           return result(null);
         },
@@ -73,7 +83,7 @@ function createSupabase() {
           if (table === 'users' && /avatar_(?:path|updated_at)/.test(this.selectedFields)) {
             return result(null, avatarColumnError);
           }
-          if (table === 'users') return result({ ...account });
+          if (table === 'users') return result(state.userExists ? { ...account } : null);
           if (table === 'student_profiles') return result({ ...profile });
           return result(null);
         },
@@ -153,7 +163,7 @@ function loadRoute() {
   try {
     delete require.cache[target];
     assert.equal(require(target), router);
-    return router;
+    return { router, state: supabase.testState };
   } finally {
     Module._load = originalLoad;
     delete require.cache[target];
@@ -167,7 +177,18 @@ async function run() {
   console.log = () => {};
   console.warn = (...parts) => warnings.push(parts.join(' '));
   try {
-    const router = loadRoute();
+    const { router, state } = loadRoute();
+
+    const registration = createResponse();
+    await router.postHandlers['/register'](
+      { body: { email: account.email, password: 'strong-password', role: 'student', full_name: profile.full_name } },
+      registration,
+    );
+    assert.equal(registration.statusCode, 201);
+    assert.equal(state.userInserts, 1);
+    assert.equal(state.profileUpserts.length, 1, 'registration upserts student profile');
+    assert.equal(state.profileUpserts[0].payload.placement_status, 'unplaced');
+    assert.equal(state.profileUpserts[0].options.onConflict, 'id');
 
     const login = createResponse();
     await router.postHandlers['/login'](
@@ -177,9 +198,21 @@ async function run() {
     assert.equal(login.statusCode, 200);
     assert.equal(login.body.token, 'test-jwt');
     assert.equal(login.body.role, 'student');
+    assert.equal(login.body.email, account.email);
     assert.equal(login.body.avatar_url, null);
     assert.equal(login.body.profile.full_name, 'Aarav Mehta');
+    assert.equal(login.body.profile.email, account.email);
     assert.equal(login.body.profile.avatar_url, null);
+
+    state.userExists = false;
+    const missingAccount = createResponse();
+    await router.postHandlers['/login'](
+      { body: { email: account.email, password: 'strong-password' } },
+      missingAccount,
+    );
+    assert.equal(missingAccount.statusCode, 404, 'missing public.users row must not auto-create');
+    assert.equal(state.userInserts, 1, 'login must not insert a public.users row');
+    state.userExists = true;
 
     const me = createResponse();
     await router.getHandlers['/me']({ user: { id: account.id } }, me);

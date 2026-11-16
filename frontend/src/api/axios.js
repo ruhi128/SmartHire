@@ -130,13 +130,21 @@ export const dsaAPI = {
   getPerformance: ()             => api.get('/api/dsa/performance'),
 };
 
-// JDoodle-backed code runner. Using this shared client applies both the
-// configured REACT_APP_API_URL and the authentication interceptor.
+// JDoodle-backed code runner. The shared client applies REACT_APP_API_URL and
+// the JWT interceptor. Both `status` (existing DSA page) and `getStatus`
+// (newer callers) refer to the same endpoint.
+const getCodeRunnerStatus = () => api.get('/api/code/status', { suppressGlobalError: true });
 export const codeAPI = {
-  // The DSA page renders provider/configuration errors inline, so avoid a
-  // duplicate generic global toast for expected code-runner failures.
-  status:        ()              => api.get('/api/code/status', { suppressGlobalError: true }),
-  run:           (data)          => api.post('/api/code/run', data, { suppressGlobalError: true }),
+  // Consumers display actionable runner errors inline; suppress duplicate
+  // generic toasts from the global Axios error handler.
+  status:    getCodeRunnerStatus,
+  getStatus: getCodeRunnerStatus,
+  run:      (data) => api.post('/api/code/run', data, { suppressGlobalError: true }),
+  // The backend caps requests at 10 cases and executes them sequentially.
+  runTests: (data) => api.post('/api/code/run-tests', data, {
+    suppressGlobalError: true,
+    timeout: 240000,
+  }),
 };
 
 // Mock OA

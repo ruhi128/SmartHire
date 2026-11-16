@@ -275,17 +275,19 @@ useEffect(() => {
     .finally(() => setCompanyLoading(false));
 
   jobsAPI.getAll()
-    .then(r => setJobs(r.data?.jobs || DEMO_JOBS))
+    .then(r => {
+      const list = r.data?.jobs || [];
+      setJobs(list.length > 0 ? list : DEMO_JOBS);
+    })
     .catch(() => setJobs(DEMO_JOBS))
     .finally(() => setLoading(false));
 
-  // ✅ Changed from /api/mockoa/my-uploads
   api.get('/api/companyoa/my')
     .then(r => {
       const tests = r.data?.tests || [];
-      setMyUploads(tests);
+      setMyUploads(tests.length > 0 ? tests : DEMO_UPLOADS);
     })
-    .catch(() => setMyUploads([]))
+    .catch(() => setMyUploads(DEMO_UPLOADS))
     .finally(() => setUploadsLoading(false));
 }, []);
 
@@ -535,8 +537,78 @@ const m = {
   secondaryBtn: { padding: '10px 18px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 9, color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer', fontFamily: "'Sora',sans-serif" },
 };
 
+const getFutureDate = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+};
+
 const DEMO_JOBS = [
-  { id: 'j1', title: 'Software Engineer', package_lpa: 7, deadline: '2024-12-15', status: 'active', applicant_count: 24, shortlisted_count: 8 },
-  { id: 'j2', title: 'Frontend Developer', package_lpa: 9, deadline: '2024-12-20', status: 'active', applicant_count: 18, shortlisted_count: 5 },
-  { id: 'j3', title: 'Data Analyst', package_lpa: 6, deadline: '2024-11-30', status: 'closed', applicant_count: 31, shortlisted_count: 10 },
+  { 
+    id: 'j_deloitte', 
+    title: 'Associate Solution Advisor (Software & Cloud)', 
+    company_name: 'Deloitte',
+    package_lpa: 7.6, 
+    deadline: getFutureDate(15), 
+    status: 'active', 
+    applicant_count: 28, 
+    shortlisted_count: 9,
+    created_at: new Date(Date.now() - 4 * 86400000).toISOString()
+  },
+  { 
+    id: 'j_tcs', 
+    title: 'Software Engineer (TCS Digital)', 
+    company_name: 'TCS',
+    package_lpa: 7.2, 
+    deadline: getFutureDate(10), 
+    status: 'active', 
+    applicant_count: 36, 
+    shortlisted_count: 12,
+    created_at: new Date(Date.now() - 7 * 86400000).toISOString()
+  },
+  { 
+    id: 'j_infosys', 
+    title: 'Specialist Programmer (Digital Specialist)', 
+    company_name: 'Infosys',
+    package_lpa: 9.5, 
+    deadline: getFutureDate(12), 
+    status: 'active', 
+    applicant_count: 22, 
+    shortlisted_count: 7,
+    created_at: new Date(Date.now() - 5 * 86400000).toISOString()
+  },
+  { 
+    id: 'j_exl', 
+    title: 'Associate Consultant – Analytics & AI', 
+    company_name: 'EXL',
+    package_lpa: 6.8, 
+    deadline: getFutureDate(18), 
+    status: 'active', 
+    applicant_count: 15, 
+    shortlisted_count: 4,
+    created_at: new Date(Date.now() - 2 * 86400000).toISOString()
+  },
+];
+
+const DEMO_UPLOADS = [
+  {
+    id: 'oa_1',
+    title: 'Deloitte USI Technical Assessment (Cloud & DSA)',
+    test_type: 'technical',
+    duration: 60,
+    total_questions: 20,
+    approval_status: 'approved',
+    created_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    companies: { name: 'Deloitte' }
+  },
+  {
+    id: 'oa_2',
+    title: 'Cognitive & Pseudocode Screening Round 2026',
+    test_type: 'aptitude',
+    duration: 45,
+    total_questions: 15,
+    approval_status: 'approved',
+    created_at: new Date(Date.now() - 6 * 86400000).toISOString(),
+    companies: { name: 'Deloitte' }
+  }
 ];

@@ -38,28 +38,40 @@ export default function Profile() {
   useEffect(() => {
     studentAPI.getProfile()
       .then(r => {
-        // Backend returns { profile: {...} }
         const p = r.data?.profile || r.data || {};
-        setProfile(p);
-        setForm(p);
+        const merged = {
+          full_name:        p.full_name || user?.name || 'Vaibhavi Sawant',
+          email:            p.email || user?.email || 'vaibhavisawant045@gmail.com',
+          cgpa:             p.cgpa || 9.0,
+          branch:           p.branch || 'IT',
+          roll_number:      p.roll_number || '21IT104',
+          semester:         p.semester || 7,
+          phone:            p.phone || '+91 98765 43210',
+          tenth_percent:    p.tenth_percent || 89.4,
+          twelfth_percent:  p.twelfth_percent || 86.8,
+          backlogs:         p.backlogs ?? 0,
+          skills:           (p.skills && p.skills.length > 0) ? p.skills : ['Java', 'Python', 'SQL', 'React.js', 'Data Structures', 'REST APIs'],
+          certifications:   (p.certifications && p.certifications.length > 0) ? p.certifications : ['AWS Cloud Practitioner', 'HackerRank Problem Solving (Gold)'],
+          placement_status: p.placement_status || 'unplaced',
+          resume_url:       p.resume_url || '',
+        };
+        setProfile(merged);
+        setForm(merged);
       })
       .catch(() => {
-        // Fallback demo data if API fails
         const demo = {
-          full_name:        user?.name  || 'Student',
-          email:            user?.email || '',
-          cgpa:             '',
-          branch:           '',
-          roll_number:      '',
-          semester:         '',
-          phone:            '',
-          linkedin_url:     '',
-          github_url:       '',
-          tenth_percent:    '',
-          twelfth_percent:  '',
+          full_name:        user?.name || 'Vaibhavi Sawant',
+          email:            user?.email || 'vaibhavisawant045@gmail.com',
+          cgpa:             9.0,
+          branch:           'IT',
+          roll_number:      '21IT104',
+          semester:         7,
+          phone:            '+91 98765 43210',
+          tenth_percent:    89.4,
+          twelfth_percent:  86.8,
           backlogs:         0,
-          skills:           [],
-          certifications:   [],
+          skills:           ['Java', 'Python', 'SQL', 'React.js', 'Data Structures', 'REST APIs'],
+          certifications:   ['AWS Cloud Practitioner', 'HackerRank Problem Solving (Gold)'],
           placement_status: 'unplaced',
           resume_url:       '',
         };
@@ -67,7 +79,7 @@ export default function Profile() {
         setForm(demo);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   // Avatar files live in a private bucket. Fetch them with Axios so the
   // existing bearer token is attached; a normal <img src> cannot do that.

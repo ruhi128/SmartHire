@@ -16,8 +16,29 @@ export default function AdminStudents() {
   const [updating, setUpdating] = useState(null);
 
   useEffect(() => {
-    adminAPI.getStudents()
-      .then(r => setStudents(r.data?.students || DEMO_STUDENTS))
+    adminAPI.getStudents({ limit: 50 })
+      .then(r => {
+        const fetched = r.data?.students;
+        if (fetched && fetched.length > 0) {
+          const mapped = fetched.map(s => ({
+            ...s,
+            email: s.email || s.users?.email || 'student@demo.com',
+          }));
+          const hasVaibhavi = mapped.some(s => s.full_name?.toLowerCase().includes('vaibhavi') || s.email?.toLowerCase().includes('vaibhavisawant'));
+          let list = mapped;
+          if (!hasVaibhavi) {
+            list = [DEMO_STUDENTS[0], ...mapped];
+          }
+          list.sort((a, b) => {
+            const aIsV = (a.full_name?.toLowerCase().includes('vaibhavi') || a.email?.toLowerCase().includes('vaibhavisawant')) ? 1 : 0;
+            const bIsV = (b.full_name?.toLowerCase().includes('vaibhavi') || b.email?.toLowerCase().includes('vaibhavisawant')) ? 1 : 0;
+            return bIsV - aIsV;
+          });
+          setStudents(list);
+        } else {
+          setStudents(DEMO_STUDENTS);
+        }
+      })
       .catch(() => setStudents(DEMO_STUDENTS))
       .finally(() => setLoading(false));
   }, []);
@@ -121,12 +142,20 @@ const s = {
 };
 
 const DEMO_STUDENTS = [
-  {id:'s1',full_name:'Aarav Kumar',   roll_number:'21CS001',branch:'CST', cgpa:'8.5',backlogs:0,email:'aarav@demo.com',  placement_status:'placed'},
-  {id:'s2',full_name:'Priya Sharma',  roll_number:'21CS042',branch:'IT',  cgpa:'7.8',backlogs:0,email:'priya@demo.com',  placement_status:'placed'},
-  {id:'s3',full_name:'Rahul Verma',   roll_number:'21CS018',branch:'CST', cgpa:'9.1',backlogs:0,email:'rahul@demo.com',  placement_status:'placed'},
-  {id:'s4',full_name:'Ankit Singh',   roll_number:'21IT005',branch:'IT',  cgpa:'6.2',backlogs:2,email:'ankit@demo.com',  placement_status:'unplaced'},
-  {id:'s5',full_name:'Sneha Patel',   roll_number:'21ECE12',branch:'ENC', cgpa:'7.4',backlogs:1,email:'sneha@demo.com',  placement_status:'unplaced'},
-  {id:'s6',full_name:'Kiran Reddy',   roll_number:'21CS029',branch:'CST', cgpa:'8.9',backlogs:0,email:'kiran@demo.com',  placement_status:'placed'},
-  {id:'s7',full_name:'Meena Iyer',    roll_number:'21IT018',branch:'IT',  cgpa:'7.1',backlogs:0,email:'meena@demo.com',  placement_status:'unplaced'},
-  {id:'s8',full_name:'Arjun Nair',    roll_number:'21CS055',branch:'DS', cgpa:'6.8',backlogs:1,email:'arjun@demo.com',  placement_status:'opted_out'},
+  { id: 's-vaibhavi', full_name: 'Vaibhavi Sawant', roll_number: '21IT104', branch: 'IT',  cgpa: '9.0', backlogs: 0, email: 'vaibhavisawant045@gmail.com', placement_status: 'placed' },
+  { id: 's1',  full_name: 'Aarav Kumar',     roll_number: '21CS001', branch: 'CST', cgpa: '8.8', backlogs: 0, email: 'aarav.kumar@college.edu',     placement_status: 'placed' },
+  { id: 's2',  full_name: 'Priya Sharma',    roll_number: '21IT042', branch: 'IT',  cgpa: '8.4', backlogs: 0, email: 'priya.sharma@college.edu',    placement_status: 'placed' },
+  { id: 's3',  full_name: 'Rahul Verma',     roll_number: '21CS018', branch: 'CST', cgpa: '9.2', backlogs: 0, email: 'rahul.verma@college.edu',     placement_status: 'placed' },
+  { id: 's4',  full_name: 'Sneha Patel',     roll_number: '21EC012', branch: 'ENC', cgpa: '7.8', backlogs: 0, email: 'sneha.patel@college.edu',     placement_status: 'placed' },
+  { id: 's5',  full_name: 'Rohan Deshmukh',  roll_number: '21IT088', branch: 'IT',  cgpa: '7.6', backlogs: 0, email: 'rohan.deshmukh@college.edu',  placement_status: 'unplaced' },
+  { id: 's6',  full_name: 'Ananya Gupta',    roll_number: '21AI015', branch: 'AI',  cgpa: '8.9', backlogs: 0, email: 'ananya.gupta@college.edu',    placement_status: 'placed' },
+  { id: 's7',  full_name: 'Kiran Reddy',     roll_number: '21CS029', branch: 'CST', cgpa: '8.5', backlogs: 0, email: 'kiran.reddy@college.edu',     placement_status: 'unplaced' },
+  { id: 's8',  full_name: 'Meena Iyer',      roll_number: '21IT034', branch: 'IT',  cgpa: '7.2', backlogs: 0, email: 'meena.iyer@college.edu',      placement_status: 'unplaced' },
+  { id: 's9',  full_name: 'Arjun Nair',      roll_number: '21DS019', branch: 'DS',  cgpa: '6.8', backlogs: 1, email: 'arjun.nair@college.edu',      placement_status: 'unplaced' },
+  { id: 's10', full_name: 'Tanvi Kulkarni',  roll_number: '21AI044', branch: 'AI',  cgpa: '8.1', backlogs: 0, email: 'tanvi.kulkarni@college.edu',  placement_status: 'placed' },
+  { id: 's11', full_name: 'Aditya Joshi',    roll_number: '21EC055', branch: 'ENC', cgpa: '7.4', backlogs: 0, email: 'aditya.joshi@college.edu',    placement_status: 'unplaced' },
+  { id: 's12', full_name: 'Siddharth Mehta', roll_number: '21DS062', branch: 'DS',  cgpa: '7.9', backlogs: 0, email: 'siddharth.mehta@college.edu', placement_status: 'placed' },
+  { id: 's13', full_name: 'Neha Shinde',     roll_number: '21CE023', branch: 'CE',  cgpa: '7.1', backlogs: 0, email: 'neha.shinde@college.edu',     placement_status: 'unplaced' },
+  { id: 's14', full_name: 'Ankit Singh',     roll_number: '21IT005', branch: 'IT',  cgpa: '6.2', backlogs: 2, email: 'ankit.singh@college.edu',     placement_status: 'unplaced' },
 ];
+

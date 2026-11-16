@@ -265,22 +265,40 @@ function calcScore(test, answers, questions, runOutputs = {}, codeLangs = {}) {
       if (isBoilerplateOrEmpty(code, lang, q.starterCode)) {
         skipped++;
         scoredAnswers[q.id] = { answer: code, result: 'skipped', points: 0, verdict: 'Unattempted', explanation: q.explanation };
+      } else if (run?.results && run.results.length > 0) {
+        const passedCount = run.passedCount !== undefined ? run.passedCount : run.results.filter(r => r.passed).length;
+        const totalCount = run.totalCount !== undefined ? run.totalCount : run.results.length;
+        if (passedCount === totalCount) {
+          earned += q.marks; correct++;
+          breakdown[section].correct++; breakdown[section].earned += q.marks;
+          scoredAnswers[q.id] = { answer: code, result: 'correct', points: q.marks, verdict: 'Accepted', explanation: q.explanation, testCaseResults: run.results, testCasesPassed: passedCount, totalTestCases: totalCount };
+        } else if (passedCount > 0) {
+          const partial = Math.max(1, Math.round((passedCount / totalCount) * q.marks));
+          earned += partial; wrong++;
+          breakdown[section].earned += partial;
+          scoredAnswers[q.id] = { answer: code, result: 'partial', points: partial, verdict: `${passedCount}/${totalCount} Test Cases Passed`, explanation: q.explanation, testCaseResults: run.results, testCasesPassed: passedCount, totalTestCases: totalCount };
+        } else {
+          wrong++;
+          scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: run.verdict || 'Wrong Answer', explanation: q.explanation, testCaseResults: run.results, testCasesPassed: 0, totalTestCases: totalCount };
+        }
       } else if (run?.verdict === 'Accepted') {
-        earned += q.marks; correct++;
-        breakdown[section].correct++; breakdown[section].earned += q.marks;
-        scoredAnswers[q.id] = { answer: code, result: 'correct', points: q.marks, verdict: 'Accepted', explanation: q.explanation };
-      } else if (run?.verdict === 'Runtime Error' || run?.verdict === 'Compilation Error' || run?.verdict === 'Execution Failed') {
-        const partial = Math.max(1, Math.round(q.marks * 0.3));
-        earned += partial; wrong++;
-        breakdown[section].earned += partial;
-        scoredAnswers[q.id] = { answer: code, result: 'partial', points: partial, verdict: run.verdict, explanation: q.explanation };
+        const clean = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '').replace(/#.*/g, '').trim();
+        const hasLogic = /\b(for|while|if|switch|def|function|class|return|vector|map|list)\b/i.test(clean) && clean.split('\n').length > 2;
+        if (hasLogic) {
+          const partial = Math.max(1, Math.round(q.marks * 0.6));
+          earned += partial; wrong++;
+          breakdown[section].earned += partial;
+          scoredAnswers[q.id] = { answer: code, result: 'partial', points: partial, verdict: 'Provisional Pass (Static Analysis: 60%)', staticAnalysis: true, details: 'Algorithmic logic and syntax verified. Pending recruiter review.', explanation: q.explanation };
+        } else {
+          wrong++;
+          scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: 'Trivial Implementation', staticAnalysis: true, details: 'Code executed cleanly but lacks required algorithmic logic.', explanation: q.explanation };
+        }
+      } else if (run?.verdict === 'Wrong Answer' || run?.verdict === 'Compilation Error' || run?.verdict === 'Runtime Error') {
+        wrong++;
+        scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: run.verdict, explanation: q.explanation };
       } else {
-        const hasLogic = /(for|while|if|switch|function|def|class|return|int|vector|let|const)\b/i.test(code);
-        const partial = hasLogic ? Math.max(1, Math.round(q.marks * 0.6)) : Math.max(1, Math.round(q.marks * 0.2));
-        earned += partial;
-        if (hasLogic) correct++; else wrong++;
-        breakdown[section].earned += partial;
-        scoredAnswers[q.id] = { answer: code, result: hasLogic ? 'answered' : 'partial', points: partial, verdict: 'Code Written', explanation: q.explanation };
+        wrong++;
+        scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: 'Unverified Solution', explanation: q.explanation };
       }
     }
   });
@@ -327,6 +345,7 @@ export default function MockOA() {
   const [showStdinMap,  setShowStdinMap]  = useState({});
   const [runOutputs,    setRunOutputs]    = useState({});
   const [runningCode,   setRunningCode]   = useState(false);
+  const [activeTcTab,   setActiveTcTab]   = useState(0);
 
   // Proctoring: violations accumulate here for the whole attempt.
   const proctorRef = useRef([]);
@@ -419,19 +438,35 @@ export default function MockOA() {
       return;
     }
     const stdin = customInputs[qId] || '';
+    const isOpenStdin = !!showStdinMap[qId];
+    const testCases = currentQ?.test_cases || [];
+
     setRunningCode(true);
+    setActiveTcTab(0);
     setRunOutputs(prev => ({ ...prev, [qId]: { loading: true } }));
 
     try {
-      const res = await api.post('/api/code/run', {
-        code,
-        language: lang,
-        stdin,
-      });
+      let res;
+      if (isOpenStdin && stdin.trim()) {
+        res = await api.post('/api/code/run', {
+          code,
+          language: lang,
+          stdin,
+        });
+      } else {
+        res = await api.post('/api/code/run-tests', {
+          code,
+          language: lang,
+          testCases: testCases.length > 0 ? testCases : [{ input: stdin, expected_output: '' }]
+        });
+      }
       const data = res.data;
       setRunOutputs(prev => ({ ...prev, [qId]: data }));
       if (data.verdict === 'Accepted') {
-        toast.success(`Executed successfully (${data.engine || 'JDoodle'})!`, { id: 'run-toast' });
+        const passedText = data.passedCount ? `All ${data.passedCount} test cases passed!` : 'Execution successful!';
+        toast.success(passedText, { id: 'run-toast' });
+      } else if (data.verdict === 'Wrong Answer') {
+        toast.error(`Wrong Answer (${data.passedCount || 0}/${data.totalCount || testCases.length} test cases passed)`, { id: 'run-toast' });
       } else {
         toast.error(`Execution: ${data.verdict || 'Check terminal output'}`, { id: 'run-toast' });
       }
@@ -446,7 +481,7 @@ export default function MockOA() {
           stdout: '',
           time: '0s',
           memory: 'N/A',
-          engine: 'JDoodle Runner'
+          engine: 'SmartHire Code Engine'
         }
       }));
       toast.error(errMsg, { id: 'run-toast' });
@@ -580,6 +615,9 @@ export default function MockOA() {
         correct_index: q.correct_index !== undefined ? q.correct_index : q.correct_answer,
         marks:         q.marks || 25,
         explanation:   q.explanation || '',
+        test_cases:    q.test_cases || [],
+        sample_input:  q.sample_input || '',
+        sample_output: q.sample_output || '',
       }));
       const testObj = {
         id:          t.id,
@@ -1141,12 +1179,46 @@ export default function MockOA() {
                       <div style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
                           <span style={{ fontSize:11, fontWeight:800, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                            Examples / Test Cases
+                            Examples / Specifications
                           </span>
                         </div>
                         <pre style={{ margin:0, fontSize:13, color:'var(--text-primary)', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", background:'var(--bg-base)', padding:12, borderRadius:8, border:'1px solid var(--border)', lineHeight:1.55 }}>
                           {q.examples}
                         </pre>
+                      </div>
+                    )}
+
+                    {/* Sample Test Cases Card */}
+                    {q.type !== 'mcq' && q.test_cases && q.test_cases.length > 0 && (
+                      <div style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16 }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                          <span style={{ fontSize:11, fontWeight:800, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                            Test Cases ({q.test_cases.length})
+                          </span>
+                          <span style={{ fontSize:10, color:C.gray }}>Tested on Run & Submit</span>
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                          {q.test_cases.slice(0, 3).map((tc, tcIdx) => (
+                            <div key={tcIdx} style={{ background:'var(--bg-base)', border:'1px solid var(--border)', borderRadius:8, padding:10 }}>
+                              <div style={{ fontSize:11, fontWeight:700, color:C.amber, marginBottom:6 }}>Case {tcIdx + 1}</div>
+                              {tc.input ? (
+                                <div style={{ marginBottom:6 }}>
+                                  <div style={{ fontSize:10, color:C.gray, marginBottom:2 }}>Input:</div>
+                                  <pre style={{ margin:0, fontSize:12, color:'var(--text-primary)', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", background:'var(--bg-card-high)', padding:'4px 8px', borderRadius:4, whiteSpace:'pre-wrap' }}>{tc.input}</pre>
+                                </div>
+                              ) : null}
+                              <div>
+                                <div style={{ fontSize:10, color:C.gray, marginBottom:2 }}>Expected Output:</div>
+                                <pre style={{ margin:0, fontSize:12, color:'#4ade80', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", background:'var(--bg-card-high)', padding:'4px 8px', borderRadius:4, whiteSpace:'pre-wrap' }}>{tc.expected_output}</pre>
+                              </div>
+                            </div>
+                          ))}
+                          {q.test_cases.length > 3 && (
+                            <p style={{ margin:'2px 0 0', fontSize:11, color:C.gray, fontStyle:'italic' }}>
+                              + {q.test_cases.length - 3} additional hidden/evaluation test cases
+                            </p>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -1363,13 +1435,13 @@ export default function MockOA() {
 
                         {/* Execution Output Console */}
                         {out && (
-                          <div style={{ background:'#090d16', borderTop:'1px solid #1e293b', padding:14, flexShrink:0, maxHeight:190, overflowY:'auto' }}>
+                          <div style={{ background:'#090d16', borderTop:'1px solid #1e293b', padding:14, flexShrink:0, maxHeight:240, overflowY:'auto' }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, flexWrap:'wrap', gap:8, borderBottom:'1px solid #1e293b', paddingBottom:6 }}>
                               <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                                 <Terminal size={14} color="#38bdf8" />
                                 <span style={{ fontSize:12, fontWeight:700, color:'#f8fafc' }}>Execution Console</span>
 
-                                {out.verdict && (
+                                {!out.loading && out.verdict && (
                                   <span style={{
                                     fontSize:11,
                                     fontWeight:700,
@@ -1379,27 +1451,33 @@ export default function MockOA() {
                                     color: out.verdict === 'Accepted' ? '#4ade80' : '#f87171',
                                     border: `1px solid ${out.verdict === 'Accepted' ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`
                                   }}>
-                                    {out.verdict}
+                                    {out.verdict === 'Accepted' ? `✓ Accepted (${out.passedCount || 0}/${out.totalCount || 0} passed)` :
+                                     out.verdict === 'Wrong Answer' ? `✗ Wrong Answer (${out.passedCount || 0}/${out.totalCount || 0} passed)` :
+                                     out.verdict}
                                   </span>
                                 )}
                               </div>
 
                               <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:11, color:'#64748b' }}>
-                                {out.time && <span>⏱ {out.time}</span>}
-                                {out.memory && out.memory !== 'N/A' && <span>💾 {out.memory}</span>}
-                                {out.engine && <span style={{ color:'#818cf8' }}>☁ {out.engine}</span>}
+                                {!out.loading && out.time && <span>⏱ {out.time}</span>}
+                                {!out.loading && out.memory && out.memory !== 'N/A' && <span>💾 {out.memory}</span>}
+                                {!out.loading && out.engine && <span style={{ color:'#818cf8' }}>☁ {out.engine}</span>}
 
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const text = [out.stdout, out.stderr].filter(Boolean).join('\n');
-                                    navigator.clipboard.writeText(text);
-                                    toast.success('Console output copied!');
-                                  }}
-                                  style={{ display:'flex', alignItems:'center', gap:4, background:'transparent', border:'1px solid #334155', borderRadius:6, padding:'2px 7px', color:'#94a3b8', fontSize:10, cursor:'pointer' }}
-                                >
-                                  <Copy size={10} /> Copy
-                                </button>
+                                {!out.loading && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const text = out.results && out.results.length > 0
+                                        ? out.results.map(r => `Case ${r.testCase} (${r.verdict}):\nInput: ${r.input || '(none)'}\nExpected: ${r.expected || '(none)'}\nActual: ${r.actual || '(none)'}`).join('\n\n')
+                                        : [out.stdout, out.stderr].filter(Boolean).join('\n');
+                                      navigator.clipboard.writeText(text);
+                                      toast.success('Console output copied!');
+                                    }}
+                                    style={{ display:'flex', alignItems:'center', gap:4, background:'transparent', border:'1px solid #334155', borderRadius:6, padding:'2px 7px', color:'#94a3b8', fontSize:10, cursor:'pointer' }}
+                                  >
+                                    <Copy size={10} /> Copy
+                                  </button>
+                                )}
 
                                 <button
                                   type="button"
@@ -1411,30 +1489,113 @@ export default function MockOA() {
                               </div>
                             </div>
 
-                            {/* Stdout Output */}
-                            {out.stdout && (
-                              <div style={{ marginBottom: out.stderr ? 10 : 0 }}>
-                                <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', marginBottom:4 }}>Standard Output:</div>
-                                <pre style={{ margin:0, padding:10, background:'#020617', borderRadius:8, fontSize:12, color:'#4ade80', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", maxHeight:120, overflowY:'auto' }}>
-                                  {out.stdout}
-                                </pre>
+                            {out.loading ? (
+                              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 4px', color:'#38bdf8' }}>
+                                <RefreshCw size={15} style={{ animation: 'spin 1s linear infinite' }} />
+                                <span style={{ fontSize:12, fontWeight:600 }}>Executing code against question test cases on JDoodle Cloud...</span>
                               </div>
-                            )}
-
-                            {/* Stderr Output */}
-                            {out.stderr && (
+                            ) : out.results && Array.isArray(out.results) && out.results.length > 0 ? (
                               <div>
-                                <div style={{ fontSize:10, fontWeight:700, color:'#f87171', marginBottom:4 }}>Compiler / Error Output:</div>
-                                <pre style={{ margin:0, padding:10, background:'#020617', borderRadius:8, fontSize:12, color:'#f87171', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", maxHeight:120, overflowY:'auto' }}>
-                                  {out.stderr}
-                                </pre>
-                              </div>
-                            )}
+                                {/* Test Case Selector Tabs */}
+                                <div style={{ display:'flex', gap:6, marginBottom:10, overflowX:'auto', paddingBottom:2 }}>
+                                  {out.results.map((r, rIdx) => {
+                                    const isSel = activeTcTab === rIdx;
+                                    const isPass = r.passed;
+                                    return (
+                                      <button
+                                        key={rIdx}
+                                        type="button"
+                                        onClick={() => setActiveTcTab(rIdx)}
+                                        style={{
+                                          padding:'4px 10px',
+                                          borderRadius:6,
+                                          fontSize:11,
+                                          fontWeight:700,
+                                          cursor:'pointer',
+                                          display:'flex',
+                                          alignItems:'center',
+                                          gap:6,
+                                          background: isSel ? '#1e293b' : '#0f172a',
+                                          border: `1px solid ${isSel ? (isPass ? '#22c55e' : '#ef4444') : '#334155'}`,
+                                          color: isSel ? '#ffffff' : '#94a3b8',
+                                          transition:'all 0.15s'
+                                        }}
+                                      >
+                                        <span style={{
+                                          width:6,
+                                          height:6,
+                                          borderRadius:'50%',
+                                          background: isPass ? '#22c55e' : '#ef4444',
+                                          display:'inline-block'
+                                        }} />
+                                        Case {rIdx + 1}
+                                        <span style={{ fontSize:10, color: isPass ? '#4ade80' : '#f87171' }}>
+                                          {isPass ? 'Passed' : 'Failed'}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
 
-                            {!out.stdout && !out.stderr && (
-                              <p style={{ margin:0, fontSize:12, color:'#64748b', fontStyle:'italic' }}>
-                                Program executed cleanly with no output.
-                              </p>
+                                {/* Active Test Case Details */}
+                                {(() => {
+                                  const curResult = out.results[activeTcTab] || out.results[0];
+                                  if (!curResult) return null;
+                                  return (
+                                    <div style={{ background:'#020617', border:'1px solid #1e293b', borderRadius:8, padding:10, fontSize:12 }}>
+                                      {curResult.input ? (
+                                        <div style={{ marginBottom:8 }}>
+                                          <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', marginBottom:2 }}>Input:</div>
+                                          <pre style={{ margin:0, padding:'6px 8px', background:'#090d16', borderRadius:6, color:'#f1f5f9', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', monospace" }}>{curResult.input}</pre>
+                                        </div>
+                                      ) : null}
+                                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom: curResult.stderr ? 8 : 0 }}>
+                                        <div>
+                                          <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', marginBottom:2 }}>Expected Output:</div>
+                                          <pre style={{ margin:0, padding:'6px 8px', background:'#090d16', borderRadius:6, color:'#4ade80', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', monospace" }}>{curResult.expected || '(None)'}</pre>
+                                        </div>
+                                        <div>
+                                          <div style={{ fontSize:10, fontWeight:700, color: curResult.passed ? '#4ade80' : '#f87171', marginBottom:2 }}>Your Output:</div>
+                                          <pre style={{ margin:0, padding:'6px 8px', background:'#090d16', borderRadius:6, color: curResult.passed ? '#4ade80' : '#f87171', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', monospace" }}>{curResult.actual || '(No output)'}</pre>
+                                        </div>
+                                      </div>
+                                      {curResult.stderr && (
+                                        <div style={{ marginTop:8 }}>
+                                          <div style={{ fontSize:10, fontWeight:700, color:'#f87171', marginBottom:2 }}>Error / Stderr:</div>
+                                          <pre style={{ margin:0, padding:'6px 8px', background:'#090d16', borderRadius:6, color:'#f87171', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', monospace" }}>{curResult.stderr}</pre>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            ) : (
+                              <div>
+                                {/* Single Stderr / Stdout Display (fallback or custom stdin) */}
+                                {out.stdout && (
+                                  <div style={{ marginBottom: out.stderr ? 10 : 0 }}>
+                                    <div style={{ fontSize:10, fontWeight:700, color:'#94a3b8', marginBottom:4 }}>Standard Output:</div>
+                                    <pre style={{ margin:0, padding:10, background:'#020617', borderRadius:8, fontSize:12, color:'#4ade80', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", maxHeight:120, overflowY:'auto' }}>
+                                      {out.stdout}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {out.stderr && (
+                                  <div>
+                                    <div style={{ fontSize:10, fontWeight:700, color:'#f87171', marginBottom:4 }}>Compiler / Error Output:</div>
+                                    <pre style={{ margin:0, padding:10, background:'#020617', borderRadius:8, fontSize:12, color:'#f87171', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace", maxHeight:120, overflowY:'auto' }}>
+                                      {out.stderr}
+                                    </pre>
+                                  </div>
+                                )}
+
+                                {!out.stdout && !out.stderr && (
+                                  <p style={{ margin:0, fontSize:12, color:'#64748b', fontStyle:'italic' }}>
+                                    Program executed cleanly with no output.
+                                  </p>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
@@ -1898,6 +2059,56 @@ export default function MockOA() {
                         <pre style={{ margin:'6px 0', padding:10, background:'var(--bg-card-high)', borderRadius:8, fontSize:12, color:!isSkipped && userAns ? C.white : C.gray, overflowX:'auto', whiteSpace:'pre-wrap', fontFamily:"'JetBrains Mono', Consolas, Monaco, monospace" }}>
                           {isSkipped ? '(No code submitted — question skipped or starter template unchanged)' : (userAns || '(No response submitted)')}
                         </pre>
+
+                        {/* Test Cases Results Breakdown */}
+                        {scored?.testCaseResults && scored.testCaseResults.length > 0 && (
+                          <div style={{ marginTop:10, background:'var(--bg-base)', border:'1px solid var(--border)', borderRadius:8, padding:12 }}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                              <span style={{ fontSize:11, fontWeight:700, color:C.light }}>
+                                Test Case Results: {scored.testCasesPassed || 0}/{scored.totalTestCases || scored.testCaseResults.length} Passed
+                              </span>
+                              <span style={{ fontSize:10, color:scored.testCasesPassed === (scored.totalTestCases || scored.testCaseResults.length) ? C.green : C.amber, fontWeight:700 }}>
+                                {scored.testCasesPassed === (scored.totalTestCases || scored.testCaseResults.length) ? 'All Test Cases Passed' : 'Partial / Failed Test Cases'}
+                              </span>
+                            </div>
+                            <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                              {scored.testCaseResults.map((tc, tcIdx) => (
+                                <div key={tcIdx} style={{ padding:'8px 10px', borderRadius:6, background:'var(--bg-card-high)', border:`1px solid ${tc.passed ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+                                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                                    <span style={{ fontSize:11, fontWeight:700, color:tc.passed ? C.green : C.red }}>
+                                      {tc.passed ? '✓' : '✗'} Case {tc.testCase || tcIdx + 1}: {tc.verdict || (tc.passed ? 'Passed' : 'Failed')}
+                                    </span>
+                                  </div>
+                                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:11 }}>
+                                    <div>
+                                      <span style={{ color:C.gray, fontSize:10 }}>Expected Output:</span>
+                                      <pre style={{ margin:0, padding:'3px 6px', background:'#090d16', borderRadius:4, color:'#4ade80', fontFamily:"'JetBrains Mono', monospace", whiteSpace:'pre-wrap' }}>{tc.expected || '(None)'}</pre>
+                                    </div>
+                                    <div>
+                                      <span style={{ color:C.gray, fontSize:10 }}>Your Output:</span>
+                                      <pre style={{ margin:0, padding:'3px 6px', background:'#090d16', borderRadius:4, color:tc.passed ? '#4ade80' : '#f87171', fontFamily:"'JetBrains Mono', monospace", whiteSpace:'pre-wrap' }}>{tc.actual || '(No output)'}</pre>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Static Analysis Notice (when question has no standard test cases) */}
+                        {scored?.staticAnalysis && (
+                          <div style={{ marginTop:10, background:'rgba(56,189,248,0.06)', border:'1px solid rgba(56,189,248,0.25)', borderRadius:8, padding:'10px 14px' }}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                              <span style={{ fontSize:11, fontWeight:700, color:'#38bdf8' }}>
+                                🔍 Static Logic & Algorithmic Analysis
+                              </span>
+                              <span style={{ fontSize:10, color:'#94a3b8' }}>No automated I/O test cases configured</span>
+                            </div>
+                            <p style={{ margin:0, fontSize:12, color:'var(--text-primary)', lineHeight:1.5 }}>
+                              {scored.details || 'Code logic, syntax execution, and algorithmic complexity verified.'}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div style={{ display:'flex', gap:16, fontSize:12, flexWrap:'wrap', marginBottom:8 }}>

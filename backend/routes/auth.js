@@ -171,14 +171,15 @@ router.post('/register', registerRules, async (req, res) => {
     await supabase.from('users').insert({ id: userId, email, role, is_active: true, email_verified: false });
 
     if (role === 'student') {
-      const { error: profileErr } = await supabase.from('student_profiles').insert({
+      const { error: profileErr } = await supabase.from('student_profiles').upsert({
         id: userId,
         full_name,
         roll_number: roll_number || null,
         branch: branch || null,
         cgpa: cgpa ? parseFloat(cgpa) : null,
-      });
-      if (profileErr) console.error('student_profiles insert failed:', profileErr.message);
+        placement_status: 'unplaced',
+      }, { onConflict: 'id' });
+      if (profileErr) console.error('student_profiles upsert failed:', profileErr.message);
     } else if (role === 'recruiter') {
       await supabase
         .from('companies')
@@ -235,13 +236,14 @@ router.post('/login', loginRules, async (req, res) => {
       return res.status(500).json({ error: 'Database error: ' + userErr.message });
     }
 
-    // Step 3: If not in public.users, auto-insert (fixes auth/db mismatch)
-    let finalUser = userRow;
-   if (!userRow) {
-  return res.status(404).json({
-    error: 'Account setup incomplete. Please register again.'
-  });
-}
+    // Public account records must be created during registration, not silently
+    // during login; a missing row means the account setup needs attention.
+    if (!userRow) {
+      return res.status(404).json({
+        error: 'Account setup incomplete. Please register again.',
+      });
+    }
+    const finalUser = userRow;
 
     if (!finalUser.is_active)
       return res.status(403).json({ error: 'Account has been deactivated. Contact T&P cell.' });
@@ -268,18 +270,18 @@ router.post('/login', loginRules, async (req, res) => {
         .select('full_name, roll_number, branch, cgpa, placement_status')
         .eq('id', finalUser.id)
         .maybeSingle();
-      profile = sp ? { ...sp, ...avatarMeta(finalUser) } : null;
+      profile = sp ? { ...sp, ...avatarMeta(finalUser), email: finalUser.email } : null;
     }
 
-   // POST /api/auth/login — replace the final res.json
-res.json({
-  token,
-  role: finalUser.role,
-  userId: finalUser.id,
-  name: profile?.full_name || null,
-  profile,
-  ...avatarMeta(finalUser),
-});
+    res.json({
+      token,
+      role: finalUser.role,
+      userId: finalUser.id,
+      email: finalUser.email,
+      name: profile?.full_name || null,
+      profile,
+      ...avatarMeta(finalUser),
+    });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error during login.' });

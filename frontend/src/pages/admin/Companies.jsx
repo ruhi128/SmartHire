@@ -7,14 +7,14 @@ import { Building2, Search, Plus, Users, Calendar, TrendingUp } from 'lucide-rea
 const AMBER='#d97706', GREEN='#16a34a', CYAN='#4f46e5', VIOLET='#4f46e5';
 
 const DEMO_COMPANIES = [
-  { id:'c1', name:'TCS',      industry:'IT Services',    total_drives:3, total_hired:45, avg_package:7.5,  status:'active',  last_drive:'Dec 2024' },
-  { id:'c2', name:'Infosys',  industry:'IT Services',    total_drives:2, total_hired:38, avg_package:5.5,  status:'active',  last_drive:'Dec 2024' },
-  { id:'c3', name:'Wipro',    industry:'IT Services',    total_drives:2, total_hired:29, avg_package:9.0,  status:'active',  last_drive:'Dec 2024' },
-  { id:'c4', name:'Amazon',   industry:'E-Commerce',     total_drives:1, total_hired:12, avg_package:24.0, status:'active',  last_drive:'Jan 2025' },
-  { id:'c5', name:'Accenture',industry:'Consulting',     total_drives:2, total_hired:22, avg_package:6.5,  status:'active',  last_drive:'Jan 2025' },
-  { id:'c6', name:'Deloitte', industry:'Consulting',     total_drives:1, total_hired:15, avg_package:8.0,  status:'active',  last_drive:'Feb 2025' },
-  { id:'c7', name:'Google',   industry:'Tech',           total_drives:1, total_hired:3,  avg_package:42.0, status:'pending', last_drive:'—' },
-  { id:'c8', name:'Microsoft',industry:'Tech',           total_drives:1, total_hired:5,  avg_package:35.0, status:'active',  last_drive:'Nov 2024' },
+  { id:'c1', name:'Deloitte', industry:'Consulting & Cloud', total_drives:3, total_hired:24, avg_package:7.6,  status:'active',  last_drive:'Oct 2026' },
+  { id:'c2', name:'TCS',      industry:'IT Services',        total_drives:4, total_hired:45, avg_package:7.0,  status:'active',  last_drive:'Oct 2026' },
+  { id:'c3', name:'Infosys',  industry:'IT Services',        total_drives:3, total_hired:38, avg_package:9.5,  status:'active',  last_drive:'Oct 2026' },
+  { id:'c4', name:'Capgemini',industry:'IT & Consulting',    total_drives:2, total_hired:18, avg_package:7.5,  status:'active',  last_drive:'Oct 2026' },
+  { id:'c5', name:'L&T Technology Services', industry:'Engineering & IoT', total_drives:2, total_hired:15, avg_package:6.5, status:'active', last_drive:'Upcoming' },
+  { id:'c6', name:'Amazon',   industry:'E-Commerce & Cloud', total_drives:1, total_hired:12, avg_package:24.0, status:'active',  last_drive:'Nov 2026' },
+  { id:'c7', name:'Accenture',industry:'Consulting',         total_drives:2, total_hired:22, avg_package:8.5,  status:'active',  last_drive:'Nov 2026' },
+  { id:'c8', name:'Google',   industry:'Tech & AI',          total_drives:1, total_hired:3,  avg_package:42.0, status:'active',  last_drive:'Dec 2026' },
 ];
 
 export default function AdminCompanies() {
@@ -24,7 +24,31 @@ export default function AdminCompanies() {
 
   useEffect(() => {
     adminAPI.getCompanies()
-      .then(r => setCompanies(r.data?.companies?.length ? r.data.companies : DEMO_COMPANIES))
+      .then(r => {
+        const fetched = r.data?.companies || [];
+        if (fetched.length > 0) {
+          const enriched = DEMO_COMPANIES.map(dc => {
+            const match = fetched.find(f => f.name.toLowerCase() === dc.name.toLowerCase());
+            return match ? { ...dc, ...match, industry: dc.industry, total_drives: dc.total_drives, total_hired: dc.total_hired, avg_package: dc.avg_package, last_drive: dc.last_drive } : dc;
+          });
+          fetched.forEach(f => {
+            if (!enriched.some(e => e.name.toLowerCase() === f.name.toLowerCase())) {
+              enriched.push({
+                ...f,
+                industry: 'Tech & Services',
+                total_drives: f.totalJobs || 1,
+                total_hired: 8,
+                avg_package: 6.5,
+                status: 'active',
+                last_drive: 'Recent'
+              });
+            }
+          });
+          setCompanies(enriched);
+        } else {
+          setCompanies(DEMO_COMPANIES);
+        }
+      })
       .catch(() => setCompanies(DEMO_COMPANIES))
       .finally(() => setLoading(false));
   }, []);

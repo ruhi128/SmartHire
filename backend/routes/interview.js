@@ -30,6 +30,9 @@ router.post('/save', auth, roles('student'), async (req, res) => {
     transcript,
     expressionLog,
     aiFeedback,
+    track,
+    perQuestionAnalyses,
+    verdict,
   } = req.body;
 
   if (overallScore === undefined || durationSeconds === undefined) {
@@ -41,7 +44,6 @@ router.post('/save', auth, roles('student'), async (req, res) => {
       .from('interview_sessions')
       .insert({
         student_id: req.user.id,
-        // ✅ Removed company_id - column doesn't exist in schema
         duration_seconds: durationSeconds,
         overall_score: overallScore,
         // Null means the capability was not collected (for example a
@@ -53,9 +55,12 @@ router.post('/save', auth, roles('student'), async (req, res) => {
         attention_score: attentionScore ?? null,
         stress_score: stressScore ?? null,
         ai_feedback: {
+          track: track || 'HR & Behavioral',
           transcript: transcript || [],
           expressionLog: expressionLog || [],
           feedback: aiFeedback || {},
+          perQuestionAnalyses: perQuestionAnalyses || aiFeedback?.perQuestionAnalyses || [],
+          verdict: verdict || aiFeedback?.readinessVerdict || '',
         },
       })
       .select()
@@ -93,35 +98,32 @@ router.get('/history', auth, roles('student'), async (req, res) => {
       .select(`
         id, duration_seconds, overall_score,
         eye_contact_score, confidence_score,
-        attention_score, stress_score, ai_feedback, conducted_at
+        attention_score, stress_score, conducted_at, ai_feedback
       `)
-      // ✅ Removed companies(name, logo_url) - no company_id foreign key
       .eq('student_id', req.user.id)
       .order('conducted_at', { ascending: false });
 
     if (error) throw error;
 
-    const history = (data || []).map((s) => {
-      const feedback = s.ai_feedback?.feedback || {};
-      const textScores = feedback.scores || null;
-      return {
-        id: s.id,
-        company: 'General', // The current schema has no company relation.
-        companyLogo: null,
-        overallScore: s.overall_score,
-        eyeContact: s.eye_contact_score,
-        confidence: s.confidence_score,
-        attention: s.attention_score,
-        stress: s.stress_score,
-        // A mode is additive and lets clients accurately label a session
-        // without breaking established web history consumers.
-        practiceMode: feedback.mode || 'browser-media',
-        textScores,
-        duration: formatDuration(s.duration_seconds),
-        conductedAt: s.conducted_at,
-        grade: getGrade(s.overall_score),
-      };
-    });
+    const history = (data || []).map(s => ({
+      id: s.id,
+      company: s.ai_feedback?.track || s.ai_feedback?.company || 'General',
+      track: s.ai_feedback?.track || 'General',
+      companyLogo: null,
+      overallScore: s.overall_score,
+      eyeContact: s.eye_contact_score,
+      confidence: s.confidence_score,
+      attention: s.attention_score,
+      stress: s.stress_score,
+      duration: formatDuration(s.duration_seconds),
+      conductedAt: s.conducted_at,
+      grade: getGrade(s.overall_score),
+      transcriptCount: s.ai_feedback?.transcript?.length || 0,
+      transcript: s.ai_feedback?.transcript || [],
+      feedback: s.ai_feedback?.feedback || {},
+      perQuestionAnalyses: s.ai_feedback?.perQuestionAnalyses || [],
+      verdict: s.ai_feedback?.verdict || '',
+    }));
 
     res.json({ history });
   } catch (err) {

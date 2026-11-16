@@ -5,6 +5,7 @@ const  supabaseAdmin = require('../config/supabase'); // ← named import
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
 const { execute } = require('../utils/coderunner');
+const { getQuestionTestCases, normalizeIO, evaluateCodeHeuristics } = require('../utils/testcaseExtractor');
 
 // ── Boilerplate & Empty Code Detector ───────────────────────────────────────
 function isBoilerplateOrEmpty(code, lang, starterCode) {
@@ -131,14 +132,19 @@ router.get('/tests/:id', auth, async (req, res) => {
 
     const { data: questions, error: qErr } = await supabaseAdmin
       .from('mock_oa_questions')
-      .select('id, question_text, description, type, options, marks, ordering, section, placeholder, word_limit, starter_code, examples, code_constraints')
+      .select('id, question_text, description, type, options, marks, ordering, section, placeholder, word_limit, starter_code, examples, code_constraints, test_cases, sample_input, sample_output')
       // correct_index intentionally excluded — sent only after submission
       .eq('test_id', req.params.id)
       .order('ordering', { ascending: true }); // was order_index
 
     if (qErr) throw qErr;
 
-    res.json({ test, questions: questions || [] });
+    const enrichedQuestions = (questions || []).map(q => ({
+      ...q,
+      test_cases: getQuestionTestCases(q),
+    }));
+
+    res.json({ test, questions: enrichedQuestions });
   } catch (err) {
     console.error('GET /mockoa/tests/:id error:', err);
     res.status(500).json({ error: 'Failed to fetch test' });
@@ -185,7 +191,7 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
 
     const { data: questions, error: qErr } = await supabaseAdmin
       .from('mock_oa_questions')
-      .select('id, type, correct_index, marks, explanation, starter_code')
+      .select('id, type, correct_index, marks, explanation, starter_code, test_cases, sample_input, sample_output, description, question_text')
       .eq('test_id', testId);
 
     if (qErr) throw qErr;
@@ -202,10 +208,9 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
       const studentAnswer = answers[q.id];
       const isMcq = q.type === 'mcq';
 
-      // ── Coding & Technical Evaluation ──
+      // ── Coding & Technical Evaluation Against Question Test Cases ──
       if (!isMcq) {
         const lang = (codeLangs && codeLangs[q.id]) || 'python3';
-        const clientRun = codeRuns && codeRuns[q.id];
 
         // 1. Unattempted, blank, or unmodified starter boilerplate code => 0 MARKS
         if (isBoilerplateOrEmpty(studentAnswer, lang, q.starter_code)) {
@@ -215,14 +220,62 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
             result: 'skipped',
             points: 0,
             verdict: 'Unattempted',
+            testCasesPassed: 0,
+            totalTestCases: 0,
             explanation: q.explanation || 'No code solution submitted.'
           };
           continue;
         }
 
-        // 2. Custom code was run in client with JDoodle
-        if (clientRun && typeof clientRun === 'object') {
-          if (clientRun.verdict === 'Accepted') {
+        // 2. Fetch or extract test cases for this question
+        const testCases = getQuestionTestCases(q);
+        const totalTcs = testCases.length;
+
+        if (totalTcs > 0) {
+          let passedCount = 0;
+          let firstError = null;
+          const tcDetails = [];
+
+          for (let i = 0; i < totalTcs; i++) {
+            const tc = testCases[i];
+            const tcInp = tc.input || '';
+            const expectedOut = normalizeIO(tc.expected_output);
+
+            try {
+              const execRes = await execute(studentAnswer, lang, tcInp);
+              const actualOut = normalizeIO(execRes.stdout);
+              const isExecOk = execRes.verdict === 'Accepted';
+              const passed = isExecOk && (expectedOut ? actualOut === expectedOut : true);
+
+              if (passed) {
+                passedCount++;
+              } else if (!firstError && execRes.verdict !== 'Accepted') {
+                firstError = execRes.verdict;
+              }
+
+              tcDetails.push({
+                testCase: i + 1,
+                passed,
+                expected: expectedOut,
+                actual: actualOut,
+                verdict: passed ? 'Passed' : (isExecOk ? 'Wrong Answer' : execRes.verdict),
+                stderr: execRes.stderr || '',
+              });
+            } catch (err) {
+              tcDetails.push({
+                testCase: i + 1,
+                passed: false,
+                expected: expectedOut,
+                actual: '',
+                verdict: 'Execution Error',
+                stderr: err.message,
+              });
+              if (!firstError) firstError = 'Execution Error';
+            }
+          }
+
+          if (passedCount === totalTcs) {
+            // All test cases passed! Full score!
             totalScore += q.marks;
             correctCount++;
             scoredAnswers[q.id] = {
@@ -230,85 +283,85 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
               result: 'correct',
               points: q.marks,
               verdict: 'Accepted',
-              stdout: clientRun.stdout || '',
+              testCasesPassed: passedCount,
+              totalTestCases: totalTcs,
+              testCaseResults: tcDetails,
               explanation: q.explanation
             };
-            continue;
-          } else if (clientRun.verdict === 'Runtime Error' || clientRun.verdict === 'Compilation Error' || clientRun.verdict === 'Execution Failed') {
-            const partialPts = Math.max(1, Math.round(q.marks * 0.3));
+          } else if (passedCount > 0) {
+            // Partial credit proportional to test cases passed!
+            const partialPts = Math.max(1, Math.round((passedCount / totalTcs) * q.marks));
             totalScore += partialPts;
             wrongCount++;
             scoredAnswers[q.id] = {
               answer: studentAnswer,
               result: 'partial',
               points: partialPts,
-              verdict: clientRun.verdict,
-              stderr: clientRun.stderr || '',
-              explanation: q.explanation
-            };
-            continue;
-          }
-        }
-
-        // 3. Custom code was written but not executed in client prior to submitting
-        let execSuccess = false;
-        let execVerdict = 'Unverified';
-        try {
-          const runRes = await execute(studentAnswer, lang, '');
-          if (runRes && runRes.verdict === 'Accepted') {
-            execSuccess = true;
-            execVerdict = 'Accepted';
-          } else if (runRes && (runRes.verdict === 'Runtime Error' || runRes.verdict === 'Compilation Error')) {
-            execVerdict = runRes.verdict;
-          }
-        } catch (_) {
-          // Execution engine timed out or offline — fallback to algorithmic heuristics
-        }
-
-        if (execSuccess) {
-          totalScore += q.marks;
-          correctCount++;
-          scoredAnswers[q.id] = {
-            answer: studentAnswer,
-            result: 'correct',
-            points: q.marks,
-            verdict: 'Accepted',
-            explanation: q.explanation
-          };
-        } else if (execVerdict === 'Runtime Error' || execVerdict === 'Compilation Error') {
-          const partialPts = Math.max(1, Math.round(q.marks * 0.3));
-          totalScore += partialPts;
-          wrongCount++;
-          scoredAnswers[q.id] = {
-            answer: studentAnswer,
-            result: 'partial',
-            points: partialPts,
-            verdict: execVerdict,
-            explanation: q.explanation
-          };
-        } else {
-          // Algorithmic syntax heuristic: check if code has substantive structure
-          const hasControlFlow = /(for|while|if|switch|function|def|class|return|int|vector|let|const)\b/i.test(studentAnswer);
-          if (hasControlFlow) {
-            const partialPts = Math.max(1, Math.round(q.marks * 0.6));
-            totalScore += partialPts;
-            correctCount++;
-            scoredAnswers[q.id] = {
-              answer: studentAnswer,
-              result: 'answered',
-              points: partialPts,
-              verdict: 'Code Implemented (Partial)',
+              verdict: `${passedCount}/${totalTcs} Test Cases Passed`,
+              testCasesPassed: passedCount,
+              totalTestCases: totalTcs,
+              testCaseResults: tcDetails,
               explanation: q.explanation
             };
           } else {
-            const partialPts = Math.max(1, Math.round(q.marks * 0.2));
-            totalScore += partialPts;
+            // 0 test cases passed => Wrong Answer or Compilation Error => 0 points!
+            const verdict = firstError || 'Wrong Answer';
             wrongCount++;
             scoredAnswers[q.id] = {
               answer: studentAnswer,
-              result: 'partial',
-              points: partialPts,
-              verdict: 'Incomplete Logic',
+              result: 'wrong',
+              points: 0,
+              verdict,
+              testCasesPassed: 0,
+              totalTestCases: totalTcs,
+              testCaseResults: tcDetails,
+              explanation: q.explanation
+            };
+          }
+        } else {
+          // When no standard I/O test cases are configured for this question:
+          // Gate 1: Check syntax and compilation on the code engine
+          try {
+            const runRes = await execute(studentAnswer, lang, '');
+            if (!runRes || runRes.verdict !== 'Accepted') {
+              wrongCount++;
+              scoredAnswers[q.id] = {
+                answer: studentAnswer,
+                result: 'wrong',
+                points: 0,
+                verdict: runRes?.verdict || 'Compilation Error',
+                details: runRes?.stderr || 'Code failed to compile or threw a runtime error.',
+                explanation: q.explanation
+              };
+            } else {
+              // Gate 2: Code compiles cleanly -> Evaluate algorithmic structure, control flow & complexity
+              const evalRes = evaluateCodeHeuristics(studentAnswer, lang, q.starter_code, q);
+              const points = Math.round(evalRes.scoreRatio * q.marks);
+              totalScore += points;
+              if (evalRes.result === 'correct') {
+                correctCount++;
+              } else {
+                wrongCount++;
+              }
+
+              scoredAnswers[q.id] = {
+                answer: studentAnswer,
+                result: evalRes.result,
+                points,
+                verdict: evalRes.verdict,
+                staticAnalysis: true,
+                details: evalRes.details,
+                explanation: q.explanation
+              };
+            }
+          } catch (err) {
+            wrongCount++;
+            scoredAnswers[q.id] = {
+              answer: studentAnswer,
+              result: 'wrong',
+              points: 0,
+              verdict: 'Execution Error',
+              details: err.message,
               explanation: q.explanation
             };
           }
@@ -501,6 +554,14 @@ router.post('/upload', auth, roles('recruiter'), async (req, res) => {
       correct_index: q.correctAnswer ?? null, // was correct_answer
       marks: q.marks || 4,
       ordering: idx,                     // was order_index
+      description: q.description || '',
+      starter_code: q.starterCode || q.starter_code || null,
+      code_constraints: q.constraints || q.code_constraints || null,
+      examples: q.examples || null,
+      explanation: q.explanation || null,
+      test_cases: q.testCases || q.test_cases || [],
+      sample_input: q.sampleInput || q.sample_input || null,
+      sample_output: q.sampleOutput || q.sample_output || null,
     }));
 
     const { error: qErr } = await supabaseAdmin

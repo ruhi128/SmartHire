@@ -1,126 +1,189 @@
 // src/context/AuthContext.jsx
-// Global authentication state using Supabase Auth + our custom JWT role system
-
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+// The backend JWT is the authority for SmartHire routes; the browser Supabase
+// session is optional and used for client-side Supabase features.
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { authAPI } from '../api/axios';
+import api, { authAPI } from '../api/axios';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext(null);
 
+function clearStoredAuth() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+}
+
+function readCachedUser() {
+  try {
+    const raw = localStorage.getItem('user');
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function jwtClaims(token) {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(part.padEnd(Math.ceil(part.length / 4) * 4, '=')));
+  } catch (_) {
+    return null;
+  }
+}
+
+function validCachedUser(user, claims) {
+  return Boolean(
+    user && claims &&
+    typeof user.id === 'string' && user.id.length > 0 &&
+    typeof claims.id === 'string' &&
+    ['student', 'recruiter', 'admin'].includes(user.role) &&
+    user.id === claims.id && user.role === claims.role
+  );
+}
+
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used inside <AuthProvider>');
+  return context;
 }
 
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);   // { id, email, role, name }
-  const [loading, setLoading] = useState(true);   // true while checking session
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // ── Restore session on mount ──
   useEffect(() => {
-    const restore = async () => {
-      try {
-        // 1. Check if there's an active Supabase session
-        const { data: { session } } = await supabase.auth.getSession();
+    let cancelled = false;
 
-        if (session) {
-          // 2. Check our localStorage for role info (set during login)
-          const stored = localStorage.getItem('user');
-          if (stored) {
-            setUser(JSON.parse(stored));
-          } else {
-            // Fallback: fetch profile from backend
-            const token = localStorage.getItem('token');
-            if (token) {
-              await fetchAndSetProfile(session.user);
-            }
-          }
+    async function restore() {
+      const token = localStorage.getItem('token');
+      const claims = token ? jwtClaims(token) : null;
+      const cached = readCachedUser();
+
+      if (!token || !claims || typeof claims.exp !== 'number' || claims.exp * 1000 <= Date.now()) {
+        clearStoredAuth();
+        if (!cancelled) {
+          setUser(null);
+          setLoading(false);
         }
-      } catch (err) {
-        console.error('Session restore failed:', err);
-        clearAuth();
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
+
+      try {
+        // Verify the JWT and refresh the role/avatar from the backend. A
+        // Supabase browser session is not required to restore a backend login.
+        const { data: account } = await api.get('/api/auth/me', {
+          timeout: 10000,
+          suppressGlobalError: true,
+        });
+        if (cancelled || localStorage.getItem('token') !== token) return;
+
+        if (!account?.id || !account?.role || account.is_active === false
+          || account.id !== claims.id || account.role !== claims.role) {
+          clearStoredAuth();
+          setUser(null);
+          return;
+        }
+
+        const sameAccount = cached?.id === account.id;
+        const restored = {
+          id: account.id,
+          email: account.email,
+          role: account.role,
+          name: (sameAccount && cached.name) || account.email?.split('@')[0] || '',
+          avatar_url: account.avatar_url || null,
+          avatar_updated_at: account.avatar_updated_at || null,
+        };
+        localStorage.setItem('user', JSON.stringify(restored));
+        setUser(restored);
+      } catch (error) {
+        if (cancelled || localStorage.getItem('token') !== token) return;
+
+        const status = error.response?.status;
+        if (status === 401 || status === 403 || status === 404 || !validCachedUser(cached, claims)) {
+          clearStoredAuth();
+          setUser(null);
+        } else {
+          // A temporary network outage should not destroy a valid cached
+          // login; protected API routes still verify the JWT server-side.
+          setUser(cached);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
 
     restore();
 
-    // 3. Listen for Supabase auth state changes (tab switch, token refresh, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === 'SIGNED_OUT' || !session) {
-          clearAuth();
-        } else if (event === 'TOKEN_REFRESHED') {
-          // Token refreshed silently — nothing needed
-        }
+    // localStorage changes from a different tab (including logout) must update
+    // the visible account; Supabase SIGNED_OUT must not clear an independent JWT.
+    const syncTabs = (event) => {
+      if (event.key !== 'token' && event.key !== 'user' && event.key !== null) return;
+      const token = localStorage.getItem('token');
+      const claims = token ? jwtClaims(token) : null;
+      const cached = readCachedUser();
+      if (claims?.exp * 1000 > Date.now() && validCachedUser(cached, claims)) {
+        setUser(cached);
+      } else {
+        setUser(null);
       }
-    );
-
-    return () => subscription.unsubscribe();
+    };
+    window.addEventListener('storage', syncTabs);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('storage', syncTabs);
+    };
   }, []);
 
-  // ── Fetch full profile (fallback) ──
-  const fetchAndSetProfile = async (supabaseUser) => {
-    try {
-      const { data } = await authAPI.login(supabaseUser.email, ''); // won't work
-      // This is just a fallback — in normal flow profile is set in login()
-    } catch {
-      clearAuth();
-    }
-  };
-
-  // ── LOGIN ──
   const login = useCallback(async (email, password) => {
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const suppliedPassword = String(password ?? ''); // passwords may contain spaces
+
     try {
-      const cleanEmail = (email || '').trim().toLowerCase();
-      const cleanPassword = (password || '').trim();
-      const { data } = await authAPI.login(cleanEmail, cleanPassword);
-      
-      const token  = data.token;
-      const role   = data.role;
-      const userId = data.userId;
-      const name   = data.name
-                  || data.profile?.full_name
-                  || cleanEmail.split('@')[0];
+      const { data } = await authAPI.login(cleanEmail, suppliedPassword);
+      if (!data?.token || !data?.userId || !data?.role) {
+        throw new Error('Incomplete login response. Please try again.');
+      }
 
-      localStorage.setItem('token', token);
-
-      const userData = { 
-        id:    userId,
-        email: cleanEmail, 
-        role,
+      const name = data.name || data.profile?.full_name || cleanEmail.split('@')[0];
+      const loggedInUser = {
+        id: data.userId,
+        email: data.email || cleanEmail,
+        role: data.role,
         name,
         avatar_url: data.avatar_url || data.profile?.avatar_url || null,
         avatar_updated_at: data.avatar_updated_at || data.profile?.avatar_updated_at || null,
       };
 
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(loggedInUser));
+      setUser(loggedInUser);
 
+      // Browser Supabase auth supports realtime/storage features, but its
+      // failure must not invalidate the verified backend JWT login.
       try {
-        await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPassword });
-      } catch (sbErr) {
-        console.warn('Browser supabase session signin warning:', sbErr);
+        const { error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: suppliedPassword,
+        });
+        if (error) console.warn('Browser Supabase sign-in unavailable:', error.message);
+      } catch (error) {
+        console.warn('Browser Supabase sign-in unavailable:', error?.message);
       }
 
       toast.success(`Welcome back${name ? ', ' + name : ''}!`);
-      return { success: true, role };
-    } catch (err) {
-      const data = err.response?.data;
-      if (data?.needsVerification) {
+      return { success: true, role: data.role };
+    } catch (error) {
+      const response = error.response?.data;
+      if (response?.needsVerification) {
         toast('Please verify your email to continue.', { icon: '📧' });
-        return { success: false, needsVerification: true, email: data.email || email };
+        return { success: false, needsVerification: true, email: response.email || cleanEmail };
       }
-      const msg = data?.error || data?.errors?.[0]?.msg || 'Invalid email or password';
-      toast.error(msg);
-      return { success: false, error: msg };
+      const message = response?.error || response?.errors?.[0]?.msg || error.message || 'Invalid email or password';
+      toast.error(message);
+      return { success: false, error: message };
     }
   }, []);
 
-  // ── REGISTER ──
   const register = useCallback(async (formData) => {
     try {
       const { data } = await authAPI.register(formData);
@@ -130,57 +193,47 @@ export function AuthProvider({ children }) {
       }
       toast.success('Account created! You can now log in.');
       return { success: true };
-    } catch (err) {
-      const msg = err.response?.data?.error || 'Registration failed';
-      toast.error(msg);
-      return { success: false, error: msg };
+    } catch (error) {
+      const message = error.response?.data?.error || error.response?.data?.errors?.[0]?.msg || 'Registration failed';
+      toast.error(message);
+      return { success: false, error: message };
     }
   }, []);
 
-  // ── LOGOUT ──
   const logout = useCallback(async () => {
-    await supabase.auth.signOut();
-    clearAuth();
-    toast.success('Logged out successfully');
-    window.location.href = '/login';
+    clearStoredAuth();
+    setUser(null);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) console.warn('Browser Supabase sign-out unavailable:', error.message);
+    } catch (error) {
+      console.warn('Browser Supabase sign-out unavailable:', error?.message);
+    } finally {
+      toast.success('Logged out successfully');
+      window.location.href = '/login';
+    }
   }, []);
 
-  // ── UPDATE user info locally (e.g. after profile edit) ──
   const updateUserLocally = useCallback((updates) => {
-    setUser(prev => {
-      const updated = { ...prev, ...updates };
+    setUser((current) => {
+      if (!current) return current;
+      const updated = { ...current, ...updates };
       localStorage.setItem('user', JSON.stringify(updated));
       return updated;
     });
   }, []);
 
-  // ── CLEAR all auth data ──
-  function clearAuth() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
-  }
-
-  // ── Derived helpers ──
-  const isStudent   = user?.role === 'student';
-  const isRecruiter = user?.role === 'recruiter';
-  const isAdmin     = user?.role === 'admin';
-
-  const value = {
+  const value = useMemo(() => ({
     user,
     loading,
-    isStudent,
-    isRecruiter,
-    isAdmin,
+    isStudent: user?.role === 'student',
+    isRecruiter: user?.role === 'recruiter',
+    isAdmin: user?.role === 'admin',
     login,
     register,
     logout,
     updateUserLocally,
-  };
+  }), [user, loading, login, register, logout, updateUserLocally]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

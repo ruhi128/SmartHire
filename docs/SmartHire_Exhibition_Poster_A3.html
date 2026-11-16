@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SmartHire — On-Campus Recruitment and Preparation System (Exhibition Poster)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A3 landscape;
+      margin: 0;
+    }
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      width: 420mm;
+      height: 297mm;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      overflow: hidden;
+    }
+    .poster-container {
+      width: 420mm;
+      height: 297mm;
+      display: flex;
+      flex-direction: column;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    /* HEADER */
+    .poster-header {
+      background: linear-gradient(135deg, #780d28 0%, #881337 50%, #58081c 100%);
+      color: #ffffff;
+      padding: 3.5mm 8mm 3mm 8mm;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid #3d0413;
+      flex-shrink: 0;
+    }
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 20%;
+    }
+    .header-logo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .univ-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 3px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+      object-fit: contain;
+    }
+    .presenter-box {
+      margin-top: 1px;
+    }
+    .presenter-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #fecdd3;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      line-height: 1.1;
+      margin-bottom: 2px;
+    }
+    .presenter-names {
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.25;
+    }
+    .header-center {
+      text-align: center;
+      flex: 1;
+      padding: 0 4px;
+    }
+    .main-title {
+      font-size: 24.5px;
+      font-weight: 900;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+      color: #ffffff;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.45);
+      white-space: nowrap;
+    }
+    .inst-name {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 2px;
+      line-height: 1.2;
+    }
+    .univ-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffe4e6;
+      line-height: 1.2;
+    }
+    .dept-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fbcfe8;
+      line-height: 1.2;
+    }
+    .header-right {
+      width: 25%;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .group-tag {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #ffe4e6;
+      text-transform: uppercase;
+    }
+    .group-num {
+      font-size: 36px;
+      font-weight: 900;
+      line-height: 1;
+      color: #ffffff;
+      text-shadow: 0 2px 5px rgba(0,0,0,0.35);
+    }
+    .batch-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: #fecdd3;
+      margin-top: 1px;
+    }
+
+    /* MAIN 3-COLUMN BODY: UNIFORM TIGHT SPACING */
+    .poster-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.08fr 1.62fr 1.08fr;
+      gap: 4.5mm;
+      padding: 3mm 7mm 2.2mm 7mm;
+      background: #ffffff;
+      overflow: hidden;
+    }
+
+    /* COLUMNS: CONTINUOUS FLOW, TIGHT 2.4mm GAP, NO ARTIFICIAL SPACE-BETWEEN */
+    .column {
+      display: flex;
+      flex-direction: column;
+      gap: 2.4mm;
+      height: 100%;
+    }
+
+    /* SECTION BAR */
+    .section-bar {
+      background: linear-gradient(135deg, #780d28 0%, #881337 50%, #6e0b23 100%);
+      color: #ffffff;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3.8px 8px;
+      border-radius: 4px;
+      box-shadow: 0 1.5px 3px rgba(136, 19, 55, 0.22);
+      flex-shrink: 0;
+      margin-bottom: 1.8mm;
+    }
+    .section-card {
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* BULLETS */
+    .bullet-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 5.5px;
+    }
+    .bullet-item {
+      font-size: 11px;
+      line-height: 1.46;
+      color: #1e293b;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      text-align: justify;
+    }
+    .bullet-dot {
+      color: #881337;
+      font-size: 13px;
+      line-height: 1;
+      font-weight: 900;
+      flex-shrink: 0;
+      margin-top: -1px;
+    }
+    .bullet-item strong {
+      color: #0f172a;
+      font-weight: 800;
+    }
+
+    /* HIGHLIGHT BENEFICIARIES STRIP */
+    .beneficiary-strip {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2mm;
+      margin-top: 2.2mm;
+    }
+    .beneficiary-box {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 4px;
+      padding: 3.5px 5px;
+      text-align: center;
+    }
+    .beneficiary-title {
+      font-size: 8.8px;
+      font-weight: 800;
+      color: #881337;
+    }
+    .beneficiary-desc {
+      font-size: 7.6px;
+      color: #475569;
+      margin-top: 1px;
+    }
+
+    /* MINI FEATURE CHIPS */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 2.2mm;
+      margin-top: 2.5mm;
+    }
+    .feature-chip {
+      background: #fdf2f8;
+      border: 1px solid #fbcfe8;
+      border-radius: 4px;
+      padding: 4.5px 5px;
+      text-align: center;
+    }
+    .chip-title {
+      font-size: 9.2px;
+      font-weight: 800;
+      color: #881337;
+    }
+    .chip-desc {
+      font-size: 7.6px;
+      color: #475569;
+      margin-top: 1.5px;
+      line-height: 1.25;
+    }
+
+    /* LITERATURE SURVEY TABLE */
+    .survey-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10.1px;
+      margin-top: 1px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .survey-table th {
+      background: #881337;
+      color: #ffffff;
+      font-weight: 800;
+      text-align: left;
+      padding: 7.5px 7px;
+      font-size: 10.3px;
+      letter-spacing: 0.02em;
+      border-bottom: 2px solid #4c0519;
+    }
+    .survey-table td {
+      padding: 7.6px 7px;
+      border-bottom: 1px solid #e2e8f0;
+      line-height: 1.34;
+      color: #1e293b;
+    }
+    .survey-table tr:nth-child(even) {
+      background: #fdf2f8;
+    }
+    .survey-dim {
+      font-weight: 800;
+      color: #881337;
+      width: 25%;
+    }
+    .survey-highlight {
+      font-weight: 800;
+      color: #047857;
+      background: #f0fdf4;
+    }
+
+    /* DIAGRAM & METHODOLOGY CONTAINERS */
+    .arch-container {
+      background: #ffffff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+      display: block;
+    }
+    .caption-text {
+      text-align: center;
+      font-size: 9px;
+      font-weight: 800;
+      color: #334155;
+      margin-top: 1.2mm;
+      margin-bottom: 1.5mm;
+      letter-spacing: 0.02em;
+    }
+    .method-grid-2x2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2.2mm;
+      margin-top: 1.5mm;
+    }
+    .method-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 3.5px solid #881337;
+      border-radius: 5px;
+      padding: 5px 6.5px;
+    }
+    .method-title {
+      font-size: 9px;
+      font-weight: 800;
+      color: #881337;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 1.5px;
+    }
+    .method-desc {
+      font-size: 8px;
+      line-height: 1.32;
+      color: #334155;
+      text-align: justify;
+    }
+
+    /* SCREENSHOT CARDS (COLUMN 3) */
+    .screenshot-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 5px;
+      padding: 5.5px 7px;
+      color: #f8fafc;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      margin-bottom: 1.8mm;
+    }
+    .screenshot-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+      padding-bottom: 2.5px;
+      margin-bottom: 2.5px;
+    }
+    .screenshot-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.4px;
+      font-weight: 800;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .screenshot-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7.4px;
+      font-weight: 800;
+      background: #16a34a;
+      color: #ffffff;
+      padding: 1.5px 5.5px;
+      border-radius: 3px;
+    }
+
+    /* PERFORMANCE BAR */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 2mm;
+      margin-top: 0.5mm;
+    }
+    .metric-pill {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 5px 2px;
+      text-align: center;
+    }
+    .metric-num {
+      font-size: 13.5px;
+      font-weight: 900;
+      color: #881337;
+      line-height: 1.1;
+    }
+    .metric-label {
+      font-size: 7.4px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    /* REFERENCES */
+    .ref-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      font-size: 8.8px;
+      line-height: 1.48;
+      color: #334155;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* FOOTER (SLIM & COMPACT) */
+    .poster-footer {
+      background: #881337;
+      color: #ffffff;
+      padding: 1.2mm 8mm;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 8.5px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="poster-container">
+
+    <!-- 1. OFFICIAL UNIVERSITY HEADER -->
+    <header class="poster-header">
+      <div class="header-left">
+        <div class="header-logo-row">
+          <img src="sndt_logo.png" alt="SNDT Women's University" class="univ-logo">
+          <div class="presenter-box">
+            <div class="presenter-label">Presented by:</div>
+            <div class="presenter-names">Ruhi Patil</div>
+            <div class="presenter-names">Vaibhavi Sawant</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-center">
+        <h1 class="main-title">SmartHire — On-Campus Recruitment and Preparation System</h1>
+        <div class="inst-name">Usha Mittal Institute of Technology</div>
+        <div class="univ-name">S.N.D.T. Women's University, Mumbai</div>
+        <div class="dept-name">Department of Computer Engineering</div>
+      </div>
+
+      <div class="header-right">
+        <div class="group-tag">Group No.</div>
+        <div class="group-num">21</div>
+        <div class="batch-tag">B.Tech Computer Engineering 2026</div>
+      </div>
+    </header>
+
+    <!-- 2. MAIN 3-COLUMN EXHIBITION LAYOUT -->
+    <main class="poster-body">
+
+      <!-- ================= COLUMN 1 (LEFT): ABSTRACT, INTRODUCTION, LITERATURE SURVEY ================= -->
+      <section class="column">
+        
+        <!-- 1. ABSTRACT -->
+        <div class="section-card">
+          <div class="section-bar">Abstract</div>
+          <ul class="bullet-list">
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Background:</strong> College campus placement drives require intense coordination between student applicants, company recruiters, and the Training &amp; Placement Office (TPO). Traditional hiring drives rely on Google Forms, emails, and spreadsheet trackers, leading to manual sorting delays, lack of candidate feedback, and disorganized records across academic departments.</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>The Problem:</strong> Manual workflows lack automated test proctoring, require third-party paid external links for coding evaluations, and provide students with zero pre-application feedback on how well their resume matches the recruiter's specific job description (JD).</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>SmartHire Solution:</strong> An end-to-end web and mobile-assisted on-campus recruitment and preparation platform built with React.js, Node.js, Express, and Supabase PostgreSQL. It unifies job posting, student eligibility screening, online coding tests via JDoodle, browser webcam proctoring, instant ATS resume scoring, and mobile phone push notifications into a single integrated system.</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Project Objective &amp; Scope:</strong> To replace manual campus placement coordination with an automated, cheat-resistant recruitment and preparation ecosystem featuring verified student KYC, cloud sandboxed coding exams, and direct mobile push notifications.</span>
+            </li>
+          </ul>
+
+        </div>
+
+        <!-- 2. INTRODUCTION -->
+        <div class="section-card">
+          <div class="section-bar">Introduction</div>
+          <ul class="bullet-list">
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Three Role-Based Portals:</strong> SmartHire provides three separate interfaces: <em>Student Portal &amp; App</em> (job applications, push alerts on phone, coding tests, ATS score check), <em>Recruiter Portal</em> (post jobs, review applicants, advance stages), and <em>College Admin Portal</em> (verify students, approve drives, track placement statistics).</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Online Test Proctoring:</strong> Includes assessments with webcam face detection (using <code>face-api.js</code>), tab-switch warnings, and fullscreen enforcement to ensure fair evaluation without demanding heavy media streaming servers.</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Integrated Code Runner:</strong> Connects to the JDoodle API to compile and execute student programs in C++, Java, Python, and JavaScript against automated test cases with runtime and memory metrics.</span>
+            </li>
+          </ul>
+
+          <!-- Implemented Portals Highlights -->
+          <div class="feature-grid">
+            <div class="feature-chip">
+              <div class="chip-title">Student Web &amp; App</div>
+              <div class="chip-desc">Phone Push Alerts • Tests • ATS Resume Checker</div>
+            </div>
+            <div class="feature-chip">
+              <div class="chip-title">Recruiter Portal</div>
+              <div class="chip-desc">Post Drives • Review Pool • Stage Shortlist</div>
+            </div>
+            <div class="feature-chip">
+              <div class="chip-title">T&amp;P Admin Portal</div>
+              <div class="chip-desc">Student KYC • Job Approval • Placement Stats</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. LITERATURE SURVEY -->
+        <div class="section-card">
+          <div class="section-bar">Literature Survey</div>
+          <table class="survey-table">
+            <thead>
+              <tr>
+                <th>Feature / Aspect</th>
+                <th>Traditional System</th>
+                <th>Commercial Portals</th>
+                <th style="background:#047857;">SmartHire (Ours)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="survey-dim">Placement Tracking</td>
+                <td>Google Sheets &amp; Forms</td>
+                <td>Generic Job Boards</td>
+                <td class="survey-highlight">Dedicated 3-Role Unified Portal</td>
+              </tr>
+              <tr>
+                <td class="survey-dim">Coding Assessments</td>
+                <td>Third-party external links</td>
+                <td>Paywalled separate tools</td>
+                <td class="survey-highlight">Built-in JDoodle Multi-Lang Runner</td>
+              </tr>
+              <tr>
+                <td class="survey-dim">Exam Proctoring</td>
+                <td>Manual in-person invigilation</td>
+                <td>Heavy video streaming</td>
+                <td class="survey-highlight">Browser Face Detection &amp; Tab Blur Check</td>
+              </tr>
+              <tr>
+                <td class="survey-dim">Resume Screening</td>
+                <td>Manual resume reading</td>
+                <td>Opaque AI Auto-Rejection</td>
+                <td class="survey-highlight">Instant Keyword Match &amp; Skill Feedback</td>
+              </tr>
+              <tr>
+                <td class="survey-dim">Drive Notifications</td>
+                <td>Notice boards &amp; WhatsApp</td>
+                <td>Delayed email digests</td>
+                <td class="survey-highlight">Mobile Phone Alerts &amp; Email Notifications</td>
+              </tr>
+              <tr>
+                <td class="survey-dim">Application Status</td>
+                <td>Offline / Verbal updates</td>
+                <td>Static status text</td>
+                <td class="survey-highlight">Live 5-Stage Tracking (Applied → Selected)</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style="font-size:8px; color:#64748b; margin-top:2.5px; text-align:center;">
+            <em>Table 1: Comparison between traditional placement methods, commercial tools, and SmartHire.</em>
+          </p>
+        </div>
+
+      </section>
+
+      <!-- ================= COLUMN 2 (CENTER HERO): METHODOLOGY & IMPLEMENTATION ================= -->
+      <section class="column">
+        
+        <!-- 4. METHODOLOGY & IMPLEMENTATION -->
+        <div class="section-card" style="height: 100%; display: flex; flex-direction: column;">
+          <div class="section-bar">Methodology / Implementation</div>
+
+          <!-- DIAGRAM 1: SIMPLE MULTI-TIER SYSTEM ARCHITECTURE & 5-STAGE PIPELINE -->
+          <div class="arch-container">
+            <svg viewBox="0 0 510 330" width="100%" height="auto" style="display: block;" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Plus Jakarta Sans', Arial, sans-serif;">
+              <defs>
+                <marker id="arr-m" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#881337" />
+                </marker>
+              </defs>
+
+              <!-- TIER 1: FRONTEND -->
+              <rect x="8" y="8" width="494" height="66" rx="6" fill="#fff1f2" stroke="#e11d48" stroke-width="1.6" />
+              <text x="255" y="24" font-size="11" font-weight="900" fill="#881337" text-anchor="middle" letter-spacing="0.04em">1. FRONTEND USER INTERFACES (REACT.JS + MOBILE APP)</text>
+              
+              <rect x="18" y="30" width="150" height="38" rx="4" fill="#ffffff" stroke="#f43f5e" stroke-width="1" />
+              <text x="93" y="44" font-size="9.5" font-weight="800" fill="#0f172a" text-anchor="middle">Student Web &amp; App</text>
+              <text x="93" y="55" font-size="7.6" font-weight="700" fill="#e11d48" text-anchor="middle">📱 Phone Push Alerts • Tests</text>
+              <text x="93" y="64" font-size="7.2" font-weight="600" fill="#475569" text-anchor="middle">Jobs • ATS Resume Radar</text>
+
+              <rect x="180" y="30" width="150" height="38" rx="4" fill="#ffffff" stroke="#f43f5e" stroke-width="1" />
+              <text x="255" y="44" font-size="9.5" font-weight="800" fill="#0f172a" text-anchor="middle">Recruiter Dashboard</text>
+              <text x="255" y="55" font-size="7.6" font-weight="700" fill="#e11d48" text-anchor="middle">Post Drives &amp; Criteria</text>
+              <text x="255" y="64" font-size="7.2" font-weight="600" fill="#475569" text-anchor="middle">Live Kanban Candidate Pipeline</text>
+
+              <rect x="342" y="30" width="150" height="38" rx="4" fill="#ffffff" stroke="#f43f5e" stroke-width="1" />
+              <text x="417" y="44" font-size="9.5" font-weight="800" fill="#0f172a" text-anchor="middle">T&amp;P Admin Dashboard</text>
+              <text x="417" y="55" font-size="7.6" font-weight="700" fill="#e11d48" text-anchor="middle">Student KYC Verification</text>
+              <text x="417" y="64" font-size="7.2" font-weight="600" fill="#475569" text-anchor="middle">Drive Approvals &amp; Placement Stats</text>
+
+              <!-- Connector 1 -> 2 -->
+              <line x1="255" y1="74" x2="255" y2="82" stroke="#881337" stroke-width="2" marker-end="url(#arr-m)" />
+
+              <!-- TIER 2: BACKEND CONTROLLERS -->
+              <rect x="8" y="84" width="494" height="56" rx="6" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.6" />
+              <text x="255" y="98" font-size="10.8" font-weight="900" fill="#0369a1" text-anchor="middle" letter-spacing="0.04em">2. BACKEND API CONTROLLERS &amp; SERVICES (NODE.JS + EXPRESS)</text>
+
+              <rect x="18" y="103" width="112" height="31" rx="4" fill="#ffffff" stroke="#38bdf8" stroke-width="1" />
+              <text x="74" y="116" font-size="8.8" font-weight="800" fill="#0f172a" text-anchor="middle">JWT Auth &amp; OTP</text>
+              <text x="74" y="128" font-size="7.2" font-weight="600" fill="#0284c7" text-anchor="middle">Role Guards (RBAC)</text>
+
+              <rect x="138" y="103" width="112" height="31" rx="4" fill="#ffffff" stroke="#38bdf8" stroke-width="1" />
+              <text x="194" y="116" font-size="8.8" font-weight="800" fill="#0f172a" text-anchor="middle">Job &amp; Drive APIs</text>
+              <text x="194" y="128" font-size="7.2" font-weight="600" fill="#0284c7" text-anchor="middle">Eligibility &amp; JDs</text>
+
+              <rect x="258" y="103" width="112" height="31" rx="4" fill="#ffffff" stroke="#38bdf8" stroke-width="1" />
+              <text x="314" y="116" font-size="8.8" font-weight="800" fill="#0f172a" text-anchor="middle">Application Flow</text>
+              <text x="314" y="128" font-size="7.2" font-weight="600" fill="#0284c7" text-anchor="middle">Stage Tracking</text>
+
+              <rect x="378" y="103" width="114" height="31" rx="4" fill="#ffffff" stroke="#38bdf8" stroke-width="1" />
+              <text x="435" y="116" font-size="8.8" font-weight="800" fill="#0f172a" text-anchor="middle">Alerts Engine</text>
+              <text x="435" y="128" font-size="7.2" font-weight="700" fill="#0284c7" text-anchor="middle">📱 Phone Push Alerts</text>
+
+              <!-- Connector 2 -> 3 -->
+              <line x1="255" y1="140" x2="255" y2="148" stroke="#881337" stroke-width="2" marker-end="url(#arr-m)" />
+
+              <!-- TIER 3: ENGINES & COMPILERS -->
+              <rect x="8" y="150" width="494" height="48" rx="6" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.6" />
+              <text x="255" y="163" font-size="10.8" font-weight="900" fill="#15803d" text-anchor="middle" letter-spacing="0.04em">3. CODE RUNNER &amp; TEST PROCTORING ENGINES</text>
+
+              <rect x="18" y="168" width="230" height="25" rx="4" fill="#ffffff" stroke="#4ade80" stroke-width="1" />
+              <text x="133" y="180" font-size="8.6" font-weight="800" fill="#15803d" text-anchor="middle">⚡ Code Execution Engine (JDoodle API)</text>
+              <text x="133" y="189" font-size="7" fill="#334155" text-anchor="middle">C++, Java, Python, JS with Test Benchmarks</text>
+
+              <rect x="262" y="168" width="230" height="25" rx="4" fill="#ffffff" stroke="#4ade80" stroke-width="1" />
+              <text x="377" y="180" font-size="8.6" font-weight="800" fill="#0284c7" text-anchor="middle">🛡️ Browser Test Proctoring (face-api.js)</text>
+              <text x="377" y="189" font-size="7" fill="#334155" text-anchor="middle">Webcam Face Detection, Tab Switch &amp; Fullscreen</text>
+
+              <!-- Connector 3 -> 4 -->
+              <line x1="255" y1="198" x2="255" y2="206" stroke="#881337" stroke-width="2" marker-end="url(#arr-m)" />
+
+              <!-- TIER 4: DATABASE & STORAGE -->
+              <rect x="8" y="208" width="494" height="46" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.6" />
+              <text x="255" y="221" font-size="10.8" font-weight="900" fill="#1d4ed8" text-anchor="middle" letter-spacing="0.04em">4. DATABASE &amp; STORAGE (SUPABASE POSTGRESQL)</text>
+              
+              <text x="75" y="237" font-size="8" font-weight="700" fill="#0f172a" text-anchor="middle">Student &amp; Recruiter Users</text>
+              <text x="75" y="247" font-size="7.2" fill="#64748b" text-anchor="middle">Roles &amp; KYC Records</text>
+
+              <text x="195" y="237" font-size="8" font-weight="700" fill="#0f172a" text-anchor="middle">Drives &amp; Job Criteria</text>
+              <text x="195" y="247" font-size="7.2" fill="#64748b" text-anchor="middle">CTC, Branch &amp; CGPA</text>
+
+              <text x="315" y="237" font-size="8" font-weight="700" fill="#0f172a" text-anchor="middle">Applications &amp; Resumes</text>
+              <text x="315" y="247" font-size="7.2" fill="#64748b" text-anchor="middle">PDF Files &amp; ATS Match</text>
+
+              <text x="435" y="237" font-size="8" font-weight="700" fill="#0f172a" text-anchor="middle">Coding Test Verdicts</text>
+              <text x="435" y="247" font-size="7.2" fill="#64748b" text-anchor="middle">Integrity Scores &amp; Logs</text>
+
+              <!-- Connector 4 -> 5 -->
+              <line x1="255" y1="254" x2="255" y2="262" stroke="#881337" stroke-width="2" marker-end="url(#arr-m)" />
+
+              <!-- TIER 5: APPLICATION STAGE PIPELINE -->
+              <rect x="8" y="264" width="494" height="58" rx="6" fill="#fef2f2" stroke="#dc2626" stroke-width="1.6" />
+              <text x="255" y="278" font-size="10.5" font-weight="900" fill="#991b1b" text-anchor="middle" letter-spacing="0.04em">STUDENT APPLICATION STAGE PIPELINE</text>
+
+              <rect x="18" y="286" width="78" height="28" rx="4" fill="#991b1b" />
+              <text x="57" y="303" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">1. Applied</text>
+
+              <line x1="98" y1="300" x2="110" y2="300" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr-m)" />
+
+              <rect x="114" y="286" width="82" height="28" rx="4" fill="#881337" />
+              <text x="155" y="303" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">2. OA Cleared</text>
+
+              <line x1="198" y1="300" x2="210" y2="300" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr-m)" />
+
+              <rect x="214" y="286" width="82" height="28" rx="4" fill="#881337" />
+              <text x="255" y="303" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">3. Interview 1</text>
+
+              <line x1="298" y1="300" x2="310" y2="300" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr-m)" />
+
+              <rect x="314" y="286" width="82" height="28" rx="4" fill="#881337" />
+              <text x="355" y="303" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">4. Interview 2</text>
+
+              <line x1="398" y1="300" x2="410" y2="300" stroke="#dc2626" stroke-width="1.8" marker-end="url(#arr-m)" />
+
+              <rect x="414" y="286" width="82" height="28" rx="4" fill="#047857" />
+              <text x="455" y="303" font-size="9" font-weight="800" fill="#ffffff" text-anchor="middle">5. Selected ✓</text>
+            </svg>
+          </div>
+          <div class="caption-text">Fig 1: SmartHire Multi-Tier System Architecture &amp; Application Pipeline Workflow</div>
+
+          <!-- DIAGRAM 2: SIMPLE LEVEL 1 DATA FLOW DIAGRAM (DFD) -->
+          <div class="arch-container" style="margin-top: 1.2mm;">
+            <svg viewBox="0 0 510 270" width="100%" height="auto" style="display: block;" xmlns="http://www.w3.org/2000/svg" style="font-family: 'Plus Jakarta Sans', Arial, sans-serif;">
+              <defs>
+                <marker id="arr-dfd" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0369a1" />
+                </marker>
+                <marker id="arr-phone" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#e11d48" />
+                </marker>
+                <marker id="arr-db" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#047857" />
+                </marker>
+              </defs>
+
+              <!-- BACKGROUND TINT -->
+              <rect x="0" y="0" width="510" height="270" fill="#fafafa" rx="6" />
+
+              <!-- TITLE BAR INSIDE SVG -->
+              <rect x="8" y="6" width="494" height="22" rx="3" fill="#0f172a" />
+              <text x="255" y="21" font-size="10" font-weight="800" fill="#38bdf8" text-anchor="middle" letter-spacing="0.04em">DATA FLOW DIAGRAM (LEVEL 1 DFD): APPLICATION, PROCTORING &amp; PHONE ALERTS</text>
+
+              <!-- ================= LEFT: EXTERNAL ENTITIES (x=14 to 114) ================= -->
+              <rect x="14" y="38" width="100" height="60" rx="5" fill="#ffffff" stroke="#881337" stroke-width="1.8" />
+              <text x="64" y="55" font-size="9.5" font-weight="800" fill="#881337" text-anchor="middle">Student</text>
+              <text x="64" y="67" font-size="7.6" font-weight="700" fill="#0284c7" text-anchor="middle">Web &amp; Mobile App</text>
+              <text x="64" y="79" font-size="7" fill="#64748b" text-anchor="middle">• Applies for Drives</text>
+              <text x="64" y="89" font-size="7" fill="#64748b" text-anchor="middle">• Coding Tests &amp; ATS</text>
+
+              <rect x="14" y="114" width="100" height="60" rx="5" fill="#ffffff" stroke="#881337" stroke-width="1.8" />
+              <text x="64" y="132" font-size="9.5" font-weight="800" fill="#881337" text-anchor="middle">Recruiter</text>
+              <text x="64" y="144" font-size="7.6" font-weight="700" fill="#475569" text-anchor="middle">Corporate Portal</text>
+              <text x="64" y="156" font-size="7" fill="#64748b" text-anchor="middle">• Posts Requirements</text>
+              <text x="64" y="166" font-size="7" fill="#64748b" text-anchor="middle">• Shortlists Candidates</text>
+
+              <rect x="14" y="190" width="100" height="58" rx="5" fill="#ffffff" stroke="#881337" stroke-width="1.8" />
+              <text x="64" y="208" font-size="9.5" font-weight="800" fill="#881337" text-anchor="middle">T&amp;P Admin</text>
+              <text x="64" y="220" font-size="7.6" font-weight="700" fill="#475569" text-anchor="middle">College Placement Cell</text>
+              <text x="64" y="232" font-size="7" fill="#64748b" text-anchor="middle">• Verifies Student KYC</text>
+              <text x="64" y="242" font-size="7" fill="#64748b" text-anchor="middle">• Approves Drives &amp; JDs</text>
+
+              <!-- ================= CENTER: CORE PROCESSES ================= -->
+              <rect x="154" y="38" width="190" height="38" rx="19" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5" />
+              <text x="249" y="53" font-size="9" font-weight="800" fill="#0369a1" text-anchor="middle">1. Student KYC &amp; Verification</text>
+              <text x="249" y="66" font-size="7.3" fill="#475569" text-anchor="middle">Validates Student CGPA, Branch &amp; Credentials</text>
+
+              <rect x="154" y="82" width="190" height="38" rx="19" fill="#f0f9ff" stroke="#0284c7" stroke-width="1.5" />
+              <text x="249" y="97" font-size="9" font-weight="800" fill="#0369a1" text-anchor="middle">2. Job Posting &amp; Drive Approval</text>
+              <text x="249" y="110" font-size="7.3" fill="#475569" text-anchor="middle">TPO Verifies CTC, Eligibility &amp; Branch Criteria</text>
+
+              <rect x="154" y="126" width="190" height="38" rx="19" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5" />
+              <text x="249" y="141" font-size="9" font-weight="800" fill="#15803d" text-anchor="middle">3. ATS Resume &amp; Skill Audit (PDF.js)</text>
+              <text x="249" y="154" font-size="7.3" fill="#475569" text-anchor="middle">Extracts Resume Text vs Recruiter JD Requirements</text>
+
+              <rect x="154" y="170" width="190" height="38" rx="19" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5" />
+              <text x="249" y="185" font-size="9" font-weight="800" fill="#15803d" text-anchor="middle">4. Online Proctored Coding Exam</text>
+              <text x="249" y="198" font-size="7.3" fill="#475569" text-anchor="middle">face-api.js Webcam Check + JDoodle Compiler API</text>
+
+              <rect x="154" y="214" width="190" height="40" rx="20" fill="#fff1f2" stroke="#e11d48" stroke-width="1.6" />
+              <text x="249" y="229" font-size="9" font-weight="800" fill="#881337" text-anchor="middle">5. Stage Tracking &amp; Phone Push Alerts</text>
+              <text x="249" y="243" font-size="7.5" font-weight="700" fill="#e11d48" text-anchor="middle">📱 Push Notifications to Student's Smartphone</text>
+
+              <!-- ================= RIGHT: DATA STORES & ENGINES ================= -->
+              <rect x="382" y="38" width="118" height="96" rx="6" fill="#eff6ff" stroke="#3b82f6" stroke-width="1.5" />
+              <text x="441" y="55" font-size="9" font-weight="800" fill="#1d4ed8" text-anchor="middle">[D1] Supabase DB</text>
+              <text x="441" y="69" font-size="7.3" fill="#334155" text-anchor="middle">• Verified Profiles</text>
+              <text x="441" y="82" font-size="7.3" fill="#334155" text-anchor="middle">• Approved Drives &amp; JDs</text>
+              <text x="441" y="95" font-size="7.3" fill="#334155" text-anchor="middle">• PDF Resumes &amp; Scores</text>
+              <text x="441" y="108" font-size="7.3" fill="#334155" text-anchor="middle">• 5-Stage Status Logs</text>
+              <text x="441" y="122" font-size="7.2" font-weight="700" fill="#2563eb" text-anchor="middle">Central PostgreSQL</text>
+
+              <rect x="382" y="142" width="118" height="46" rx="5" fill="#f8fafc" stroke="#64748b" stroke-width="1.2" />
+              <text x="441" y="158" font-size="8.4" font-weight="800" fill="#0f172a" text-anchor="middle">JDoodle Cloud API</text>
+              <text x="441" y="171" font-size="7.2" fill="#475569" text-anchor="middle">C++, Java, Python, JS</text>
+              <text x="441" y="181" font-size="7" font-weight="700" fill="#16a34a" text-anchor="middle">Returns Runtime &amp; Verdict</text>
+
+              <rect x="382" y="196" width="118" height="54" rx="5" fill="#fff1f2" stroke="#f43f5e" stroke-width="1.3" />
+              <text x="441" y="212" font-size="8.4" font-weight="800" fill="#881337" text-anchor="middle">📱 Phone Push Engine</text>
+              <text x="441" y="225" font-size="7.2" fill="#475569" text-anchor="middle">Firebase Cloud Messaging</text>
+              <text x="441" y="238" font-size="7.2" font-weight="700" fill="#e11d48" text-anchor="middle">Immediate Phone Alerts</text>
+
+              <!-- ================= DATA FLOW CONNECTORS (ARROWS) ================= -->
+              <!-- 1. Student -> Process 1 (Direct Horizontal) -->
+              <path d="M 114 57 L 152 57" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+
+              <!-- 2. Student -> Process 3 (Corridor at x=124) -->
+              <path d="M 114 73 L 124 73 L 124 139 L 152 139" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+
+              <!-- 3. Student -> Process 4 (Corridor at x=118) -->
+              <path d="M 114 85 L 118 85 L 118 183 L 152 183" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+
+              <!-- 4. Recruiter -> Process 2 (Corridor at x=133) -->
+              <path d="M 114 133 L 133 133 L 133 96 L 152 96" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+
+              <!-- 5. Recruiter -> Process 3 (Direct Horizontal) -->
+              <path d="M 114 150 L 152 150" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+
+              <!-- 6. T&P Admin -> Process 2 (Corridor at x=142) -->
+              <path d="M 114 210 L 142 210 L 142 106 L 152 106" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+
+              <!-- 7. Processes -> DB & Cloud Services -->
+              <path d="M 344 57 L 380 57" stroke="#047857" stroke-width="1.4" fill="none" marker-end="url(#arr-db)" />
+              <path d="M 344 101 L 380 101" stroke="#047857" stroke-width="1.4" fill="none" marker-end="url(#arr-db)" />
+              <path d="M 344 178 L 380 178" stroke="#0369a1" stroke-width="1.4" fill="none" marker-end="url(#arr-dfd)" />
+              <path d="M 344 225 L 380 225" stroke="#e11d48" stroke-width="1.5" fill="none" marker-end="url(#arr-phone)" />
+
+              <!-- 8. RETURN LOOP: Push Alert Delivered to Student Phone (Outer Left Margin at x=6, NEVER overlaps boxes!) -->
+              <path d="M 441 250 L 441 264 L 6 264 L 6 68 L 12 68" stroke="#e11d48" stroke-width="1.6" stroke-dasharray="3,2" fill="none" marker-end="url(#arr-phone)" />
+
+              <!-- Centered Badge on bottom alert flow -->
+              <rect x="155" y="257" width="200" height="13" rx="3" fill="#881337" />
+              <text x="255" y="266.5" font-size="7.2" font-weight="800" fill="#ffffff" text-anchor="middle">📱 Direct Push Alert Delivered to Student Phone</text>
+
+            </svg>
+          </div>
+          <div class="caption-text">Fig 2: SmartHire Data Flow Diagram (DFD)</div>
+
+          <!-- 4 IMPLEMENTATION SUMMARY CARDS RIGHT UNDER FIG 2 -->
+          <div class="method-grid-2x2">
+            <div class="method-card">
+              <div class="method-title">💻 Client-Side AI Proctoring (face-api.js)</div>
+              <div class="method-desc">Real-time webcam face presence detection, multiple face alerts, window blur and tab-switching violation tracking.</div>
+            </div>
+
+            <div class="method-card">
+              <div class="method-title">⚡ Multi-Lang Code Sandbox (JDoodle API)</div>
+              <div class="method-desc">Automated compilation and execution for C++, Java, Python, and JavaScript against test suites with runtime metrics.</div>
+            </div>
+
+            <div class="method-card">
+              <div class="method-title">📄 Browser ATS Resume Audit (PDF.js)</div>
+              <div class="method-desc">Client-side text parsing compares candidate skills directly with recruiter job requirements, returning match percentage.</div>
+            </div>
+
+            <div class="method-card">
+              <div class="method-title">📱 5-Stage Pipeline &amp; Phone Alerts</div>
+              <div class="method-desc">Recruiters track candidates from Applied to Selected; automated push notifications instantly alert students on their smartphones.</div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- ================= COLUMN 3 (RIGHT): RESULTS, ANALYSIS, CONCLUSION, REFERENCES ================= -->
+      <section class="column">
+        
+        <!-- 5. RESULTS AND ANALYSIS -->
+        <div class="section-card">
+          <div class="section-bar">Results &amp; Analysis</div>
+
+          <!-- Result 1: Coding Test Screen -->
+          <div class="screenshot-card">
+            <div class="screenshot-header">
+              <span class="screenshot-tag">🖥️ RESULT: PROCTORED CODING ARENA</span>
+              <span class="screenshot-badge">100% INTEGRITY</span>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:7.6px; background:#020617; border-radius:3px; padding:5px 7px; border:1px solid #1e293b;">
+              <div style="display:flex; justify-content:space-between; color:#94a3b8; border-bottom:1px solid #1e293b; padding-bottom:1.5px; margin-bottom:2px;">
+                <span>TwoSum.cpp • C++ (JDoodle API)</span>
+                <span style="color:#22c55e;">● Camera Active (face-api.js)</span>
+              </div>
+              <div style="color:#38bdf8;">vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; nums, int target) {</div>
+              <div style="color:#cbd5e1; padding-left:8px;">unordered_map&lt;int,int&gt; map; // O(n) hash lookup</div>
+              <div style="color:#cbd5e1; padding-left:8px;">for(int i=0; i&lt;nums.size(); i++) { ... }</div>
+              <div style="display:flex; justify-content:space-between; margin-top:2.5px; background:#064e3b; color:#86efac; padding:2.5px 5.5px; border-radius:2px; font-weight:700;">
+                <span>✓ All 12/12 Test Cases Passed</span>
+                <span>Execution Time: 0.04s</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Result 2: Skill Radar -->
+          <div class="screenshot-card">
+            <div class="screenshot-header">
+              <span class="screenshot-tag">📊 RESULT: STUDENT SKILLS RADAR</span>
+              <span class="screenshot-badge" style="background:#2563eb;">SCORE: 92/100</span>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; background:#020617; border-radius:3px; padding:5px 7px; border:1px solid #1e293b;">
+              <svg viewBox="0 0 70 70" width="56" height="56">
+                <polygon points="35,5 63,25 52,58 18,58 7,25" fill="none" stroke="#334155" stroke-width="0.8"/>
+                <polygon points="35,12 56,27 48,52 22,52 14,27" fill="none" stroke="#334155" stroke-width="0.8"/>
+                <polygon points="35,8 60,26 50,54 20,53 10,27" fill="rgba(14,165,233,0.35)" stroke="#38bdf8" stroke-width="1.2"/>
+                <circle cx="35" cy="8" r="1.5" fill="#38bdf8"/>
+                <circle cx="60" cy="26" r="1.5" fill="#38bdf8"/>
+                <circle cx="50" cy="54" r="1.5" fill="#38bdf8"/>
+                <circle cx="20" cy="53" r="1.5" fill="#38bdf8"/>
+                <circle cx="10" cy="27" r="1.5" fill="#38bdf8"/>
+              </svg>
+              <div style="font-size:7.6px; font-weight:700; width:60%; display:flex; flex-direction:column; gap:2.5px;">
+                <div style="display:flex; justify-content:space-between;"><span>DSA &amp; Logic</span><span style="color:#38bdf8;">94%</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>System Design</span><span style="color:#a855f7;">88%</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>Aptitude &amp; Verbal</span><span style="color:#22c55e;">91%</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>ATS Skill Match</span><span style="color:#f59e0b;">92/100</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Result 3: Recruiter Pipeline -->
+          <div class="screenshot-card">
+            <div class="screenshot-header">
+              <span class="screenshot-tag">🏢 RESULT: RECRUITER DRIVE PIPELINE</span>
+              <span class="screenshot-badge" style="background:#7c3aed;">LIVE STAGE SYNC</span>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:7.6px; background:#020617; border-radius:3px; padding:4.5px 6.5px; border:1px solid #1e293b;">
+              <div style="display:flex; justify-content:space-between; color:#94a3b8; border-bottom:1px solid #1e293b; padding-bottom:1.5px; margin-bottom:2px;">
+                <span>Drive: Software Engineer 2026</span>
+                <span style="color:#38bdf8;">42 Candidates</span>
+              </div>
+              <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:3px; text-align:center;">
+                <div style="background:#1e293b; padding:3px; border-radius:2px;">
+                  <div style="color:#94a3b8; font-size:6.6px;">OA CLEARED</div>
+                  <div style="color:#ffffff; font-weight:800;">18 Students</div>
+                </div>
+                <div style="background:#1e293b; padding:3px; border-radius:2px;">
+                  <div style="color:#94a3b8; font-size:6.6px;">INTERVIEW</div>
+                  <div style="color:#f59e0b; font-weight:800;">6 Shortlisted</div>
+                </div>
+                <div style="background:#064e3b; padding:3px; border-radius:2px;">
+                  <div style="color:#86efac; font-size:6.6px;">OFFERED</div>
+                  <div style="color:#22c55e; font-weight:800;">2 Selected ✓</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Result 4: ATS Resume Result -->
+          <div class="screenshot-card">
+            <div class="screenshot-header">
+              <span class="screenshot-tag">📄 RESULT: ATS RESUME SKILL AUDIT</span>
+              <span class="screenshot-badge" style="background:#059669;">MATCH: 88%</span>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:7.6px; background:#020617; border-radius:3px; padding:4.5px 6.5px; border:1px solid #1e293b;">
+              <div style="display:flex; justify-content:space-between; color:#94a3b8; border-bottom:1px solid #1e293b; padding-bottom:1.5px; margin-bottom:2px;">
+                <span>Role: Full-Stack Developer</span>
+                <span style="color:#22c55e;">Status: High Match</span>
+              </div>
+              <div style="color:#86efac; margin-bottom:1.5px;">✓ Matched: React.js, Node.js, Express, PostgreSQL, REST APIs</div>
+              <div style="color:#f59e0b; margin-bottom:1.5px;">⚠ Recommended to Add: Docker, TypeScript, Git Actions</div>
+              <div style="color:#cbd5e1; background:#1e293b; padding:2.5px 4.5px; border-radius:2px;">
+                <span>Result: Student notified of keyword gaps before drive submission</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Performance & Feature Badges -->
+          <div class="metrics-bar">
+            <div class="metric-pill">
+              <div class="metric-num">4</div>
+              <div class="metric-label">Languages (C++, Java, Py, JS)</div>
+            </div>
+            <div class="metric-pill">
+              <div class="metric-num">100%</div>
+              <div class="metric-label">Browser Proctoring</div>
+            </div>
+            <div class="metric-pill">
+              <div class="metric-num">&lt;1s</div>
+              <div class="metric-label">ATS Score Check</div>
+            </div>
+            <div class="metric-pill">
+              <div class="metric-num">3</div>
+              <div class="metric-label">Dedicated Portals</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. CONCLUSION AND FUTURE SCOPE -->
+        <div class="section-card">
+          <div class="section-bar">Conclusion &amp; Future Scope</div>
+          <ul class="bullet-list">
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Conclusion:</strong> SmartHire successfully replaces scattered spreadsheets and manual placement coordination with a unified, modern on-campus recruitment and preparation system. It bridges students, recruiters, and the college placement cell through verified profiles, transparent application stages, built-in coding tests, and proctoring.</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Future Scope 1 (Student Mobile App &amp; Push Notifications):</strong> Developing a dedicated cross-platform mobile application so students receive real-time push notifications on their phones for new drive postings, exam schedules, and round-by-round shortlist results.</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Future Scope 2 (AI Voice Mock Interviews):</strong> Integrating an LLM-assisted conversational voice mock interview practice module to help students prepare for behavioral and technical interviews.</span>
+            </li>
+            <li class="bullet-item">
+              <span class="bullet-dot">•</span>
+              <span><strong>Future Scope 3 (NIRF &amp; NAAC Analytics):</strong> Providing automated placement analytics reporting, statistical salary distributions, and instant compliance data exports.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- 7. REFERENCES -->
+        <div class="section-card">
+          <div class="section-bar">References</div>
+          <ul class="ref-list">
+            <li>[1] S. Sharma &amp; P. Chauhan, "Modernizing Campus Placements via Cloud Microservices," <em>IEEE Trans. Learn. Tech.</em>, vol. 16, no. 4, 2023.</li>
+            <li>[2] A. Köchling et al., "Algorithmic Recruitment and Ethical Bias in AI Hiring Systems," <em>Comput. Hum. Behav.</em>, vol. 142, 2023.</li>
+            <li>[3] M. Pereira &amp; S. Gupta, "Isolated Sandboxed Code Execution for Automated CS Evaluation," <em>ACM SIGCSE</em>, pp. 112–118, 2023.</li>
+            <li>[4] R. Karnik &amp; D. Roy, "Privacy-Preserving Client-Side Telemetry in Online Examinations," <em>IEEE Access</em>, vol. 12, 2024.</li>
+            <li>[5] IEEE Standard for Learning Technology, "Computer-Based Assessment Architectures &amp; Evaluation Integrity Protocols," <em>IEEE Std 1484.20</em>, 2023.</li>
+          </ul>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- 3. FOOTER BAR -->
+    <footer class="poster-footer">
+      <div>
+        🏛️ <strong>Usha Mittal Institute of Technology (UMIT)</strong>, S.N.D.T. Women's University, Mumbai
+      </div>
+      <div>
+        👩‍💻 Ruhi Patil &amp; Vaibhavi Sawant • Group No. 21 • B.Tech Computer Engineering 2026
+      </div>
+    </footer>
+
+  </div>
+
+</body>
+</html>

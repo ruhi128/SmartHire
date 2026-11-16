@@ -1,22 +1,17 @@
 // src/pages/student/DSACoding.jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import {
-  Play, Send, ChevronRight, Search, CheckCircle, XCircle,
+  Play, Send, Search, CheckCircle, XCircle,
   Clock, Cpu, RotateCcw, Loader2, ChevronLeft, BookOpen,
-  Lightbulb, History, AlertCircle, Trophy, Zap, Lock
+  Lightbulb, History, AlertCircle, Lock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { codeAPI } from '../../api/axios';
 
 
-// LeetCode-style function driver. Kept in this page so the DSA experience
-// does not require a separate frontend module. It generates a small program
-// around the learner's function before sending it to JDoodle.
-// Function-style execution helpers for the SmartHire DSA practice page.
-// Learners write the algorithm method only (as on LeetCode); this module adds
-// an isolated driver that constructs inputs, invokes the method, and emits a
-// JSON result marker for the UI to judge.
+// Function-style execution helpers. Learners write a function or class;
+// the generated driver constructs arguments and emits the returned JSON value.
 
 const HARNESS_RESULT_MARKER = '__SMARTHIRE_RESULT__';
 const LEETCODE_SUPPORTED_LANGUAGES = ['python', 'javascript'];
@@ -220,8 +215,8 @@ const LEETCODE_SPECS = Object.freeze({
     className: 'MinStack',
     tests: [
       {
-        args: [[['push', -2], ['push', 0], ['push', -3], ['getMin'], ['pop'], ['getMin']]],
-        expected: [-3, -2],
+        args: [[['push', -2], ['push', 0], ['push', -3], ['getMin'], ['pop'], ['top'], ['getMin']]],
+        expected: [-3, 0, -2],
       },
     ],
     compare: 'strict',
@@ -749,7 +744,7 @@ const LANGS = ['python','javascript','java','cpp','c'];
 const LANG_LABELS = { python:'Python 3', javascript:'JavaScript', java:'Java', cpp:'C++', c:'C' };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// PROBLEM BANK — 100+ problems across all DSA topics
+// PROBLEM BANK — 40 problems across DSA topics
 // ═══════════════════════════════════════════════════════════════════════════
 const PROBLEMS = [
   // ── ARRAYS ──────────────────────────────────────────────────────────────
@@ -1102,7 +1097,7 @@ const PROBLEMS = [
   },
   { id:'d2', no:25, title:'Coin Change', difficulty:'Medium', tags:['DP','BFS'],
     description:'Given coins of different denominations and amount, return fewest coins needed to make up that amount. Return -1 if impossible.',
-    examples:[{input:'coins=[1,5,11], amount=11', output:'2', explanation:'5+5+1? No, 11 directly = 1 coin? Wait: coin 11 exists, return 1'},{input:'coins=[2], amount=3', output:'-1'}],
+    examples:[{input:'coins=[1,5,11], amount=11', output:'1', explanation:'Use the coin worth 11.'},{input:'coins=[2], amount=3', output:'-1'}],
     constraints:['1 ≤ coins.length ≤ 12','0 ≤ amount ≤ 10⁴'],
     hints:['DP bottom-up: dp[i] = min coins to make i','dp[0]=0, dp[i]=min(dp[i-c]+1) for each coin c'],
     starter:{
@@ -1325,16 +1320,38 @@ const ALL_TAGS = [...new Set(PROBLEMS.flatMap(p => p.tags))].sort();
 // ═══════════════════════════════════════════════════════════════════════════
 // LOCAL STORAGE helpers
 // ═══════════════════════════════════════════════════════════════════════════
-const getSolved = () => { try { return JSON.parse(localStorage.getItem('dsa_solved')||'{}'); } catch { return {}; } };
-const setSolved = (id, lang) => { const s=getSolved(); s[id]={lang,time:Date.now()}; localStorage.setItem('dsa_solved',JSON.stringify(s)); };
-const getCode   = (id, lang) => { try { return localStorage.getItem(`dsa_code_${id}_${lang}`) || ''; } catch { return ''; } };
-const saveCode  = (id, lang, code) => { try { localStorage.setItem(`dsa_code_${id}_${lang}`, code); } catch {} };
+const getSolved = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem('dsa_solved') || '{}');
+    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+  } catch { return {}; }
+};
+const setSolved = (current, id, lang) => {
+  const next = { ...current, [id]: { lang, time: Date.now() } };
+  try { localStorage.setItem('dsa_solved', JSON.stringify(next)); } catch { /* Keep progress in this tab. */ }
+  return next;
+};
+const getCode = (id, lang) => {
+  try { return localStorage.getItem(`dsa_code_${id}_${lang}`); } catch { return null; }
+};
+const saveCode = (id, lang, source) => {
+  try { localStorage.setItem(`dsa_code_${id}_${lang}`, source); } catch { /* Editing still works. */ }
+};
+const getSubmissions = (id) => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(`dsa_subs_${id}`) || '[]');
+    return Array.isArray(saved) ? saved : [];
+  } catch { return []; }
+};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // JDoodle execution — always call the configured backend API origin
 // ═══════════════════════════════════════════════════════════════════════════
 const runViaJDoodle = async (code, language, stdin = '') => {
   const { data } = await codeAPI.run({ code, language, stdin });
+  if (!data || typeof data.verdict !== 'string' || !data.verdict) {
+    throw new Error('The code runner returned an invalid response. Please try again.');
+  }
   return data;
 };
 
@@ -1367,7 +1384,7 @@ export default function DSACoding() {
   const [runOutput,   setRunOutput]   = useState(null);
   const [submitOutput,setSubOutput]   = useState(null);
   const [customInput, setCustomInput] = useState('');
-  const [solved,      setSolvedState] = useState(getSolved());
+  const [solved,      setSolvedState] = useState(getSolved);
   const [jdoodleStatus, setJDoodleStatus] = useState({
     available: null,
     configured: false,
@@ -1375,7 +1392,6 @@ export default function DSACoding() {
     message: '',
   });
   const [submissions, setSubmissions] = useState([]);
-  const editorRef = useRef(null);
   const jdoodleOK = jdoodleStatus.available;
 
   // Check the non-secret JDoodle runner status on mount. codeAPI uses the same
@@ -1402,31 +1418,28 @@ export default function DSACoding() {
   const openProblem = (prob) => {
     setSelected(prob);
     const saved = getCode(prob.id, lang);
-    setCode(saved || prob.starter[lang] || '');
+    setCode(saved ?? prob.starter[lang] ?? '');
     setRunOutput(null);
     setSubOutput(null);
     setTab('problem');
-    // The custom box contains function arguments, not stdin. This avoids the
-    // old greedy example parser turning Two Sum into just "9".
+    // Custom tests contain typed function arguments, never stdin.
     setCustomInput(formatCustomArgs(getDefaultArgs(prob.id)));
     setScreen('problem');
-    // Load submission history from localStorage
-    try {
-      const subs = JSON.parse(localStorage.getItem(`dsa_subs_${prob.id}`) || '[]');
-      setSubmissions(subs);
-    } catch { setSubmissions([]); }
+    setSubmissions(getSubmissions(prob.id));
   };
 
   const changeLang = (l) => {
     if (selected) saveCode(selected.id, lang, code);
     setLang(l);
-    const saved = selected ? getCode(selected.id, l) : '';
-    setCode(saved || selected?.starter[l] || '');
+    const saved = selected ? getCode(selected.id, l) : null;
+    setCode(saved ?? selected?.starter[l] ?? '');
     setRunOutput(null);
   };
 
   const resetCode = () => {
-    setCode(selected?.starter[lang] || '');
+    const starter = selected?.starter[lang] || '';
+    setCode(starter);
+    if (selected) saveCode(selected.id, lang, starter);
     setRunOutput(null);
     setSubOutput(null);
   };
@@ -1456,11 +1469,12 @@ export default function DSACoding() {
         ? await runJSBrowser(program)
         : await runViaJDoodle(program, lang, '');
 
-      if (result?.verdict && result.verdict !== 'Accepted') {
+      if (result?.verdict !== 'Accepted') {
         setRunOutput({
           type: 'run',
           ...result,
-          stderr: result.stderr || 'Your function could not be executed for this test case.',
+          verdict: result?.verdict || 'Runner Error',
+          stderr: result?.stderr || 'Your function could not be executed for this test case.',
         });
         return;
       }
@@ -1509,7 +1523,7 @@ export default function DSACoding() {
       let passed = 0;
       const total = spec.tests.length;
       const results = [];
-      let executionError = false;
+      let failureVerdict = null;
 
       // Every test receives a freshly generated driver and fresh structured
       // arguments, matching LeetCode's independent-test behavior.
@@ -1524,19 +1538,19 @@ export default function DSACoding() {
         const common = {
           input: formatCustomArgs(tc.args),
           expected: formatLeetCodeValue(tc.expected),
-          time: r.time,
-          memory: r.memory,
-          engine: r.engine,
-          verdict: r.verdict,
+          time: r?.time,
+          memory: r?.memory,
+          engine: r?.engine,
+          verdict: r?.verdict,
         };
 
-        if (r?.verdict && r.verdict !== 'Accepted') {
-          executionError = true;
+        if (r?.verdict !== 'Accepted') {
+          failureVerdict = r?.verdict || 'Runner Error';
           results.push({
             ...common,
             got: undefined,
             passed: false,
-            error: r.stderr || 'Your function could not be executed for this test case.',
+            error: r?.stderr || 'Your function could not be executed for this test case.',
           });
           break;
         }
@@ -1551,7 +1565,7 @@ export default function DSACoding() {
             passed: ok,
           });
         } catch (error) {
-          executionError = true;
+          failureVerdict = 'Function Runner Error';
           results.push({
             ...common,
             got: undefined,
@@ -1562,7 +1576,7 @@ export default function DSACoding() {
         }
       }
 
-      const status = executionError ? 'Runtime Error' : passed === total ? 'Accepted' : 'Wrong Answer';
+      const status = failureVerdict || (passed === total ? 'Accepted' : 'Wrong Answer');
       const subRecord = {
         id: Date.now(),
         lang, status, passed, total,
@@ -1570,16 +1584,13 @@ export default function DSACoding() {
         results,
       };
 
-      // Save only the non-secret client-side history; source execution stays
-      // behind the configured backend API and never exposes JDoodle secrets.
-      const prev = JSON.parse(localStorage.getItem(`dsa_subs_${selected.id}`) || '[]');
-      const newSubs = [subRecord, ...prev].slice(0, 10);
-      localStorage.setItem(`dsa_subs_${selected.id}`, JSON.stringify(newSubs));
+      // Keep local practice history even when browser storage is unavailable.
+      const newSubs = [subRecord, ...submissions].slice(0, 10);
+      try { localStorage.setItem(`dsa_subs_${selected.id}`, JSON.stringify(newSubs)); } catch { /* In-memory history still works. */ }
       setSubmissions(newSubs);
 
       if (status === 'Accepted') {
-        setSolved(selected.id, lang);
-        setSolvedState(getSolved());
+        setSolvedState(setSolved(solved, selected.id, lang));
         toast.success('🎉 Accepted! All test cases passed!');
       } else {
         toast.error(`❌ ${status} — ${passed}/${total} test cases passed`);
@@ -1590,6 +1601,7 @@ export default function DSACoding() {
     } catch (error) {
       const message = getRunnerErrorMessage(error);
       setSubOutput({ type:'submit', status:'Error', error: message });
+      setTab('submissions');
       toast.error('Submission error: ' + message);
     } finally { setSubmitting(false); }
   };
@@ -1738,7 +1750,7 @@ export default function DSACoding() {
     <div style={{ height:'100vh', display:'flex', flexDirection:'column', background:C.bg, overflow:'hidden' }}>
       {/* Top bar */}
       <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 20px', background:'var(--bg-input)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-        <button onClick={()=>setScreen('list')} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'none', color:C.gray, cursor:'pointer', fontSize:13, fontFamily:"'Sora',sans-serif" }}>
+        <button onClick={()=>setScreen('list')} disabled={running || submitting} style={{ display:'flex', alignItems:'center', gap:5, background:'none', border:'none', color:C.gray, cursor:running || submitting ? 'not-allowed' : 'pointer', opacity:running || submitting ? 0.5 : 1, fontSize:13, fontFamily:"'Sora',sans-serif" }}>
           <ChevronLeft size={16}/> Problems
         </button>
         <div style={{ width:1, height:20, background:'var(--border)' }}/>
@@ -1786,14 +1798,14 @@ export default function DSACoding() {
         <div style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden' }}>
           {/* Editor toolbar */}
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 16px', background:'var(--bg-input)', borderBottom:'1px solid var(--border)', flexShrink:0 }}>
-            <select value={lang} onChange={e=>changeLang(e.target.value)} style={st.sel}>
+            <select value={lang} onChange={e=>changeLang(e.target.value)} disabled={running || submitting} style={st.sel}>
               {LANGS.map(l=>(
                 <option key={l} value={l} disabled={!isLeetCodeLanguage(l)}>
                   {LANG_LABELS[l]}{!isLeetCodeLanguage(l) ? ' — function runner coming soon' : ''}
                 </option>
               ))}
             </select>
-            <button onClick={resetCode} title="Reset to starter code" style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:7, color:C.gray, fontSize:12, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
+            <button onClick={resetCode} disabled={running || submitting} title="Reset to starter code" style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 12px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:7, color:C.gray, fontSize:12, cursor:running || submitting ? 'not-allowed' : 'pointer', fontFamily:"'Sora',sans-serif" }}>
               <RotateCcw size={12}/> Reset
             </button>
             <span style={{ marginLeft:'auto', fontSize:11, color:functionLanguageSupported ? C.gray : C.amber }}>
@@ -1813,7 +1825,6 @@ export default function DSACoding() {
               value={code}
               onChange={handleCodeChange}
               theme="vs-dark"
-              onMount={e => editorRef.current = e}
               options={{ fontSize:13.5, minimap:{enabled:false}, scrollBeyondLastLine:false, wordWrap:'on', automaticLayout:true, tabSize:2, lineNumbers:'on', renderLineHighlight:'line', fontFamily:"'Fira Code','Cascadia Code',Consolas,monospace", fontLigatures:true }}
             />
           </div>
@@ -1835,11 +1846,11 @@ export default function DSACoding() {
 
             {/* Action buttons */}
             <div style={{ display:'flex', gap:8 }}>
-              <button onClick={runCode} disabled={running} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:'rgba(79,70,229,0.1)', border:`1px solid ${C.cyan}40`, borderRadius:9, color:C.cyan, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", opacity:running?0.7:1 }}>
+              <button onClick={runCode} disabled={running || submitting} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:'rgba(79,70,229,0.1)', border:`1px solid ${C.cyan}40`, borderRadius:9, color:C.cyan, fontSize:13, fontWeight:700, cursor:running || submitting ? 'not-allowed' : 'pointer', fontFamily:"'Sora',sans-serif", opacity:running || submitting ? 0.7 : 1 }}>
                 {running ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Play size={15}/>}
                 {running ? 'Running...' : 'Run Code'}
               </button>
-              <button onClick={submitCode} disabled={submitting} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:submitting?'rgba(22,163,74,0.1)':C.green, border:'none', borderRadius:9, color:submitting?C.green:'#ffffff', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", opacity:submitting?0.7:1 }}>
+              <button onClick={submitCode} disabled={running || submitting} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:6, flex:1, padding:'10px', background:submitting?'rgba(22,163,74,0.1)':C.green, border:'none', borderRadius:9, color:submitting?C.green:'#ffffff', fontSize:13, fontWeight:700, cursor:running || submitting ? 'not-allowed' : 'pointer', fontFamily:"'Sora',sans-serif", opacity:running || submitting ? 0.7 : 1 }}>
                 {submitting ? <Loader2 size={15} style={{ animation:'spin 1s linear infinite' }}/> : <Send size={15}/>}
                 {submitting ? 'Submitting...' : 'Submit'}
               </button>
@@ -1896,7 +1907,7 @@ function HintsTab({ hints }) {
               <p style={{ margin:0, fontSize:13, color:C.light, lineHeight:1.6 }}>{h}</p>
             </div>
           ) : (
-            <button onClick={()=>setRevealed([...revealed,i])} style={{ width:'100%', padding:'10px 14px', background:'rgba(79,70,229,0.04)', border:'1px solid rgba(79,70,229,0.15)', borderRadius:9, color:'#4f46e5', fontSize:13, fontWeight:600, cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
+            <button onClick={()=>setRevealed(current => [...current,i])} disabled={i > 0 && !revealed.includes(i - 1)} style={{ width:'100%', padding:'10px 14px', background:'rgba(79,70,229,0.04)', border:'1px solid rgba(79,70,229,0.15)', borderRadius:9, color:'#4f46e5', fontSize:13, fontWeight:600, cursor:i > 0 && !revealed.includes(i - 1) ? 'not-allowed' : 'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
               <Lightbulb size={14}/> Reveal Hint {i+1}
               {i > 0 && !revealed.includes(i-1) && <Lock size={12} style={{ marginLeft:'auto', opacity:0.5 }}/>}
             </button>
@@ -1918,6 +1929,7 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
             <span style={{ fontSize:14, fontWeight:800, color:submitOutput.status==='Accepted'?C.green:C.red }}>{submitOutput.status}</span>
             {submitOutput.passed !== undefined && <span style={{ fontSize:12, color:C.gray, marginLeft:4 }}>{submitOutput.passed}/{submitOutput.total} test cases</span>}
           </div>
+          {submitOutput.error && <p style={{ margin:'0 0 8px', fontSize:12, color:C.red }}>{submitOutput.error}</p>}
           {/* Per test case results */}
           {submitOutput.results?.map((r,i) => (
             <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 10px', background:'var(--bg-card-high)', borderRadius:6, marginBottom:4 }}>
@@ -1943,7 +1955,7 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
         <div style={{ marginBottom:16, padding:12, background:'rgba(79,70,229,0.04)', border:'1px solid rgba(79,70,229,0.15)', borderRadius:10 }}>
           <p style={{ margin:'0 0 6px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Last Run</p>
           <div style={{ display:'flex', gap:10, marginBottom:4 }}>
-            <span style={{ fontSize:12, fontWeight:700, color:runOutput.verdict==='Accepted'?C.green:C.cyan }}>{runOutput.verdict}</span>
+            <span style={{ fontSize:12, fontWeight:700, color:runOutput.verdict==='Accepted'?C.green:C.red }}>{runOutput.verdict}</span>
             {runOutput.time && <span style={{ fontSize:11, color:C.gray }}><Clock size={11} style={{ verticalAlign:'middle' }}/> {runOutput.time}</span>}
             {runOutput.memory && <span style={{ fontSize:11, color:C.gray }}><Cpu size={11} style={{ verticalAlign:'middle' }}/> {runOutput.memory}</span>}
           </div>
@@ -1980,7 +1992,7 @@ function SubmissionsTab({ list, runOutput, submitOutput }) {
 
 function OutputPanel({ output }) {
   if (!output) return null;
-  const color = output.verdict==='Accepted' ? C.green : output.type==='run' ? C.cyan : C.red;
+  const color = output.verdict === 'Accepted' ? C.green : C.red;
   return (
     <div style={{ background:'var(--bg-card-high)', border:`1px solid ${color}33`, borderRadius:9, padding:'10px 14px', maxHeight:130, overflowY:'auto' }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
