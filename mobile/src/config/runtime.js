@@ -2,11 +2,13 @@
 // credentials or production secrets in this module or any EXPO_PUBLIC_* variable.
 export const DEMO_MODE = String(process.env.EXPO_PUBLIC_DEMO_MODE || '').toLowerCase() === 'true';
 
-// The public SmartHire web origin is deliberately separate from the API
-// origin. It is reserved only for an intentional future website continuation;
-// the app must not guess a URL from an API hostname or send people to
-// localhost. Native mock interviews do not use this value.
-export const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_URL?.replace(/\/$/, '') || '';
+// The public website origin is separate from the API: OA/interview attempts
+// are performed there on a laptop, not inside the mobile app. Reject release
+// placeholders and loopback addresses rather than opening a dead phone link.
+const configuredWebUrl = (process.env.EXPO_PUBLIC_WEB_URL || '').trim().replace(/\/$/, '');
+export const WEB_APP_URL = /^https?:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(configuredWebUrl)
+  && !/(?:YOUR-|\.example$|localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(configuredWebUrl)
+  ? configuredWebUrl : '';
 
 export const DEMO_NOTICE = 'Local sample data only. No SmartHire account, API, file upload, email, or push service is used.';
 

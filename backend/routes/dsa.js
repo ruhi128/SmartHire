@@ -904,11 +904,12 @@ router.get('/problems', auth, async (req, res) => {
     if (error) throw error;
 
     // For each problem, check if this student has solved it
-    const { data: solved } = await supabaseAdmin
+    const { data: solved, error: solvedError } = await supabaseAdmin
       .from('dsa_submissions')
       .select('problem_id')
       .eq('student_id', req.user.id)
       .eq('status', 'Accepted');
+    if (solvedError) throw solvedError; // Never mislabel every problem unsolved on a failed query.
 
     const solvedIds = new Set((solved || []).map(s => s.problem_id));
 
@@ -941,13 +942,14 @@ router.get('/problems/:id', auth, async (req, res) => {
     }
 
     // Fetch this student's previous submissions for this problem
-    const { data: submissions } = await supabaseAdmin
+    const { data: submissions, error: submissionsError } = await supabaseAdmin
       .from('dsa_submissions')
       .select('id, language, status, runtime_ms, memory_mb, submitted_at')
       .eq('student_id', req.user.id)
       .eq('problem_id', req.params.id)
       .order('submitted_at', { ascending: false })
       .limit(10);
+    if (submissionsError) throw submissionsError; // A failed history query is not zero attempts.
 
     const functionExecution = functionExecutionForClient(problem);
     // Never expose trusted test cases (expected outputs / runner metadata
@@ -1330,8 +1332,9 @@ router.get('/performance', auth, roles('student'), async (req, res) => {
     for (const sub of submissions) {
       const prob = sub.dsa_problems;
       if (!prob) continue;
-      const diff = prob.difficulty;
+      const diff = prob.difficulty || 'Unrated';
       if (!seenProblems.has(prob.id)) {
+        if (!difficultyMap[diff]) difficultyMap[diff] = { solved: 0, total: 0 };
         seenProblems.set(prob.id, solvedProblemIds.has(prob.id) ? 'Accepted' : sub.status);
         difficultyMap[diff].total++;
         if (solvedProblemIds.has(prob.id)) difficultyMap[diff].solved++;

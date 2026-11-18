@@ -475,6 +475,35 @@ function mockOaSummary(test) {
   };
 }
 
+function mockAttemptSummary(attempt) {
+  const test = state.mockTests.find((item) => item.id === attempt.test_id);
+  return {
+    id: attempt.id, testId: attempt.test_id,
+    testTitle: test?.title || 'Mock OA', testType: test?.type || null,
+    company: test?.companies?.name || null, companyLogo: test?.companies?.logo_url || null,
+    score: attempt.score, totalPossible: test?.total_marks ?? null,
+    percentage: attempt.pct, passed: numeric(attempt.pct) >= 50,
+    correct: attempt.passed_mcq || 0, wrong: attempt.wrong_mcq || 0,
+    skipped: attempt.skipped_mcq || 0, submittedAt: attempt.completed_at,
+    integrityScore: attempt.integrity_score ?? null,
+    violationCount: attempt.violation_count ?? null, terminated: attempt.terminated || false,
+  };
+}
+
+function companyAttemptSummary(attempt) {
+  const test = state.companyTests.find((item) => item.id === attempt.test_id);
+  return {
+    id: attempt.id, testId: attempt.test_id,
+    title: test?.title || 'Company OA', testType: test?.test_type || null,
+    company: test?.companies?.name || null,
+    score: attempt.score, maxScore: attempt.max_score,
+    pct: attempt.pct, grade: attempt.grade,
+    correct: attempt.correct_count || 0, wrong: attempt.wrong_count || 0,
+    skipped: attempt.skipped_count || 0, timeTaken: attempt.time_taken,
+    autoSubmitted: attempt.auto_submitted, submittedAt: attempt.completed_at,
+  };
+}
+
 function publicMockOaQuestion(question, index = 0) {
   const source = clone(question) || {};
   // Do not expose answers or explanations before submission, just as the live
@@ -493,6 +522,8 @@ function publicMockOaQuestion(question, index = 0) {
     starter_code: source.starter_code,
     examples: source.examples,
     code_constraints: source.code_constraints,
+    sample_input: source.sample_input || null,
+    sample_output: source.sample_output || null,
   };
 }
 
@@ -1212,27 +1243,26 @@ export const mockApi = {
       };
     },
     async history() {
-      const history = state.mockAttempts
+      return { history: state.mockAttempts
         .filter((attempt) => attempt.student_id === studentProfile.id)
-        .map((attempt) => {
-          const test = state.mockTests.find((item) => item.id === attempt.test_id);
-          return {
-            id: attempt.id,
-            testTitle: test?.title,
-            testType: test?.type,
-            company: test?.companies?.name,
-            companyLogo: test?.companies?.logo_url,
-            score: attempt.score,
-            percentage: attempt.pct,
-            passed: numeric(attempt.pct) >= 50,
-            submittedAt: attempt.completed_at,
-          };
-        });
-      return { history };
+        .map(mockAttemptSummary) };
+    },
+    async attemptResult(attemptId) {
+      const attempt = state.mockAttempts.find((item) => item.id === attemptId && item.student_id === studentProfile.id);
+      return attempt ? { attempt: mockAttemptSummary(attempt) } : apiError('Attempt not found', 404);
     },
   },
 
   companyOaApi: {
+    async history() {
+      return { history: state.companyAttempts
+        .filter((attempt) => attempt.student_id === studentProfile.id)
+        .map(companyAttemptSummary) };
+    },
+    async attemptResult(attemptId) {
+      const attempt = state.companyAttempts.find((item) => item.id === attemptId && item.student_id === studentProfile.id);
+      return attempt ? { attempt: companyAttemptSummary(attempt) } : apiError('Attempt not found', 404);
+    },
     async available() {
       const tests = state.companyTests
         .filter((test) => test.approval_status === 'approved' && test.is_active !== false)

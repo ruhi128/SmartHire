@@ -88,6 +88,12 @@ async function run() {
   );
   const mockHistory = await mockApi.mockOaApi.history();
   assert.equal(mockHistory.history[0].percentage, 100);
+  assert.equal(mockHistory.history[0].id, mockResult.attemptId);
+  const savedMockResult = await publicMockOaApi.attemptResult(mockResult.attemptId);
+  assert.equal(savedMockResult.attempt.totalPossible, 6);
+  assert.equal(savedMockResult.attempt.percentage, 100);
+  assert.equal(Object.hasOwn(savedMockResult.attempt, 'answers'), false);
+  await expectError(() => publicMockOaApi.attemptResult('another-students-attempt'), /not found/i);
 
   // Company OA: eligibility, redacted take payload, scoring, one attempt.
   const available = await mockApi.companyOaApi.available();
@@ -112,6 +118,12 @@ async function run() {
   );
   await expectError(() => mockApi.companyOaApi.take(companyTestId), /already attempted/i);
   await expectError(() => mockApi.companyOaApi.attempt(companyTestId, { answers: {} }), /already submitted/i);
+  const companyHistory = await publicCompanyOaApi.history();
+  assert.equal(companyHistory.history[0].pct, 100);
+  const savedCompanyResult = await publicCompanyOaApi.attemptResult(companyHistory.history[0].id);
+  assert.equal(savedCompanyResult.attempt.grade, 'A+');
+  assert.equal(Object.hasOwn(savedCompanyResult.attempt, 'answers'), false);
+  await expectError(() => publicCompanyOaApi.attemptResult('another-students-attempt'), /not found/i);
 
   // Recruiter/admin Company OA lifecycle: submit, view queue, approve, review.
   const created = await mockApi.companyOaApi.create({

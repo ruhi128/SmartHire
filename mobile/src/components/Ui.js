@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadow, spacing } from '../constants/theme';
 import { DEMO_MODE, WEB_APP_URL } from '../config/runtime';
+import { API_BASE_URL } from '../api/config';
 
 export function AppButton({ title, onPress, variant = 'primary', loading = false, disabled = false, style, compact = false, testID }) {
   const palette = {
@@ -62,7 +64,23 @@ export function Badge({ children, tone = 'neutral', style }) {
 }
 
 export function LoadingState({ label = 'Loading…' }) {
-  return <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /><Text style={styles.loadingText}>{label}</Text></View>;
+  const [takingLong, setTakingLong] = useState(false);
+  useEffect(() => {
+    if (DEMO_MODE) return undefined;
+    const timer = setTimeout(() => setTakingLong(true), 6000);
+    return () => clearTimeout(timer);
+  }, []);
+  return (
+    <View style={styles.center}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={styles.loadingText}>{label}</Text>
+      {takingLong && API_BASE_URL ? (
+        <Text selectable style={styles.slowHelp}>
+          Still waiting for SmartHire. If this does not finish, check {API_BASE_URL}/health in this phone’s browser. You can retry if the request times out.
+        </Text>
+      ) : null}
+    </View>
+  );
 }
 
 export function EmptyState({ title = 'Nothing here yet', body, action }) {
@@ -76,7 +94,7 @@ export function EmptyState({ title = 'Nothing here yet', body, action }) {
 }
 
 export function ErrorState({ message, onRetry }) {
-  return <View style={styles.empty}><Text style={styles.errorTitle}>Could not load this page</Text><Text style={styles.emptyBody}>{message}</Text>{onRetry ? <AppButton title="Try again" variant="outline" onPress={onRetry} compact style={styles.emptyAction} /> : null}</View>;
+  return <View style={styles.empty}><Text style={styles.errorTitle}>Could not load this page</Text><Text selectable style={styles.emptyBody}>{message}</Text>{onRetry ? <AppButton title="Try again" variant="outline" onPress={onRetry} compact style={styles.emptyAction} /> : null}</View>;
 }
 
 /**
@@ -155,6 +173,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: '700' },
   center: { flex: 1, minHeight: 260, alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
   loadingText: { marginTop: 12, color: colors.muted },
+  slowHelp: { marginTop: 12, color: colors.muted, lineHeight: 20, textAlign: 'center' },
   empty: { alignItems: 'center', justifyContent: 'center', minHeight: 220, padding: spacing.lg },
   emptyTitle: { color: colors.text, fontWeight: '800', fontSize: 18, textAlign: 'center' },
   errorTitle: { color: colors.danger, fontWeight: '800', fontSize: 18, textAlign: 'center' },

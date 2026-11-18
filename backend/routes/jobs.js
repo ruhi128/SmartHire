@@ -81,11 +81,12 @@ async function announceJobToStudents(job) {
 // has submitted a new job that needs their approval.
 async function notifyPlacementOfficers(job) {
   try {
-    const { data: officers } = await supabase
+    const { data: officers, error: officerError } = await supabase
       .from('users')
       .select('id, email')
       .eq('role', 'admin')
       .eq('is_active', true);
+    if (officerError) throw officerError;
 
     if (!officers || !officers.length) {
       console.warn('[notifyPlacementOfficers] no active placement officers found');
@@ -219,9 +220,11 @@ router.get('/', auth, async (req, res) => {
   if (req.user.role === 'student') {
     query = query.eq('status', 'active').eq('approval_status', 'approved');
   } else if (req.user.role === 'recruiter') {
-    // Recruiter sees their own company's jobs regardless of approval
-    const { data: company } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).single();
-    if (company) query = query.eq('company_id', company.id);
+    // A recruiter with no linked company must not fall through to all jobs.
+    const { data: company, error: companyError } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).maybeSingle();
+    if (companyError) return res.status(500).json({ error: 'Failed to find recruiter company.' });
+    if (!company) return res.json([]);
+    query = query.eq('company_id', company.id);
   }
   // Admin sees all
 
@@ -258,10 +261,20 @@ router.get('/pending', auth, roles('admin'), async (req, res) => {
 
 // ── GET /api/jobs/:id ─────────────────────────────────────────────────────────
 router.get('/:id', auth, async (req, res) => {
-  const { data, error } = await supabase
-    .from('job_postings').select(`*, companies(id, name, logo_url, website)`)
-    .eq('id', req.params.id).single();
-  if (error) return res.status(404).json({ error: 'Job not found.' });
+  let query = supabase.from('job_postings')
+    .select('*, companies(id, name, logo_url, website)')
+    .eq('id', req.params.id);
+  if (req.user.role === 'student') {
+    query = query.eq('status', 'active').eq('approval_status', 'approved');
+  } else if (req.user.role === 'recruiter') {
+    const { data: company, error: companyError } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).maybeSingle();
+    if (companyError) return res.status(500).json({ error: 'Failed to find recruiter company.' });
+    if (!company) return res.status(404).json({ error: 'Job not found.' });
+    query = query.eq('company_id', company.id);
+  }
+  const { data, error } = await query.maybeSingle();
+  if (error) return res.status(500).json({ error: 'Failed to fetch job.' });
+  if (!data) return res.status(404).json({ error: 'Job not found.' });
   res.json(data);
 });
 
@@ -278,13 +291,17 @@ router.post('/', auth, roles('recruiter', 'admin'), [
           package_lpa, job_type, deadline, drive_date, max_backlogs, rounds,
           jd_doc_url, eval_doc_url } = req.body;
 
-  // Get recruiter's company
+  // Only the administrator can choose an arbitrary company. Never trust a
+  // recruiter-supplied company_id, including when creating a pending job.
   let company_id = req.body.company_id;
-  if (req.user.role === 'recruiter' && !company_id) {
-    const { data: company } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).single();
+  if (req.user.role === 'recruiter') {
+    const { data: company, error: companyError } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).maybeSingle();
+    if (companyError) return res.status(500).json({ error: 'Failed to find recruiter company.' });
     if (!company) return res.status(403).json({ error: 'No company found for your account. Contact admin.' });
+    if (company_id && company_id !== company.id) return res.status(403).json({ error: 'You can only post jobs for your company.' });
     company_id = company.id;
   }
+  if (!company_id) return res.status(400).json({ error: 'A company is required.' });
 
   const jobRow = {
     company_id, title, description,
@@ -353,10 +370,12 @@ router.patch('/:id/approve', auth, roles('admin'), async (req, res) => {
     .from('job_postings')
     .update({ approval_status: newStatus, approval_note: reason || '' })
     .eq('id', req.params.id)
+    .eq('approval_status', 'pending')
     .select(`*, companies(name)`)
-    .single();
+    .maybeSingle();
 
-  if (error) return res.status(400).json({ error: error.message });
+  if (error) return res.status(500).json({ error: 'Failed to update job approval.' });
+  if (!job) return res.status(409).json({ error: 'Only pending jobs can be reviewed.' });
 
   // If approved — notify ONLY eligible students (branch + CGPA + backlog match).
   // No global announcement is created, so ineligible students are never notified.
@@ -377,20 +396,44 @@ router.put('/:id', auth, roles('recruiter', 'admin'), async (req, res) => {
     'jd_doc_url','eval_doc_url'];
   const updates = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) updates[k] = req.body[k]; });
+  if (!Object.keys(updates).length) return res.status(400).json({ error: 'No valid updates provided.' });
 
-  let { data, error } = await supabase.from('job_postings').update(updates).eq('id', req.params.id).select().single();
+  let companyId = null;
+  if (req.user.role === 'recruiter') {
+    const { data: company, error: companyError } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).maybeSingle();
+    if (companyError) return res.status(500).json({ error: 'Failed to find recruiter company.' });
+    if (!company) return res.status(403).json({ error: 'No company found for your account.' });
+    companyId = company.id;
+  }
+  const updateJob = (payload) => {
+    let query = supabase.from('job_postings').update(payload).eq('id', req.params.id);
+    if (companyId) query = query.eq('company_id', companyId);
+    return query.select().maybeSingle();
+  };
+  let { data, error } = await updateJob(updates);
   if (error && /jd_doc_url|eval_doc_url|column/i.test(error.message)) {
     delete updates.jd_doc_url;
     delete updates.eval_doc_url;
-    ({ data, error } = await supabase.from('job_postings').update(updates).eq('id', req.params.id).select().single());
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'Job document columns are not available.' });
+    ({ data, error } = await updateJob(updates));
   }
   if (error) return res.status(400).json({ error: error.message });
+  if (!data) return res.status(404).json({ error: 'Job not found for your account.' });
   res.json({ message: 'Job updated.', job: data });
 });
 
 // ── DELETE /api/jobs/:id ─────────────────────────────────────────────────────
 router.delete('/:id', auth, roles('recruiter', 'admin'), async (req, res) => {
-  await supabase.from('job_postings').update({ status: 'closed' }).eq('id', req.params.id);
+  let query = supabase.from('job_postings').update({ status: 'closed' }).eq('id', req.params.id);
+  if (req.user.role === 'recruiter') {
+    const { data: company, error: companyError } = await supabase.from('companies').select('id').eq('recruiter_id', req.user.id).maybeSingle();
+    if (companyError) return res.status(500).json({ error: 'Failed to find recruiter company.' });
+    if (!company) return res.status(403).json({ error: 'No company found for your account.' });
+    query = query.eq('company_id', company.id);
+  }
+  const { data, error } = await query.select('id').maybeSingle();
+  if (error) return res.status(500).json({ error: 'Failed to close job.' });
+  if (!data) return res.status(404).json({ error: 'Job not found for your account.' });
   res.json({ message: 'Job closed.' });
 });
 

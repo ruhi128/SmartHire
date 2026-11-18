@@ -1,6 +1,6 @@
-const STOP_WORDS = new Set('the a an in on at for with and or to of is are was were be been have has will would should can this that they you we it as by from but not our your their its also more than about into through during before after above below between each such when while including across under within without per via able must shall etc using used use plus well both all'.split(' '));
+const STOP_WORDS = new Set('the a an in on at for with and or to of is are was were be been have has will would should can this that they you we it as by from but not our your their its also more than about into through during before after above below between each such when while although however including across under within without per via able must shall etc using used use plus well both all'.split(' '));
 const SKILLS = [
-  'python','java','javascript','typescript','c++','c#','golang','rust','ruby','php','swift','kotlin','sql','html','css','scala','dart','bash','shell',
+  'python','java','javascript','typescript','c++','c#','golang','rust','ruby','php','swift','kotlin','sql','html','css','scala','r','dart','bash','shell',
   'react','angular','vue','next.js','node.js','express','spring boot','spring','django','flask','fastapi','tailwind','bootstrap','redux','pytorch','tensorflow','pandas','numpy','scikit','graphql',
   'aws','azure','gcp','docker','kubernetes','jenkins','git','github','gitlab','linux','ci/cd','terraform','postgresql','mongodb','redis','mysql','sqlite','kafka','firebase','supabase',
   'system design','microservices','rest api','restful api','data structures','algorithms','agile','scrum','unit testing','test driven development','cloud computing','machine learning','deep learning','object oriented programming','full stack','devops','api integration','database management'
@@ -12,7 +12,7 @@ export const SAMPLE_JD = `Job Title: Full Stack Software Engineer\nExperience Le
 function found(value, text) { const escaped = value.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&'); const boundary = /[+#/.]/.test(value) ? '(^|[^a-zA-Z0-9])' + escaped + '([^a-zA-Z0-9]|$)' : '\\b' + escaped + '\\b'; return new RegExp(boundary, 'i').test(text); }
 function tokens(text) { return text.toLowerCase().replace(/[^\w\s+#.-]/g, ' ').split(/\s+/).filter((word) => word.length > 2 && !STOP_WORDS.has(word)); }
 export function analyzeAts(resumeText, jobDescription) {
-  const resume = resumeText || ''; const jd = jobDescription || ''; const lowResume = resume.toLowerCase(); const lowJd = jd.toLowerCase();
+  const resume = resumeText || ''; const jd = jobDescription || ''; const lowResume = resume.toLowerCase().replace(/['’]/g, ''); const lowJd = jd.toLowerCase().replace(/['’]/g, '');
   const jdSkills = SKILLS.filter((skill) => found(skill, lowJd)); const matchedSkills = jdSkills.filter((skill) => found(skill, lowResume)); const missingSkills = jdSkills.filter((skill) => !found(skill, lowResume));
   const techScore = jdSkills.length ? (matchedSkills.length / jdSkills.length) * 35 : 25;
   const metrics = resume.match(/(\d+(?:\.\d+)?%|\d+x|\$\d+[\d,kmb]*|\b\d{2,}\+?\s*(?:users|clients|requests|ms|seconds|million|thousand|tb|gb|records|downloads|dollars)\b)/gi) || [];
@@ -34,5 +34,5 @@ export function analyzeAts(resumeText, jobDescription) {
     { label: 'JD keyword overlap', score: Math.round(keywordScore), max: 10, detail: `${matches.length}/${jdTokens.length} unique keywords found`, color: '#7C3AED' },
     { label: 'Section structure', score: structuralScore, max: 10, detail: `${Object.values(sections).filter(Boolean).length}/7 standard sections found`, color: '#D97706' },
   ];
-  return { score, grade, missingSkills: [...new Set(missingSkills)], matchedSkills, missingKeywords, missingPhrases, weakPhrases, metrics, sections, breakdown, wordCount: tokens(resume).length };
+  return { score, grade, missingSkills: [...new Set(missingSkills)], matchedSkills, missingKeywords, missingPhrases, weakPhrases, metrics, sections, breakdown, wordCount: resume.split(/\s+/).filter(Boolean).length };
 }

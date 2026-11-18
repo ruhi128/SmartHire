@@ -115,6 +115,7 @@ function createRouteHarness(problem) {
   };
   const inserted = [];
   let performanceRows = [];
+  let submissionReadError = null;
 
   const supabase = {
     from(table) {
@@ -136,7 +137,8 @@ function createRouteHarness(problem) {
         },
         then(resolve, reject) {
           const rows = table === 'dsa_submissions' ? performanceRows : [];
-          return Promise.resolve({ data: deepClone(rows), error: null }).then(resolve, reject);
+          const error = table === 'dsa_submissions' ? submissionReadError : null;
+          return Promise.resolve({ data: error ? null : deepClone(rows), error }).then(resolve, reject);
         },
       };
       return query;
@@ -165,6 +167,7 @@ function createRouteHarness(problem) {
     router,
     inserted,
     setPerformanceRows(rows) { performanceRows = rows; },
+    setSubmissionReadError(error) { submissionReadError = error; },
   };
 }
 
@@ -347,7 +350,7 @@ function testPerformance(harness) {
 
 async function testRouteContract() {
   const problem = typedProblem();
-  const { router, inserted, setPerformanceRows } = createRouteHarness(problem);
+  const { router, inserted, setPerformanceRows, setSubmissionReadError } = createRouteHarness(problem);
   const student = { id: 'student-1', role: 'student' };
 
   const detail = await invoke(router.getHandlers['/problems/:id'], { user: student, params: { id: problem.id } });
@@ -398,6 +401,24 @@ async function testRouteContract() {
   assert.equal(performance.statusCode, 200);
   assert.equal(performance.body.uniqueProblemsSolved, 1);
   assert.deepEqual(performance.body.byDifficulty.Easy, { solved: 1, total: 1 });
+
+  setPerformanceRows([
+    { id: 'custom-difficulty', status: 'Accepted', language: 'python', runtime_ms: 1,
+      submitted_at: '2026-10-12T12:00:00.000Z',
+      dsa_problems: { id: 'custom', title: 'Custom problem', difficulty: 'Expert', tags: [] } },
+  ]);
+  const customDifficulty = await invoke(router.getHandlers['/performance'], { user: student });
+  assert.equal(customDifficulty.statusCode, 200);
+  assert.deepEqual(customDifficulty.body.byDifficulty.Expert, { solved: 1, total: 1 });
+
+  // A missing submission table/migration must show an error, never silently
+  // report that every problem is unsolved and the student has no history.
+  setSubmissionReadError(new Error('simulated DSA submissions read failure'));
+  const list = await invoke(router.getHandlers['/problems'], { user: student, query: {} });
+  const failedDetail = await invoke(router.getHandlers['/problems/:id'], { user: student, params: { id: problem.id } });
+  assert.equal(list.statusCode, 500);
+  assert.equal(failedDetail.statusCode, 500);
+  setSubmissionReadError(null);
 }
 
 async function main() {

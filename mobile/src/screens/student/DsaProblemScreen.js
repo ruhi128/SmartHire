@@ -8,6 +8,9 @@ import { AppButton, Badge, Card, ErrorState, FormInput, LoadingState, SectionTit
 import useAsyncData from '../../utils/useAsyncData';
 import { colors, spacing } from '../../constants/theme';
 import { DEMO_MODE } from '../../config/runtime';
+import { apiErrorMessage } from '../../api/client';
+import { useAuth } from '../../context/AuthContext';
+import { dsaDraftKey } from '../../utils/dsaDraftKey';
 
 const LANGUAGES = [
   ['python', 'Python'],
@@ -37,10 +40,9 @@ function demoStarter(problem, language) {
   return exactStarter(problem, language) || source.javascript || source.python || '';
 }
 
-// Same contract as the website editor (DSACoding.jsx getCode/saveCode):
-// code is auto-saved per problem + language on the device and restored on
-// reopen; Reset restores the exact starter snippet for that language.
-const draftKey = (problemId, language) => `dsa_code_${problemId}_${language}`;
+// As on the website, code is auto-saved per problem + language on this device;
+// unlike the shared browser key, mobile also scopes drafts to the signed-in
+// account so another student using this phone cannot see the previous draft.
 
 function formatJson(value) {
   try {
@@ -62,10 +64,15 @@ function displayValue(value) {
 }
 
 export default function DsaProblemScreen({ navigation, route }) {
-  const { problemId } = route.params;
-  const { data, loading, error, reload } = useAsyncData(() => dsaApi.problem(problemId), [problemId]);
+  const { user } = useAuth();
+  const problemId = route.params?.problemId;
+  const { data, setData, loading, error, reload } = useAsyncData(
+    () => problemId ? dsaApi.problem(problemId) : Promise.resolve(null),
+    [problemId],
+  );
   const [language, setLanguage] = useState('python');
   const [code, setCode] = useState('');
+  const [codeReady, setCodeReady] = useState(false);
   const [argumentsText, setArgumentsText] = useState('[]');
   const [customInput, setCustomInput] = useState('');
   const [running, setRunning] = useState(false);
@@ -93,19 +100,29 @@ export default function DsaProblemScreen({ navigation, route }) {
   useEffect(() => {
     if (!problem) return;
     let cancelled = false;
+    setCodeReady(false);
     const starter = DEMO_MODE
       ? demoStarter(problem, language)
       : exactStarter(problem, language, functionExecution);
-    // Restore the saved draft for this problem/language, like the website.
-    AsyncStorage.getItem(draftKey(problem.id, language))
-      .then((saved) => { if (!cancelled) setCode(saved || starter); })
-      .catch(() => { if (!cancelled) setCode(starter); });
+    // Do not execute another account's or language's code while a saved
+    // draft loads. An unavailable identity gets an in-memory starter only.
+    const key = dsaDraftKey(user?.id, problem.id, language);
+    if (key) {
+      AsyncStorage.getItem(key)
+        .then((saved) => {
+          if (!cancelled) { setCode(saved ?? starter); setCodeReady(true); }
+        })
+        .catch(() => {
+          if (!cancelled) { setCode(starter); setCodeReady(true); }
+        });
+    } else { setCode(starter); setCodeReady(true); }
     return () => { cancelled = true; };
-  }, [problem?.id, language]);
+  }, [problem?.id, language, user?.id]);
 
   const changeCode = (value) => {
     setCode(value);
-    if (problem) AsyncStorage.setItem(draftKey(problem.id, language), value || '').catch(() => {});
+    const key = dsaDraftKey(user?.id, problem?.id, language);
+    if (key) AsyncStorage.setItem(key, value || '').catch(() => {});
   };
 
   const resetCode = () => {
@@ -115,7 +132,8 @@ export default function DsaProblemScreen({ navigation, route }) {
       : exactStarter(problem, language, functionExecution);
     setCode(starter);
     setOutput(null);
-    AsyncStorage.removeItem(draftKey(problem.id, language)).catch(() => {});
+    const key = dsaDraftKey(user?.id, problem.id, language);
+    if (key) AsyncStorage.removeItem(key).catch(() => {});
   };
 
   useEffect(() => {
@@ -140,7 +158,7 @@ export default function DsaProblemScreen({ navigation, route }) {
     : (!DEMO_MODE && typedAvailable && !usableTypedLanguages.length
       ? 'This problem has a verified function runner, but no Python or JavaScript starter template is configured. It is intentionally unavailable on mobile rather than being graded incorrectly.'
       : null);
-  const canExecute = DEMO_MODE || languageIsRunnable;
+  const canExecute = codeReady && (DEMO_MODE || languageIsRunnable);
 
   const run = async () => {
     if (!canExecute) {
@@ -171,7 +189,7 @@ export default function DsaProblemScreen({ navigation, route }) {
       setOutput(result);
     } catch (requestError) {
       setOutput({
-        stderr: requestError?.response?.data?.error || 'Could not run code.',
+        stderr: apiErrorMessage(requestError, 'Could not run code.'),
         error: requestError?.response?.data?.code,
         verdict: 'Error',
       });
@@ -197,9 +215,21 @@ export default function DsaProblemScreen({ navigation, route }) {
         ? await dsaApi.submit({ problemId, code, language })
         : await dsaApi.submitFunction({ problemId, code, language });
       setOutput(result);
+      const submissionId = result?.submissionId || result?.submission?.id;
+      if (submissionId) {
+        // The server (or offline demo) has saved the attempt. Show it now
+        // without requiring the student to leave and reopen the problem.
+        setData((old) => ({
+          ...old,
+          submissions: [
+            { id: submissionId, language, status: result.status, submitted_at: result?.submission?.submitted_at || new Date().toISOString() },
+            ...(old?.submissions || []).filter((item) => item.id !== submissionId),
+          ].slice(0, 10),
+        }));
+      }
     } catch (requestError) {
       setOutput({
-        stderr: requestError?.response?.data?.error || 'Could not submit code.',
+        stderr: apiErrorMessage(requestError, 'Could not submit code.'),
         error: requestError?.response?.data?.code,
         verdict: 'Error',
       });
@@ -268,7 +298,7 @@ export default function DsaProblemScreen({ navigation, route }) {
               <Pressable
                 key={value}
                 disabled={!isSupported}
-                onPress={() => setLanguage(value)}
+                onPress={() => { setCodeReady(false); setLanguage(value); setOutput(null); }}
                 style={[styles.language, selected && styles.languageActive, !isSupported && styles.languageDisabled]}
               >
                 <Text style={[styles.languageText, selected && styles.languageTextActive, !isSupported && styles.languageTextDisabled]}>{label}</Text>
@@ -289,7 +319,7 @@ export default function DsaProblemScreen({ navigation, route }) {
             spellCheck={false}
             textAlignVertical="top"
             style={[styles.code, !canExecute && styles.codeDisabled]}
-            placeholder={canExecute ? 'Write your solution' : 'This problem is unavailable for mobile function grading.'}
+            placeholder={codeReady ? (canExecute ? 'Write your solution' : 'This problem is unavailable for mobile function grading.') : 'Loading saved code…'}
             placeholderTextColor="#64748B"
           />
         </View>

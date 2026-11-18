@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,9 +14,9 @@ import { DEMO_MODE } from '../../config/runtime';
 import { useAuth } from '../../context/AuthContext';
 
 const PLACEMENT_OPTIONS = [
-  { value: 'unplaced', label: 'Unplaced', icon: 'time-outline' },
-  { value: 'placed', label: 'Placed', icon: 'checkmark-circle-outline' },
-  { value: 'opted_out', label: 'Opted out', icon: 'remove-circle-outline' },
+  { value: 'unplaced', label: 'Unplaced' },
+  { value: 'placed', label: 'Placed' },
+  { value: 'opted_out', label: 'Opted out' },
 ];
 
 
@@ -57,7 +57,6 @@ function fieldsFrom(profile = {}) {
     tenth_percent: stringValue(profile.tenth_percent),
     twelfth_percent: stringValue(profile.twelfth_percent),
     backlogs: profile.backlogs === undefined || profile.backlogs === null ? '0' : String(profile.backlogs),
-    placement_status: profile.placement_status || 'unplaced',
     skillsText: (profile.skills || []).join(', '),
     certificationsText: (profile.certifications || []).join(', '),
     linkedin_url: profile.linkedin_url || '',
@@ -104,7 +103,7 @@ export default function ProfileScreen({ navigation }) {
     setAvatarFailed(false);
   }, [profile.avatar_url, profile.avatar_updated_at, user?.avatar_url, user?.avatar_updated_at]);
 
-  const currentPlacement = useMemo(() => placementOption(form.placement_status), [form.placement_status]);
+  const currentPlacement = placementOption(profile.placement_status);
   const avatarPath = profile.avatar_url || user?.avatar_url || null;
   const avatarSource = avatarPath && !DEMO_MODE && session?.token && !avatarFailed
     ? { uri: apiUrl(avatarPath), headers: { Authorization: `Bearer ${session.token}` } }
@@ -118,7 +117,7 @@ export default function ProfileScreen({ navigation }) {
       || numberInRange(form.cgpa, 0, 10, 'CGPA')
       || numberInRange(form.tenth_percent, 0, 100, '10th percentage')
       || numberInRange(form.twelfth_percent, 0, 100, '12th percentage')
-      || numberInRange(form.backlogs, 0, 99, 'Backlogs', { integer: true })
+      || numberInRange(form.backlogs, 0, 20, 'Backlogs', { integer: true })
     );
   };
 
@@ -132,7 +131,10 @@ export default function ProfileScreen({ navigation }) {
     setSaving(true);
     try {
       const response = await studentApi.updateProfile({
-        ...form,
+        full_name: form.full_name, phone: form.phone, branch: form.branch,
+        semester: form.semester, cgpa: form.cgpa,
+        tenth_percent: form.tenth_percent, twelfth_percent: form.twelfth_percent,
+        backlogs: form.backlogs, linkedin_url: form.linkedin_url, github_url: form.github_url,
         skills: form.skillsText.split(',').map((value) => value.trim()).filter(Boolean),
         certifications: form.certificationsText.split(',').map((value) => value.trim()).filter(Boolean),
       });
@@ -246,7 +248,9 @@ export default function ProfileScreen({ navigation }) {
       if (updateUserLocally) await updateUserLocally(patch);
       Alert.alert('Profile photo updated', response.message || 'Your new photo is ready.');
     } catch (err) {
-      Alert.alert('Could not update photo', apiErrorMessage(err, 'Choose a JPEG, PNG, or WebP image no larger than 2 MB.'));
+      Alert.alert('Could not update photo', err?.response?.status === 404
+        ? 'Profile-photo upload is not installed on the deployed SmartHire backend yet. Ask the backend owner to deploy /api/auth/avatar and migration 006.'
+        : apiErrorMessage(err, 'Choose a JPEG, PNG, or WebP image no larger than 2 MB.'));
     } finally {
       setUploadingAvatar(false);
     }
@@ -268,7 +272,9 @@ export default function ProfileScreen({ navigation }) {
             if (updateUserLocally) await updateUserLocally(patch);
             Alert.alert('Profile photo removed', response.message || 'Your initials will be shown.');
           } catch (err) {
-            Alert.alert('Could not remove photo', apiErrorMessage(err));
+            Alert.alert('Could not remove photo', err?.response?.status === 404
+              ? 'Profile-photo removal needs an updated SmartHire backend. Ask the backend owner to deploy /api/auth/avatar and migration 006.'
+              : apiErrorMessage(err));
           } finally {
             setUploadingAvatar(false);
           }
@@ -347,25 +353,8 @@ export default function ProfileScreen({ navigation }) {
           <FormInput style={styles.half} label="12th percentage" value={form.twelfth_percent} onChangeText={set('twelfth_percent')} keyboardType="decimal-pad" placeholder="0–100" />
         </View>
         <FormInput label="Active backlogs" value={form.backlogs} onChangeText={set('backlogs')} keyboardType="number-pad" />
-        <Text style={styles.fieldLabel}>Placement status</Text>
-        <Text style={styles.fieldHelp}>This is saved with the same profile record used by the website.</Text>
-        <View style={styles.placementChoices}>
-          {PLACEMENT_OPTIONS.map((option) => {
-            const selected = canonicalPlacementStatus(form.placement_status) === option.value;
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                onPress={() => set('placement_status')(option.value)}
-                style={({ pressed }) => [styles.placementChoice, selected && styles.placementChoiceActive, pressed && styles.pressed]}
-              >
-                <Ionicons name={option.icon} size={16} color={selected ? colors.primary : colors.muted} />
-                <Text style={[styles.placementChoiceText, selected && styles.placementChoiceTextActive]}>{option.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Text style={styles.fieldLabel}>Placement status: {currentPlacement.label}</Text>
+        <Text style={styles.fieldHelp}>Your placement team manages this status and your roll number.</Text>
       </Card>
 
       <SectionTitle title="Skills and links" />
@@ -440,11 +429,6 @@ const styles = StyleSheet.create({
   half: { flex: 1 },
   fieldLabel: { color: colors.text, fontWeight: '700', marginBottom: 4, fontSize: 14 },
   fieldHelp: { color: colors.muted, fontSize: 12, lineHeight: 17, marginBottom: spacing.sm },
-  placementChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  placementChoice: { flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 9, backgroundColor: colors.white },
-  placementChoiceActive: { borderColor: colors.primary, backgroundColor: '#EEF2FF' },
-  placementChoiceText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  placementChoiceTextActive: { color: colors.primary },
   pressed: { opacity: 0.78 },
   resumeText: { color: colors.muted, lineHeight: 21 },
   smallButton: { marginTop: 10 },

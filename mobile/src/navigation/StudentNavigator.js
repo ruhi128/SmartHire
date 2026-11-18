@@ -15,6 +15,7 @@ import DsaListScreen from '../screens/student/DsaListScreen';
 import DsaProblemScreen from '../screens/student/DsaProblemScreen';
 import DsaPerformanceScreen from '../screens/student/DsaPerformanceScreen';
 import MockOaListScreen from '../screens/student/MockOaListScreen';
+import MockOaHistoryScreen from '../screens/student/MockOaHistoryScreen';
 import MockOaAttemptScreen from '../screens/student/MockOaAttemptScreen';
 import MockOaResultScreen from '../screens/student/MockOaResultScreen';
 import CompanyOaListScreen from '../screens/student/CompanyOaListScreen';
@@ -46,14 +47,15 @@ function PracticeStack() {
   return <Stack.Navigator screenOptions={stackOptions}>
     <Stack.Screen name="PracticeHub" component={PracticeHubScreen} />
     <Stack.Screen name="AptitudeTests" component={AptitudeTestsScreen} />
-    {/* Timed assessment routes run natively and share protected server-side
-        scoring contracts; no answer keys are sent to the client before submit. */}
+    {/* Aptitude runs on phone; OA and interview attempt routes below remain
+        gated, while their saved results and history remain readable. */}
     <Stack.Screen name="AptitudeAttempt" component={AptitudeAttemptScreen} />
     <Stack.Screen name="AptitudeResult" component={AptitudeResultScreen} />
     <Stack.Screen name="DsaList" component={DsaListScreen} />
     <Stack.Screen name="DsaProblem" component={DsaProblemScreen} />
     <Stack.Screen name="DsaPerformance" component={DsaPerformanceScreen} />
     <Stack.Screen name="MockOaList" component={MockOaListScreen} />
+    <Stack.Screen name="MockOaHistory" component={MockOaHistoryScreen} />
     <Stack.Screen name="MockOaAttempt" component={MockOaAttemptScreen} />
     <Stack.Screen name="MockOaResult" component={MockOaResultScreen} />
     <Stack.Screen name="CompanyOaList" component={CompanyOaListScreen} />

@@ -17,7 +17,7 @@ transporter.verify((err) => {
 });
 
 const FROM   = `"CampusReady T&P" <${process.env.EMAIL_USER}>`;
-const PORTAL = process.env.CLIENT_URL || 'http://localhost:3000';
+const PORTAL = (process.env.CLIENT_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 
 // ── Low-level send ──
 async function sendMail(to, subject, html) {

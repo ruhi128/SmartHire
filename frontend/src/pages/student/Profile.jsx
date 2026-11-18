@@ -6,7 +6,6 @@ import GlowCard from '../../components/GlowCard';
 import {
   User, Mail, Phone, Github, Linkedin, BookOpen,
   Award, Edit3, Save, X, CheckCircle, Loader2, Camera, Trash2,
-  MapPin, Calendar, TrendingUp, Shield
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -27,6 +26,8 @@ export default function Profile() {
   const [form,       setForm]       = useState({});
   const [saving,     setSaving]     = useState(false);
   const [loading,    setLoading]    = useState(true);
+  const [loadError,  setLoadError]  = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [skillInput, setSkillInput] = useState('');
   const [certInput,  setCertInput]  = useState('');
   const [activeTab,  setActiveTab]  = useState('overview');
@@ -36,63 +37,52 @@ export default function Profile() {
   const avatarInputRef = useRef(null);
 
   useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(null);
     studentAPI.getProfile()
       .then(r => {
-        const p = r.data?.profile || r.data || {};
+        if (!active) return;
+        const p = r.data?.profile;
+        if (!p) throw new Error('The server did not return a profile.');
         const merged = {
-          full_name:        p.full_name || user?.name || 'Vaibhavi Sawant',
-          email:            p.email || user?.email || 'vaibhavisawant045@gmail.com',
-          cgpa:             p.cgpa || 9.0,
-          branch:           p.branch || 'IT',
-          roll_number:      p.roll_number || '21IT104',
-          semester:         p.semester || 7,
-          phone:            p.phone || '+91 98765 43210',
-          tenth_percent:    p.tenth_percent || 89.4,
-          twelfth_percent:  p.twelfth_percent || 86.8,
-          backlogs:         p.backlogs ?? 0,
-          skills:           (p.skills && p.skills.length > 0) ? p.skills : ['Java', 'Python', 'SQL', 'React.js', 'Data Structures', 'REST APIs'],
-          certifications:   (p.certifications && p.certifications.length > 0) ? p.certifications : ['AWS Cloud Practitioner', 'HackerRank Problem Solving (Gold)'],
+          full_name: p.full_name || user?.name || '',
+          email: p.email || user?.email || '',
+          cgpa: p.cgpa ?? null,
+          branch: p.branch || '',
+          roll_number: p.roll_number || '',
+          semester: p.semester ?? null,
+          phone: p.phone || '',
+          linkedin_url: p.linkedin_url || '',
+          github_url: p.github_url || '',
+          tenth_percent: p.tenth_percent ?? null,
+          twelfth_percent: p.twelfth_percent ?? null,
+          backlogs: p.backlogs ?? 0,
+          skills: Array.isArray(p.skills) ? p.skills : [],
+          certifications: Array.isArray(p.certifications) ? p.certifications : [],
           placement_status: p.placement_status || 'unplaced',
-          resume_url:       p.resume_url || '',
+          resume_url: p.resume_url || '',
+          avatar_url: p.avatar_url || null,
+          avatar_updated_at: p.avatar_updated_at || null,
         };
         setProfile(merged);
         setForm(merged);
       })
-      .catch(() => {
-        const demo = {
-          full_name:        user?.name || 'Vaibhavi Sawant',
-          email:            user?.email || 'vaibhavisawant045@gmail.com',
-          cgpa:             9.0,
-          branch:           'IT',
-          roll_number:      '21IT104',
-          semester:         7,
-          phone:            '+91 98765 43210',
-          tenth_percent:    89.4,
-          twelfth_percent:  86.8,
-          backlogs:         0,
-          skills:           ['Java', 'Python', 'SQL', 'React.js', 'Data Structures', 'REST APIs'],
-          certifications:   ['AWS Cloud Practitioner', 'HackerRank Problem Solving (Gold)'],
-          placement_status: 'unplaced',
-          resume_url:       '',
-        };
-        setProfile(demo);
-        setForm(demo);
-      })
-      .finally(() => setLoading(false));
-  }, [user]);
+      .catch((err) => { if (active) setLoadError(err.response?.data?.error || err.message || 'Could not load profile.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user?.id, refreshKey]);
 
   // Avatar files live in a private bucket. Fetch them with Axios so the
   // existing bearer token is attached; a normal <img src> cannot do that.
-  const avatarMarker = profile?.avatar_url || user?.avatar_url || null;
-  const avatarRevision = profile?.avatar_updated_at || user?.avatar_updated_at || null;
+  const avatarMarker = profile ? profile.avatar_url : (user?.avatar_url || null);
+  const avatarRevision = profile ? profile.avatar_updated_at : (user?.avatar_updated_at || null);
 
   useEffect(() => {
     let active = true;
     let objectUrl = null;
-    if (!avatarMarker) {
-      setAvatarUrl(null);
-      return () => {};
-    }
+    setAvatarUrl(null);
+    if (!avatarMarker) return () => {};
 
     authAPI.getAvatar()
       .then((response) => {
@@ -114,7 +104,7 @@ export default function Profile() {
 
   const isAllowedAvatarFile = (file) => {
     if (!file) return false;
-    if (['image/jpeg', 'image/png', 'image/webp'].includes(String(file.type || '').toLowerCase())) return true;
+    if (file.type) return ['image/jpeg', 'image/png', 'image/webp'].includes(file.type.toLowerCase());
     return /\.(jpe?g|png|webp)$/i.test(file.name || '');
   };
 
@@ -176,27 +166,55 @@ export default function Profile() {
       toast.error('Full name is required');
       return;
     }
-    if (form.cgpa && (isNaN(form.cgpa) || form.cgpa < 0 || form.cgpa > 10)) {
-      toast.error('CGPA must be between 0 and 10');
-      return;
+    const optionalNumber = (value, label, min, max, whole = false) => {
+      if (value === null || value === undefined || String(value).trim() === '') return null;
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed < min || parsed > max || (whole && !Number.isInteger(parsed))) {
+        toast.error(`${label} must be ${whole ? 'a whole number ' : ''}between ${min} and ${max}.`);
+        return undefined;
+      }
+      return parsed;
+    };
+    const cgpa = optionalNumber(form.cgpa, 'CGPA', 0, 10);
+    const tenth = optionalNumber(form.tenth_percent, '10th percentage', 0, 100);
+    const twelfth = optionalNumber(form.twelfth_percent, '12th percentage', 0, 100);
+    const backlogs = optionalNumber(form.backlogs, 'Backlogs', 0, 20, true);
+    const semester = optionalNumber(form.semester, 'Semester', 1, 8, true);
+    if ([cgpa, tenth, twelfth, backlogs, semester].includes(undefined)) return;
+
+    for (const field of ['linkedin_url', 'github_url']) {
+      const value = String(form[field] || '').trim();
+      if (!value) continue;
+      try {
+        const url = new URL(value);
+        if (!['https:', 'http:'].includes(url.protocol) || !url.hostname || url.username || url.password) throw new Error('Invalid URL');
+      } catch {
+        toast.error(`${field === 'linkedin_url' ? 'LinkedIn' : 'GitHub'} must be an http(s) URL.`);
+        return;
+      }
     }
 
     setSaving(true);
     try {
       const payload = {
-        ...form,
-        cgpa:            form.cgpa            ? parseFloat(form.cgpa)            : null,
-        tenth_percent:   form.tenth_percent   ? parseFloat(form.tenth_percent)   : null,
-        twelfth_percent: form.twelfth_percent ? parseFloat(form.twelfth_percent) : null,
-        backlogs:        form.backlogs        ? parseInt(form.backlogs)           : 0,
-        semester:        form.semester        ? parseInt(form.semester)           : null,
-        skills:          form.skills          || [],
-        certifications:  form.certifications  || [],
+        full_name: form.full_name.trim(),
+        phone: form.phone,
+        branch: form.branch,
+        semester,
+        cgpa,
+        tenth_percent: tenth,
+        twelfth_percent: twelfth,
+        backlogs: backlogs ?? 0,
+        skills: form.skills || [],
+        certifications: form.certifications || [],
+        linkedin_url: form.linkedin_url?.trim() || null,
+        github_url: form.github_url?.trim() || null,
       };
 
       const r = await studentAPI.updateProfile(payload);
-      // Backend returns { profile: {...} } — use that as source of truth
-      const saved = r.data?.profile || form;
+      // A save is successful only when the server confirms the persisted row.
+      const saved = r.data?.profile;
+      if (!saved || typeof saved !== 'object') throw new Error('The server did not confirm the saved profile.');
       setProfile(saved);
       setForm(saved);
       if (updateUserLocally) updateUserLocally({ name: saved.full_name });
@@ -204,7 +222,7 @@ export default function Profile() {
       toast.success('Profile saved successfully!');
     } catch (err) {
       console.error('Profile save error:', err);
-      const msg = err.response?.data?.error || 'Update failed. Please try again.';
+      const msg = err.response?.data?.error || err.message || 'Update failed. Please try again.';
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -246,14 +264,21 @@ export default function Profile() {
 
   // ── Loading state ────────────────────────────────────────────────────────
   if (loading) return (
-    <div style={{ padding: 24, textAlign: 'center', paddingTop: 80 }}>
+    <div style={{ padding: '80px 24px 24px', textAlign: 'center' }}>
       <Loader2 size={28} color={CYAN} style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }} />
       <p style={{ color: '#475569', marginTop: 12 }}>Loading profile...</p>
     </div>
   );
 
+  if (loadError || !profile) return (
+    <div style={{ padding: '70px 24px 24px', textAlign: 'center' }}>
+      <p role="alert" style={{ color: RED }}>{loadError || 'Could not load your profile.'}</p>
+      <button type="button" style={BTN(CYAN)} onClick={() => setRefreshKey(key => key + 1)}>Retry</button>
+    </div>
+  );
+
   const F = form;
-  const statusInfo = PLACEMENT_STATUSES.find(s => s.value === F.placement_status) || PLACEMENT_STATUSES[0];
+  const statusInfo = PLACEMENT_STATUSES.find(s => s.value === profile.placement_status) || PLACEMENT_STATUSES[0];
   const cgpaVal    = parseFloat(F.cgpa);
   const cgpaColor  = cgpaVal >= 8 ? GREEN : cgpaVal >= 6 ? AMBER : cgpaVal > 0 ? RED : '#475569';
 
@@ -388,16 +413,9 @@ export default function Profile() {
                 <span style={{ fontSize: 12, color: '#64748b' }}>{F.semester ? `Sem ${F.semester}` : '—'}</span>
               )}
 
-              {editing ? (
-                <select value={F.placement_status || 'unplaced'} onChange={e => set('placement_status', e.target.value)}
-                  style={{ ...INPUT, width: 'auto', padding: '3px 8px', fontSize: 12 }}>
-                  {PLACEMENT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
-              ) : (
-                <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${statusInfo.color}18`, color: statusInfo.color, border: `1px solid ${statusInfo.color}33` }}>
-                  {statusInfo.label}
-                </span>
-              )}
+              <span title="Managed by the placement team" style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: `${statusInfo.color}18`, color: statusInfo.color, border: `1px solid ${statusInfo.color}33` }}>
+                {statusInfo.label}
+              </span>
             </div>
 
             <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -411,13 +429,13 @@ export default function Profile() {
             <p style={{ margin: '0 0 4px', fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>CGPA</p>
             {editing ? (
               <input type="number" min="0" max="10" step="0.01"
-                value={F.cgpa || ''}
+                value={F.cgpa ?? ''}
                 onChange={e => set('cgpa', e.target.value)}
                 style={{ ...INPUT, width: 80, textAlign: 'center', fontSize: 22, fontWeight: 900, padding: '4px 8px' }}
               />
             ) : (
               <p style={{ margin: 0, fontSize: 36, fontWeight: 900, color: cgpaColor, fontFamily: "'Sora',sans-serif", lineHeight: 1 }}>
-                {F.cgpa || '—'}
+                {F.cgpa ?? '—'}
               </p>
             )}
             <p style={{ margin: '4px 0 0', fontSize: 10, color: '#475569' }}>/ 10.0</p>
@@ -459,9 +477,9 @@ export default function Profile() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <GlowCard title="Quick Stats" accent={CYAN}>
             {[
-              { label: 'CGPA',      value: F.cgpa    || '—',                     color: cgpaColor,        suffix: F.cgpa ? '/ 10' : '' },
-              { label: '10th %',    value: F.tenth_percent   ? `${F.tenth_percent}%`   : '—', color: 'var(--text-primary)' },
-              { label: '12th %',    value: F.twelfth_percent ? `${F.twelfth_percent}%` : '—', color: 'var(--text-primary)' },
+              { label: 'CGPA',      value: F.cgpa ?? '—',                          color: cgpaColor, suffix: F.cgpa != null ? '/ 10' : '' },
+              { label: '10th %',    value: F.tenth_percent != null ? `${F.tenth_percent}%` : '—', color: 'var(--text-primary)' },
+              { label: '12th %',    value: F.twelfth_percent != null ? `${F.twelfth_percent}%` : '—', color: 'var(--text-primary)' },
               { label: 'Backlogs',  value: F.backlogs ?? '0',                    color: F.backlogs > 0 ? RED : GREEN },
               { label: 'Semester',  value: F.semester ? `Sem ${F.semester}` : '—', color: 'var(--text-primary)' },
               { label: 'Placement', value: statusInfo.label,                     color: statusInfo.color },
@@ -515,7 +533,7 @@ export default function Profile() {
               { label: '10th Percentage', key: 'tenth_percent',   type: 'number',  min: 0, max: 100, step: 0.01 },
               { label: '12th Percentage', key: 'twelfth_percent', type: 'number',  min: 0, max: 100, step: 0.01 },
               { label: 'Active Backlogs', key: 'backlogs',        type: 'number',  min: 0, max: 20  },
-              { label: 'Placement Status',key: 'placement_status',type: 'select3'                  },
+              { label: 'Placement Status (managed by placement team)', key: 'placement_status', type: 'text', disabled: true },
             ].map(({ label, key, type, disabled, min, max, step }) => (
               <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.07em' }}>{label}</label>
@@ -535,13 +553,9 @@ export default function Profile() {
                     <option value="">Select Semester</option>
                     {SEMESTERS.map(s => <option key={s} value={s}>Semester {s}</option>)}
                   </select>
-                ) : type === 'select3' ? (
-                  <select value={F[key] || 'unplaced'} onChange={e => set(key, e.target.value)} style={INPUT}>
-                    {PLACEMENT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                  </select>
                 ) : (
                   <input type={type} min={min} max={max} step={step}
-                    value={F[key] || ''}
+                    value={F[key] ?? ''}
                     onChange={e => set(key, e.target.value)}
                     style={INPUT} />
                 )}
@@ -560,7 +574,6 @@ export default function Profile() {
               { icon: Phone,    label: 'Phone Number',  key: 'phone',       type: 'tel',   disabled: false, placeholder: '+91 98765 43210' },
               { icon: Linkedin, label: 'LinkedIn URL',  key: 'linkedin_url',type: 'url',   disabled: false, placeholder: 'https://linkedin.com/in/yourname' },
               { icon: Github,   label: 'GitHub URL',    key: 'github_url',  type: 'url',   disabled: false, placeholder: 'https://github.com/yourname' },
-              { icon: MapPin,   label: 'Location',      key: 'location',    type: 'text',  disabled: false, placeholder: 'Mumbai, Maharashtra' },
             ].map(({ icon: Icon, label, key, type, disabled, placeholder }) => (
               <div key={key} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ width: 36, height: 36, borderRadius: 10, background: `${CYAN}10`, border: `1px solid ${CYAN}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>

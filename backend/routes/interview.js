@@ -105,25 +105,30 @@ router.get('/history', auth, roles('student'), async (req, res) => {
 
     if (error) throw error;
 
-    const history = (data || []).map(s => ({
-      id: s.id,
-      company: s.ai_feedback?.track || s.ai_feedback?.company || 'General',
-      track: s.ai_feedback?.track || 'General',
-      companyLogo: null,
-      overallScore: s.overall_score,
-      eyeContact: s.eye_contact_score,
-      confidence: s.confidence_score,
-      attention: s.attention_score,
-      stress: s.stress_score,
-      duration: formatDuration(s.duration_seconds),
-      conductedAt: s.conducted_at,
-      grade: getGrade(s.overall_score),
-      transcriptCount: s.ai_feedback?.transcript?.length || 0,
-      transcript: s.ai_feedback?.transcript || [],
-      feedback: s.ai_feedback?.feedback || {},
-      perQuestionAnalyses: s.ai_feedback?.perQuestionAnalyses || [],
-      verdict: s.ai_feedback?.verdict || '',
-    }));
+    const history = (data || []).map((s) => {
+      const feedback = s.ai_feedback?.feedback || {};
+      return {
+        id: s.id,
+        company: s.ai_feedback?.track || s.ai_feedback?.company || 'General',
+        track: s.ai_feedback?.track || 'General',
+        companyLogo: null,
+        overallScore: s.overall_score,
+        eyeContact: s.eye_contact_score,
+        confidence: s.confidence_score,
+        attention: s.attention_score,
+        stress: s.stress_score,
+        duration: formatDuration(s.duration_seconds),
+        conductedAt: s.conducted_at,
+        grade: getGrade(s.overall_score),
+        practiceMode: feedback.mode || 'browser-media',
+        textScores: feedback.scores || null,
+        transcriptCount: s.ai_feedback?.transcript?.length || 0,
+        transcript: s.ai_feedback?.transcript || [],
+        feedback,
+        perQuestionAnalyses: s.ai_feedback?.perQuestionAnalyses || [],
+        verdict: s.ai_feedback?.verdict || '',
+      };
+    });
 
     res.json({ history });
   } catch (err) {
@@ -157,7 +162,8 @@ router.get('/session/:id', auth, async (req, res) => {
     res.json({
       session: {
         id: session.id,
-        company: 'General',
+        company: session.ai_feedback?.track || session.ai_feedback?.company || 'General',
+        track: session.ai_feedback?.track || 'General',
         companyLogo: null,
         overallScore: session.overall_score,
         eyeContactScore: session.eye_contact_score,
@@ -170,6 +176,8 @@ router.get('/session/:id', auth, async (req, res) => {
         expressionLog: session.ai_feedback?.expressionLog || [],
         feedback: session.ai_feedback?.feedback || {},
         practiceMode: session.ai_feedback?.feedback?.mode || 'browser-media',
+        perQuestionAnalyses: session.ai_feedback?.perQuestionAnalyses || [],
+        verdict: session.ai_feedback?.verdict || '',
         grade: getGrade(session.overall_score),
       },
     });

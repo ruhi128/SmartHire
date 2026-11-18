@@ -23,6 +23,7 @@ export default function InterviewSessionDetailScreen({ navigation, route }) {
   const feedback = session.feedback || {};
   const scores = feedback.scores || {};
   const typed = session.practiceMode === 'typed-practice' || feedback.mode === 'typed-practice';
+  const analyses = Array.isArray(session.perQuestionAnalyses) ? session.perQuestionAnalyses : [];
 
   return (
     <>
@@ -35,15 +36,25 @@ export default function InterviewSessionDetailScreen({ navigation, route }) {
           <Text style={styles.meta}>{formatDateTime(session.conductedAt)} · {durationLabel(session.durationSeconds)}</Text>
         </Card>
 
-        {typed ? <Card style={styles.boundary}><Text style={styles.boundaryTitle}>Text-only feedback</Text><Text style={styles.boundaryBody}>This session was calculated from the saved typed responses. No camera, microphone, facial-expression, eye-contact, emotion, identity, attention, or employability data was collected or inferred.</Text></Card> : null}
+        <Card style={styles.boundary}>
+          <Text style={styles.boundaryTitle}>{typed ? 'Text-only feedback' : 'Browser practice feedback'}</Text>
+          <Text style={styles.boundaryBody}>{typed
+            ? 'This older session was calculated from saved typed responses. It did not measure camera, microphone, eye contact, emotion, identity or employability.'
+            : 'These scores and observations were reported by the website client during a practice session. They are not independently verified measurements or a hiring decision.'}</Text>
+        </Card>
+
+        {session.verdict ? <Card style={styles.verdict}>
+          <Text style={styles.verdictLabel}>Saved practice verdict</Text>
+          <Text style={styles.verdictText}>{session.verdict}</Text>
+        </Card> : null}
 
         {Object.keys(scores).length ? <>
-          <SectionTitle title="Text feedback breakdown" />
+          <SectionTitle title={typed ? 'Text feedback breakdown' : 'Saved browser feedback breakdown'} />
           <Card style={styles.metrics}>
             <Metric label="Relevance" value={scores.relevance} />
             <Metric label="Content" value={scores.content} />
             <Metric label="Structure" value={scores.structure} />
-            <Metric label="Wording" value={scores.confidence} />
+            <Metric label={typed ? 'Wording' : 'Fluency'} value={typed ? scores.confidence : scores.fluency} />
           </Card>
         </> : null}
 
@@ -52,6 +63,14 @@ export default function InterviewSessionDetailScreen({ navigation, route }) {
         <FeedbackGroup title="Practice next" values={feedback.improvements} color={colors.warning} />
         <FeedbackGroup title="Tips" values={feedback.tips} color={colors.primary} />
         {!((feedback.strengths || []).length || (feedback.improvements || []).length || (feedback.tips || []).length) ? <Card><Text style={styles.muted}>No written feedback was saved with this session.</Text></Card> : null}
+
+        {analyses.length ? <>
+          <SectionTitle title="Per-question practice analysis" />
+          {analyses.map((analysis, index) => <Card key={`${session.id}-analysis-${index}`} style={styles.transcript}>
+            <Text style={styles.question}>Q{index + 1}. {analysis.verdict || 'Saved analysis'}{analysis.score != null ? ` · ${analysis.score}/100` : ''}</Text>
+            {analysis.critique ? <Text style={styles.answer}>{analysis.critique}</Text> : null}
+          </Card>)}
+        </> : null}
 
         <SectionTitle title="Your responses" />
         {(session.transcript || []).length ? (session.transcript || []).map((item, index) => (
@@ -66,7 +85,7 @@ export default function InterviewSessionDetailScreen({ navigation, route }) {
 }
 
 function Metric({ label, value }) {
-  return <View style={styles.metric}><Text style={styles.metricValue}>{value ?? 0}</Text><Text style={styles.metricLabel}>{label}</Text></View>;
+  return <View style={styles.metric}><Text style={styles.metricValue}>{value ?? '—'}</Text><Text style={styles.metricLabel}>{label}</Text></View>;
 }
 
 function FeedbackGroup({ title, values = [], color }) {
@@ -88,6 +107,9 @@ const styles = StyleSheet.create({
   boundary: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', marginTop: spacing.md },
   boundaryTitle: { color: '#1E3A8A', fontWeight: '900' },
   boundaryBody: { color: '#1E40AF', fontSize: 12, lineHeight: 18, marginTop: 6 },
+  verdict: { marginTop: spacing.md },
+  verdictLabel: { color: colors.muted, fontSize: 12, fontWeight: '800' },
+  verdictText: { color: colors.text, fontWeight: '700', lineHeight: 19, marginTop: 5 },
   metrics: { flexDirection: 'row', justifyContent: 'space-between' },
   metric: { alignItems: 'center', flex: 1 },
   metricValue: { color: colors.primary, fontWeight: '900', fontSize: 18 },

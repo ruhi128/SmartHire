@@ -54,13 +54,13 @@ router.post('/', auth, roles('student'), async (req, res) => {
   // Check job exists and is active
   const { data: job } = await supabase
     .from('job_postings')
-    .select('id, title, status, min_cgpa, max_backlogs, eligible_branches, deadline, companies(name)')
+    .select('id, title, status, approval_status, min_cgpa, max_backlogs, eligible_branches, deadline, companies(name)')
     .eq('id', job_id)
     .single();
 
-  if (!job) return res.status(404).json({ error: 'Job not found.' });
+  if (!job || job.approval_status !== 'approved') return res.status(404).json({ error: 'Job not found.' });
   if (job.status !== 'active') return res.status(400).json({ error: 'This job is no longer accepting applications.' });
-  if (job.deadline && new Date(job.deadline) < new Date())
+  if (job.deadline && new Date(`${job.deadline}T23:59:59.999Z`) < new Date())
     return res.status(400).json({ error: 'Application deadline has passed.' });
 
   // Check student eligibility

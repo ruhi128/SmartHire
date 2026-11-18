@@ -1,17 +1,18 @@
 import axios from 'axios';
 import { DEMO_MODE } from '../config/runtime';
+import { API_BASE_URL, API_CONFIGURATION_ERROR } from './config';
 
-const configuredBaseUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
-const API_CONFIGURATION_ERROR = 'SmartHire API is not configured. Set EXPO_PUBLIC_API_URL in mobile/.env, then restart Metro.';
+export { API_BASE_URL, API_CONFIGURATION_ERROR, apiErrorMessage, apiUrl } from './config';
+
 const DEMO_NETWORK_ERROR = 'Network requests are disabled in local demo mode. Use the local sample API only.';
 
-if (!configuredBaseUrl && !DEMO_MODE) {
-  console.warn(API_CONFIGURATION_ERROR);
-}
+if (API_CONFIGURATION_ERROR && !DEMO_MODE) console.warn(API_CONFIGURATION_ERROR);
 
+// Dashboard/list/login requests must not leave the phone spinning for two
+// minutes when an API is unreachable. Longer grading/uploads opt in per call.
 const api = axios.create({
-  baseURL: configuredBaseUrl,
-  timeout: 120000,
+  baseURL: API_BASE_URL,
+  timeout: 20000,
   headers: { Accept: 'application/json' },
 });
 
@@ -29,9 +30,12 @@ api.interceptors.request.use(async (config) => {
   if (DEMO_MODE) throw new Error(DEMO_NETWORK_ERROR);
   // Do not silently fall back to localhost: on a physical device that points
   // at the phone itself and can hide a missing/stale environment setting.
-  if (!configuredBaseUrl) throw new Error(API_CONFIGURATION_ERROR);
+  if (API_CONFIGURATION_ERROR) throw new Error(API_CONFIGURATION_ERROR);
   const token = await getToken();
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Device registration/cleanup may be finishing while accounts switch. An
+  // explicitly supplied session token must never be replaced with the next
+  // account's token by the global interceptor.
+  if (token && !config.headers.Authorization) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
 
@@ -46,22 +50,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Resolve a backend-relative path (e.g. "/api/auth/avatar?v=...") against the
-// configured API origin. Absolute URLs pass through unchanged. Avatar <Image>
-// sources across the student/recruiter/admin screens depend on this export.
-export function apiUrl(path) {
-  if (!path) return '';
-  const value = String(path);
-  if (/^https?:\/\//i.test(value)) return value;
-  if (!configuredBaseUrl) return value;
-  return `${configuredBaseUrl}${value.startsWith('/') ? '' : '/'}${value}`;
-}
-
-export function apiErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
-  const errors = error?.response?.data?.errors;
-  if (Array.isArray(errors) && errors[0]?.msg) return errors[0].msg;
-  return error?.response?.data?.error || error?.message || fallback;
-}
 
 export default api;

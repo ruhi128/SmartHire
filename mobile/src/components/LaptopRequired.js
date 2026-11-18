@@ -1,4 +1,4 @@
-import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AppButton, Card } from './Ui';
 import { DEMO_MODE, WEB_APP_URL } from '../config/runtime';
@@ -11,10 +11,9 @@ import { colors, spacing } from '../constants/theme';
 // through showLaptopRequired() / <LaptopRequiredNotice /> so the behaviour
 // cannot drift between the hub, the lists and deep links into attempt routes.
 //
-// The website origin comes only from EXPO_PUBLIC_WEB_URL (see
-// src/config/runtime.js). TODO(deploy): replace the placeholder in
-// mobile/.env.example / eas.json with the real deployed URL and rebuild —
-// EXPO_PUBLIC_* values are baked into the app bundle at build time.
+// The website origin comes only from EXPO_PUBLIC_WEB_URL (see runtime.js).
+// Set the deployed URL in EAS before release; Expo public values are baked
+// into the app bundle. Do not open the laptop assessment in the phone browser.
 export const LAPTOP_FEATURES = {
   mockOa: { label: 'Mock OA', websitePath: '/student/mockoa' },
   companyOa: { label: 'Company OA', websitePath: '/student/companyoa' },
@@ -24,17 +23,6 @@ export const LAPTOP_FEATURES = {
 export function laptopUrl(websitePath = '') {
   if (!WEB_APP_URL) return '';
   return `${WEB_APP_URL}${websitePath.startsWith('/') ? websitePath : `/${websitePath}`}`;
-}
-
-export async function openSmartHireWebsite(websitePath = '') {
-  const target = laptopUrl(websitePath);
-  if (!target) return false;
-  try {
-    await Linking.openURL(target);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -56,25 +44,13 @@ export function showLaptopRequired(feature) {
   if (!target) {
     Alert.alert(
       `${label} is taken on a laptop`,
-      `Please open the SmartHire website on a laptop and sign in with the same account to take the ${label}.\n\nThis app build does not have the website address configured yet (EXPO_PUBLIC_WEB_URL). Set it and rebuild the app, then this prompt will open the website for you.`,
+      `Please open the SmartHire website on a laptop and sign in with the same account to take the ${label}.\n\nThis app build does not have the website address configured yet (EXPO_PUBLIC_WEB_URL). Set it and rebuild the app to display the address here.`,
     );
     return;
   }
   Alert.alert(
     `${label} is taken on a laptop`,
-    `For the best experience — full-screen questions, proctoring and a stable timer — please take the ${label} on the SmartHire website using a laptop. You can browse tests, eligibility and past results here on your phone.`,
-    [
-      { text: 'Not now', style: 'cancel' },
-      {
-        text: 'Open website',
-        onPress: async () => {
-          const opened = await openSmartHireWebsite(websitePath);
-          if (!opened) {
-            Alert.alert('Could not open the website', `Open ${target} on your laptop and sign in with the same SmartHire account.`);
-          }
-        },
-      },
-    ],
+    `Open ${target} on your laptop and sign in with the same SmartHire account to take the ${label}. Tests, eligibility, and saved results remain available here on your phone. Do not start the assessment in the phone browser.`,
   );
 }
 
@@ -92,15 +68,13 @@ export function LaptopRequiredNotice({ feature, navigation }) {
           taken on the SmartHire website using a laptop — full-screen questions, proctoring
           and a stable timer need the larger screen.
         </Text>
-        {target && !DEMO_MODE ? (
-          <AppButton title="Open SmartHire website" onPress={() => openSmartHireWebsite(websitePath)} style={styles.button} />
-        ) : (
-          <Text style={styles.note}>
-            {DEMO_MODE
-              ? 'Demo mode stays offline. Use a live build and a laptop to take this.'
+        <Text selectable style={styles.note}>
+          {DEMO_MODE
+            ? 'Demo mode stays offline. Use a live build and a laptop to take this.'
+            : target
+              ? `On your laptop, open ${target} and sign in with the same account.`
               : 'The website address is not configured in this build yet (EXPO_PUBLIC_WEB_URL). Open SmartHire on your laptop and sign in with the same account.'}
-          </Text>
-        )}
+        </Text>
         {navigation ? <AppButton title="Go back" variant="outline" onPress={() => navigation.goBack()} style={styles.button} /> : null}
       </Card>
     </View>

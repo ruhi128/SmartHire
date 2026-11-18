@@ -39,11 +39,11 @@ export default function InterviewHubScreen({ navigation, route }) {
             </View>
             <AppButton title="Start a mock interview on a laptop" onPress={() => showLaptopRequired(LAPTOP_FEATURES.mockInterview)} style={styles.startButton} />
             <Card style={styles.boundary}>
-              <View style={styles.boundaryTop}><Ionicons name="document-text-outline" size={18} color={colors.info} /><Text style={styles.boundaryTitle}>Text-only practice</Text></View>
-              <Text style={styles.boundaryBody}>Mobile practice evaluates only what you type. It does not record or infer camera, microphone, facial-expression, eye-contact, emotion, identity, attention, or employability information.</Text>
+              <View style={styles.boundaryTop}><Ionicons name="document-text-outline" size={18} color={colors.info} /><Text style={styles.boundaryTitle}>About past typed sessions</Text></View>
+              <Text style={styles.boundaryBody}>Previously saved typed-practice sessions contain text-only feedback. No new interview can be started here; those older sessions did not measure camera, microphone, eye contact, emotion or employability.</Text>
             </Card>
             {stats && typedSessionCount > 0 ? <>
-              <SectionTitle title="Your typed-practice averages" />
+              <SectionTitle title="Previously saved typed-practice averages" />
               <Card style={styles.metrics}>
                 <Metric label="Overall" value={stats.typedOverall ?? stats.overall} />
                 <Metric label="Content" value={stats.content} fallback="—" />

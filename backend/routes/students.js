@@ -108,14 +108,14 @@ router.get('/profile', auth, roles('student'), async (req, res) => {
           .select()
           .single();
         if (insertErr) return res.status(500).json({ error: insertErr.message });
-        return res.json({ profile: await attachOwnAvatar(newProfile, req.user.id) });
-        return res.json({ profile: { ...newProfile, email: req.user.email } });
+        const profile = await attachOwnAvatar(newProfile, req.user.id);
+        return res.json({ profile: { ...profile, email: req.user.email || profile.email || null } });
       }
       return res.status(404).json({ error: 'Profile not found.' });
     }
 
-    res.json({ profile: await attachOwnAvatar(data, req.user.id) });
-    res.json({ profile: { ...data, email: data.email || req.user.email } });
+    const profile = await attachOwnAvatar(data, req.user.id);
+    res.json({ profile: { ...profile, email: req.user.email || profile.email || null } });
   } catch (err) {
     console.error('GET /profile error:', err);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -131,44 +131,71 @@ router.put('/profile', auth, roles('student'), async (req, res) => {
     const {
       full_name, phone, branch, semester, cgpa,
       skills, certifications, linkedin_url, github_url,
-      tenth_percent, twelfth_percent, backlogs, placement_status,
-      roll_number,
-    } = req.body;
+      tenth_percent, twelfth_percent, backlogs,
+    } = req.body || {};
 
+    const optionalNumber = (value, min, max, whole = false) => {
+      if (value === undefined || value === null || value === '') return null;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed >= min && parsed <= max && (!whole || Number.isInteger(parsed))
+        ? parsed : NaN;
+    };
+    const numbers = {
+      semester: optionalNumber(semester, 1, 8, true),
+      cgpa: optionalNumber(cgpa, 0, 10),
+      tenth_percent: optionalNumber(tenth_percent, 0, 100),
+      twelfth_percent: optionalNumber(twelfth_percent, 0, 100),
+      backlogs: optionalNumber(backlogs, 0, 20, true),
+    };
+    if (Object.values(numbers).some(Number.isNaN)) {
+      return res.status(400).json({ error: 'Invalid semester, CGPA, percentage, or backlog value.' });
+    }
+    const safeLink = (value) => {
+      if (!value) return true;
+      try {
+        const url = new URL(value);
+        return ['https:', 'http:'].includes(url.protocol) && Boolean(url.hostname) && !url.username && !url.password;
+      } catch { return false; }
+    };
+    if (!safeLink(linkedin_url) || !safeLink(github_url)) {
+      return res.status(400).json({ error: 'Profile links must use an http(s) URL.' });
+    }
+
+    // Placement status and roll number are assigned by the placement team.
+    // Ignore both even if a client sends them in a forged request.
     const updatePayload = {
-      id: req.user.id,           // needed for upsert
       full_name:       full_name       || null,
       phone:           phone           || null,
       branch:          branch          || null,
-      semester:        semester        ? parseInt(semester)           : null,
-      cgpa:            cgpa            ? parseFloat(cgpa)             : null,
+      semester:        numbers.semester,
+      cgpa:            numbers.cgpa,
       skills:          Array.isArray(skills)          ? skills          : [],
       certifications:  Array.isArray(certifications)  ? certifications  : [],
       linkedin_url:    linkedin_url    || null,
       github_url:      github_url      || null,
-      tenth_percent:   tenth_percent   ? parseFloat(tenth_percent)    : null,
-      twelfth_percent: twelfth_percent ? parseFloat(twelfth_percent)  : null,
-      backlogs:        backlogs        ? parseInt(backlogs)            : 0,
-      placement_status: placement_status || 'unplaced',
+      tenth_percent:   numbers.tenth_percent,
+      twelfth_percent: numbers.twelfth_percent,
+      backlogs:        numbers.backlogs ?? 0,
     };
 
-    if (roll_number !== undefined) {
-      updatePayload.roll_number = roll_number || null;
-    }
+    const { data: existing, error: lookupError } = await supabase
+      .from('student_profiles').select('id').eq('id', req.user.id).maybeSingle();
+    if (lookupError) throw lookupError;
 
-    // Use upsert so it works even if profile row doesn't exist yet
-    const { data, error } = await supabase
-      .from('student_profiles')
-      .upsert(updatePayload, { onConflict: 'id' })
-      .select()
-      .single();
+    // UPDATE omits admin-owned fields entirely, preventing a student save
+    // from resetting placement status (even if an admin edits it concurrently).
+    const mutation = existing
+      ? supabase.from('student_profiles').update(updatePayload).eq('id', req.user.id)
+      : supabase.from('student_profiles').insert({ id: req.user.id, ...updatePayload, placement_status: 'unplaced' });
+    const { data, error } = await mutation.select().single();
 
     if (error) {
       console.error('Profile upsert error:', error);
       return res.status(400).json({ error: error.message });
     }
 
-    res.json({ message: 'Profile updated successfully.', profile: { ...data, email: req.user.email } });
+    const profile = await attachOwnAvatar(data, req.user.id);
+    res.json({ message: 'Profile updated successfully.', profile: { ...profile, email: req.user.email || profile.email || null } });
   } catch (err) {
     console.error('PUT /profile error:', err);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -189,7 +216,9 @@ router.post('/ats/extract-pdf', auth, roles('student'), runAtsUpload, async (req
     }
 
     parser = new PDFParse({ data: req.file.buffer });
-    const parsed = await parser.getText();
+    // pdf-parse adds a generated "-- 1 of N --" page marker by default.
+    // Disable it: only document text should enter ATS scoring or the editor.
+    const parsed = await parser.getText({ pageJoiner: '' });
     const text = String(parsed?.text || '').replace(/\u0000/g, '').trim();
     const readableLength = text.replace(/\s+/g, ' ').trim().length;
     if (readableLength < 50) {
@@ -260,8 +289,13 @@ router.get('/dashboard', auth, roles('student'), async (req, res) => {
         supabase.from('applications').select('id, status, applied_at, job_postings(title, companies(name))').eq('student_id', id),
         supabase.from('aptitude_attempts').select('score, total_marks, submitted_at').eq('student_id', id).order('submitted_at', { ascending: false }).limit(10),
         supabase.from('dsa_submissions').select('status, submitted_at').eq('student_id', id),
-        supabase.from('mock_oa_attempts').select('score, submitted_at').eq('student_id', id),
+        supabase.from('mock_oa_attempts').select('id, completed_at').eq('student_id', id),
       ]);
+    // Never render missing DB tables or schema mismatches as legitimate zero
+    // scores or applications. A missing profile row is allowed for new users.
+    const queries = [profile, applications, aptitudeAttempts, dsaSubmissions, oaAttempts];
+    const failed = queries.find((item, index) => item.error && !(index === 0 && item.error.code === 'PGRST116'));
+    if (failed) throw failed.error;
 
     const appCounts = {
       total:       applications.data?.length || 0,

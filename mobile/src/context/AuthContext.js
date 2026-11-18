@@ -4,6 +4,7 @@ import { configureApiSession } from '../api/client';
 import { DEMO_ACCOUNTS, DEMO_MODE } from '../config/runtime';
 import { clearStoredSession, getStoredSession, saveStoredSession } from '../storage/session';
 import { clearStoredPushRegistration, getStoredPushRegistration } from '../storage/pushRegistration';
+import { withDeadline } from '../utils/withDeadline';
 
 const AuthContext = createContext(null);
 
@@ -20,9 +21,13 @@ export function AuthProvider({ children }) {
       if (unregisterDevice && !DEMO_MODE && activeSession?.token && activeSession?.user?.id) {
         const registration = await getStoredPushRegistration();
         if (registration?.userId === activeSession.user.id && registration.expoPushToken) {
-          await notificationsApi.unregisterDevice(registration.expoPushToken).catch((error) => {
-            // Logout must still complete when offline or if a server migration
-            // has not yet been applied. The local record is cleared below.
+          await withDeadline(
+            () => notificationsApi.unregisterDevice(registration.expoPushToken, activeSession.token),
+            5000,
+            'Device-notification cleanup timed out.',
+          ).catch((error) => {
+            // Logout must still complete when offline or if the device route
+            // has not been deployed. The local record is cleared below.
             console.warn('Could not unregister SmartHire device notifications:', error?.message || 'unknown error');
           });
         }
@@ -38,17 +43,23 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
-    getStoredSession()
+    withDeadline(getStoredSession, 12000, 'Saved session storage did not respond.')
       .then(async (stored) => {
         // Never restore a real session in local-demo mode or a demo session in a
         // normal build. This keeps the two modes intentionally isolated.
         const storedIsDemo = stored?.demo === true;
         if (stored && storedIsDemo !== DEMO_MODE) {
-          await clearStoredSession();
+          await withDeadline(clearStoredSession, 12000, 'Could not reset the previous app session.');
           if (mounted) setSession(null);
           return;
         }
         if (mounted) setSession(stored || null);
+      })
+      .catch((error) => {
+        // A SecureStore error must never leave the auth splash waiting forever.
+        // Do not erase a saved session on a transient storage failure.
+        console.warn('Could not restore SmartHire session:', error?.message || error);
+        if (mounted) setSession(null);
       })
       .finally(() => { if (mounted) setInitializing(false); });
     return () => { mounted = false; };
@@ -84,7 +95,7 @@ export function AuthProvider({ children }) {
         email: identity.email || normalizedEmail,
       },
     };
-    await saveStoredSession(nextSession);
+    await withDeadline(() => saveStoredSession(nextSession), 12000, 'Could not save your session on this device. Please try again.');
     // Make the newly issued token available to API calls immediately (for example
     // a first authenticated inbox request right after sign-in), before React commits state.
     configureApiSession({

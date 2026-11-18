@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { dsaApi } from '../../api';
@@ -10,6 +11,13 @@ import useAsyncData from '../../utils/useAsyncData';
 const tone = { Easy: 'success', Medium: 'warning', Hard: 'danger' };
 export default function DsaListScreen({ navigation }) {
   const { data, loading, refreshing, error, reload } = useAsyncData(() => dsaApi.problems(), []);
+  const firstFocus = useRef(true);
+  // Returning after a submission refreshes account-backed solved badges.
+  // useAsyncData performs the first request, so avoid duplicating it on mount.
+  useFocusEffect(useCallback(() => {
+    if (firstFocus.current) { firstFocus.current = false; return; }
+    reload({ refresh: true }).catch(() => {});
+  }, [reload]));
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState('All');
   const problems = (data?.problems || []).filter((item) => (difficulty === 'All' || item.difficulty === difficulty) && `${item.title} ${(item.tags || []).join(' ')}`.toLowerCase().includes(search.toLowerCase()));

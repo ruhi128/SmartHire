@@ -3,6 +3,9 @@ import { DEMO_MODE } from '../config/runtime';
 import { mockApi } from './mockApi';
 
 const result = (request) => request.then((response) => response.data);
+// Keep ordinary screens responsive while allowing file uploads and trusted
+// server-side assessment grading/code execution to finish on slower networks.
+const LONG_OPERATION = { timeout: 120000 };
 
 // Keep the live API definitions explicit. They are selected only when the
 // strictly opt-in public demo flag is absent/false.
@@ -15,7 +18,7 @@ const liveAuthApi = {
   // NOTE: never set 'Content-Type: multipart/form-data' manually in React
   // Native — axios/fetch must generate it with the multipart boundary, or
   // Android uploads arrive unparseable at multer. Same for every upload below.
-  uploadAvatar: (formData) => result(api.post('/api/auth/avatar', formData)),
+  uploadAvatar: (formData) => result(api.post('/api/auth/avatar', formData, LONG_OPERATION)),
   removeAvatar: () => result(api.delete('/api/auth/avatar')),
 };
 
@@ -27,11 +30,14 @@ const liveNotificationsApi = {
   remove: (id) => result(api.delete(`/api/notifications/${id}`)),
   // The server derives the recipient from the bearer token; the app never
   // sends a user ID with a device registration.
-  registerDevice: (data) => result(api.post('/api/notifications/devices', data)),
-  // Prevent an expired token during a user-initiated logout from re-entering
-  // the unauthorized handler while the local push record is being cleared.
-  unregisterDevice: (expoPushToken) => result(api.delete('/api/notifications/devices', {
+  registerDevice: (data, sessionToken) => result(api.post('/api/notifications/devices', data, {
+    ...(sessionToken ? { headers: { Authorization: `Bearer ${sessionToken}` }, skipUnauthorizedLogout: true } : {}),
+  })),
+  // Use the initiating account's token even if another account signs in while
+  // this request is in flight. Logout still finishes when the API is offline.
+  unregisterDevice: (expoPushToken, sessionToken) => result(api.delete('/api/notifications/devices', {
     data: { expoPushToken },
+    ...(sessionToken ? { headers: { Authorization: `Bearer ${sessionToken}` } } : {}),
     skipUnauthorizedLogout: true,
   })),
 };
@@ -40,10 +46,10 @@ const liveStudentApi = {
   dashboard: () => result(api.get('/api/students/dashboard')),
   profile: () => result(api.get('/api/students/profile')),
   updateProfile: (data) => result(api.put('/api/students/profile', data)),
-  uploadResume: (formData) => result(api.post('/api/students/resume', formData)),
+  uploadResume: (formData) => result(api.post('/api/students/resume', formData, LONG_OPERATION)),
   // ATS source PDFs are parsed transiently by the server and are never saved
   // as the profile resume or uploaded to storage.
-  extractAtsPdf: (formData) => result(api.post('/api/students/ats/extract-pdf', formData)),
+  extractAtsPdf: (formData) => result(api.post('/api/students/ats/extract-pdf', formData, LONG_OPERATION)),
   all: (params) => result(api.get('/api/students/all', { params })),
   byId: (id) => result(api.get(`/api/students/${id}`)),
 };
@@ -58,7 +64,7 @@ const liveJobsApi = {
   // Job PDFs are uploaded before the job record is created, matching the web
   // workflow. The authenticated server stores the file and returns its public
   // URL; no storage credential is ever present in the app.
-  uploadDoc: (formData) => result(api.post('/api/upload/job-doc', formData)),
+  uploadDoc: (formData) => result(api.post('/api/upload/job-doc', formData, LONG_OPERATION)),
   // GET /api/jobs is already scoped to the authenticated recruiter's company.
   myJobs: () => result(api.get('/api/jobs')),
 };
@@ -77,7 +83,7 @@ const liveApplicationsApi = {
 const liveAptitudeApi = {
   tests: () => result(api.get('/api/aptitude/tests')),
   start: (id) => result(api.get(`/api/aptitude/tests/${id}/start`)),
-  submit: (data) => result(api.post('/api/aptitude/submit', data)),
+  submit: (data) => result(api.post('/api/aptitude/submit', data, LONG_OPERATION)),
   analysis: () => result(api.get('/api/aptitude/analysis')),
 };
 
@@ -85,22 +91,41 @@ const liveDsaApi = {
   problems: (params) => result(api.get('/api/dsa/problems', { params })),
   problem: (id) => result(api.get(`/api/dsa/problems/${id}`)),
   // Legacy stdin/stdout calls remain available for web-compatible problems.
-  run: (data) => result(api.post('/api/dsa/run', data)),
-  submit: (data) => result(api.post('/api/dsa/submit', data)),
+  run: (data) => result(api.post('/api/dsa/run', data, LONG_OPERATION)),
+  submit: (data) => result(api.post('/api/dsa/submit', data, LONG_OPERATION)),
   // Mobile LeetCode-style calls explicitly opt into the backend's trusted
   // function/class driver. The app sends only arguments for Run; the backend
   // owns method names, expected values, comparisons, and submission tests.
-  runFunction: (data) => result(api.post('/api/dsa/run', { ...data, executionMode: 'function' })),
-  submitFunction: (data) => result(api.post('/api/dsa/submit', { ...data, executionMode: 'function' })),
+  runFunction: (data) => result(api.post('/api/dsa/run', { ...data, executionMode: 'function' }, LONG_OPERATION)),
+  submitFunction: (data) => result(api.post('/api/dsa/submit', { ...data, executionMode: 'function' }, LONG_OPERATION)),
   performance: () => result(api.get('/api/dsa/performance')),
 };
 
 const liveMockOaApi = {
   tests: () => result(api.get('/api/mockoa/tests')),
   test: (id) => result(api.get(`/api/mockoa/tests/${id}`)),
-  submit: (data) => result(api.post('/api/mockoa/submit', data)),
+  submit: (data) => result(api.post('/api/mockoa/submit', data, LONG_OPERATION)),
   history: () => result(api.get('/api/mockoa/history')),
-  upload: (data) => result(api.post('/api/mockoa/upload', data)),
+  attemptResult: async (attemptId) => {
+    try {
+      return await result(api.get(`/api/mockoa/history/${encodeURIComponent(attemptId)}`));
+    } catch (error) {
+      // Older deployed APIs have the authenticated history list but not the
+      // new detail route. A read-only, student-owned summary is still useful;
+      // never invent a score or expose any raw/private answer fields.
+      if (error?.response?.status !== 404 || error?.response?.data?.error !== 'Route not found') throw error;
+      const payload = await result(api.get('/api/mockoa/history'));
+      const saved = (Array.isArray(payload?.history) ? payload.history : [])
+        .find((item) => String(item.id) === String(attemptId));
+      if (!saved) throw new Error('Saved Mock OA result detail needs a backend update. Ask the backend owner to deploy /api/mockoa/history/:attemptId.');
+      const { id, testId, testTitle, company, score, totalPossible, percentage, passed, correct, wrong, skipped, submittedAt, integrityScore } = saved;
+      return {
+        attempt: { id, testId, testTitle, company, score, totalPossible, percentage, passed, correct, wrong, skipped, submittedAt, integrityScore },
+        summaryOnly: true,
+      };
+    }
+  },
+  upload: (data) => result(api.post('/api/mockoa/upload', data, LONG_OPERATION)),
   myUploads: () => result(api.get('/api/mockoa/my-uploads')),
   pending: () => result(api.get('/api/mockoa/pending')),
   approve: (id) => result(api.patch(`/api/mockoa/${id}/approve`)),
@@ -117,8 +142,10 @@ const liveCompanyOaApi = {
   approve: (id, action, note) => result(api.patch(`/api/companyoa/${id}/approve`, { action, note })),
   // Student attempt endpoints intentionally omit answer keys until submission.
   available: () => result(api.get('/api/companyoa/available')),
+  history: () => result(api.get('/api/companyoa/history')),
+  attemptResult: (attemptId) => result(api.get(`/api/companyoa/history/${encodeURIComponent(attemptId)}`)),
   take: (id) => result(api.get(`/api/companyoa/${id}/take`)),
-  attempt: (id, data) => result(api.post(`/api/companyoa/${id}/attempt`, data)),
+  attempt: (id, data) => result(api.post(`/api/companyoa/${id}/attempt`, data, LONG_OPERATION)),
 };
 
 const liveAdminApi = {
@@ -218,6 +245,8 @@ const demoCompanyOaApi = {
   questions: (id) => mockApi.companyOaApi.questions(id),
   approve: (id, action, note) => mockApi.companyOaApi.approve(id, action, note),
   available: () => mockApi.companyOaApi.available(),
+  history: () => mockApi.companyOaApi.history(),
+  attemptResult: (attemptId) => mockApi.companyOaApi.attemptResult(attemptId),
   take: (id) => mockApi.companyOaApi.take(id),
   attempt: (id, data) => mockApi.companyOaApi.attempt(id, data),
 };

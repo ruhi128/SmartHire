@@ -9,6 +9,7 @@
  * unrelated reads into generic 500 responses.
  */
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const Module = require('node:module');
 const path = require('node:path');
 
@@ -151,6 +152,8 @@ async function invoke(router, routePath) {
 }
 
 async function run() {
+  const routeSource = fs.readFileSync(path.resolve(__dirname, '../routes/students.js'), 'utf8');
+  assert.match(routeSource, /mock_oa_attempts'\)\.select\('id, completed_at'\)/, 'dashboard queries the real Mock OA completion column');
   const originalWarn = console.warn;
   const warnings = [];
   console.warn = (...parts) => warnings.push(parts.join(' '));

@@ -11,6 +11,7 @@ import { Badge } from '../../components/Ui';
 import { apiUrl } from '../../api/client';
 import { DEMO_MODE } from '../../config/runtime';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from '../../components/NotificationBell';
 
 function Metric({ label, value, icon, tone = colors.primary }) {
   return <View style={styles.metric}><View style={[styles.metricIcon, { backgroundColor: `${tone}16` }]}><Ionicons name={icon} size={19} color={tone} /></View><Text style={styles.metricValue}>{value ?? 0}</Text><Text style={styles.metricLabel}>{label}</Text></View>;
@@ -47,7 +48,7 @@ export default function StudentDashboardScreen({ navigation }) {
           {avatarSource ? <Image source={avatarSource} style={styles.avatarImage} onError={() => setAvatarFailed(true)} /> : <Text style={styles.avatarText}>{getInitials(profile.full_name || user?.name || '')}</Text>}
         </View>
         <View style={styles.heroText}><Text style={styles.greeting}>Hello, {profile.full_name?.split(' ')[0] || user?.name?.split(' ')[0] || 'there'}</Text><Text style={styles.heroSub}>{profile.branch || 'Complete your profile to receive eligible opportunities.'}</Text></View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => navigation.navigate('Notifications')} style={styles.bell}><Ionicons name="notifications-outline" size={23} color={colors.white} /></Pressable>
+        <NotificationBell navigation={navigation} size={23} />
       </View>
 
       <Card style={styles.progressCard}>
@@ -81,7 +82,6 @@ const styles = StyleSheet.create({
   heroText: { flex: 1 },
   greeting: { fontSize: 21, fontWeight: '900', color: colors.white },
   heroSub: { color: '#CBD5E1', marginTop: 3, lineHeight: 18, fontSize: 12 },
-  bell: { padding: 9 },
   progressCard: { marginTop: -17, padding: 15, ...shadow },
   progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   progressLabel: { color: colors.muted, fontSize: 12 },

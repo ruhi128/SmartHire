@@ -1,11 +1,56 @@
 // routes/mockoa.js
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
-const  supabaseAdmin = require('../config/supabase'); // ← named import
+const supabaseAdmin = require('../config/supabase').supabaseAdmin;
 const auth = require('../middleware/auth');
 const roles = require('../middleware/roles');
 const { execute } = require('../utils/coderunner');
-const { getQuestionTestCases, normalizeIO, evaluateCodeHeuristics } = require('../utils/testcaseExtractor');
+const { MAX_OA_TEST_CASES, getQuestionTestCases, normalizeIO, evaluateCodeHeuristics } = require('../utils/testcaseExtractor');
+
+function gradingUnavailable(res, error) {
+  const status = Number.isInteger(error?.status) && error.status >= 400 && error.status < 600
+    ? error.status : 503;
+  const code = error?.code || 'CODE_GRADING_UNAVAILABLE';
+  // Do not persist an attempt with a made-up score if JDoodle cannot run.
+  return res.status(status).json({
+    error: error?.code ? error.message : 'Code grading could not finish. Please retry; your attempt has not been saved.',
+    code,
+  });
+}
+
+function questionUploadFields(question) {
+  const rawCases = question.testCases ?? question.test_cases ?? [];
+  return {
+    description: question.description || '',
+    explanation: question.explanation || null,
+    starter_code: question.starterCode || question.starter_code || null,
+    code_constraints: question.constraints || question.code_constraints || null,
+    examples: typeof question.examples === 'string' ? question.examples : (question.examples ? JSON.stringify(question.examples) : null),
+    placeholder: question.placeholder || null,
+    word_limit: question.wordLimit ?? question.word_limit ?? 200,
+    test_cases: rawCases,
+    sample_input: question.sampleInput ?? question.sample_input ?? null,
+    sample_output: question.sampleOutput ?? question.sample_output ?? null,
+  };
+}
+
+function invalidQuestionTestCases(questions) {
+  for (const [index, q] of questions.entries()) {
+    if (!q || typeof q !== 'object' || Array.isArray(q)) {
+      return `Question ${index + 1}: provide a valid question object.`;
+    }
+    const cases = q.testCases ?? q.test_cases ?? [];
+    if (!Array.isArray(cases) || cases.length > MAX_OA_TEST_CASES || cases.some((tc) =>
+      !tc || typeof tc !== 'object' || Array.isArray(tc)
+      || typeof (tc.input ?? tc.stdin ?? '') !== 'string'
+      || (tc.expected_output ?? tc.output ?? tc.expected) == null
+    )) {
+      return `Question ${index + 1}: provide up to ${MAX_OA_TEST_CASES} test cases, each with string input and expected output.`;
+    }
+  }
+  return null;
+}
 
 // ── Boilerplate & Empty Code Detector ───────────────────────────────────────
 function isBoilerplateOrEmpty(code, lang, starterCode) {
@@ -53,7 +98,11 @@ function isBoilerplateOrEmpty(code, lang, starterCode) {
     .replace(/[{}();:\s]/g, '');
 
   if (stripped.length < 12) {
-    return true;
+    // Short but real programs such as print(input()) can solve an echo case.
+    // Leave correctness to the server-side tests instead of skipping them.
+    const withoutComments = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(?:\/\/|#)[^\n]*/gm, '');
+    const hasWork = /\b(?:input|stdin|read|print|printf|cout|return)\b|console\.log|System\.out\.print/.test(withoutComments);
+    return !hasWork || /Program executed successfully/i.test(withoutComments);
   }
 
   return false;
@@ -84,10 +133,11 @@ router.get('/tests', auth, async (req, res) => {
     const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
 
-    const { data: attempts } = await supabaseAdmin
+    const { data: attempts, error: attemptError } = await supabaseAdmin
       .from('mock_oa_attempts')
       .select('test_id, score')
       .eq('student_id', req.user.id);
+    if (attemptError) throw attemptError;
 
     const attemptMap = {};
     for (const a of attempts || []) {
@@ -132,19 +182,25 @@ router.get('/tests/:id', auth, async (req, res) => {
 
     const { data: questions, error: qErr } = await supabaseAdmin
       .from('mock_oa_questions')
-      .select('id, question_text, description, type, options, marks, ordering, section, placeholder, word_limit, starter_code, examples, code_constraints, test_cases, sample_input, sample_output')
-      // correct_index intentionally excluded — sent only after submission
+      .select('id, question_text, description, type, options, marks, ordering, section, placeholder, word_limit, starter_code, examples, code_constraints, sample_input, sample_output')
+      // correct_index, explanation and private test_cases intentionally excluded
       .eq('test_id', req.params.id)
       .order('ordering', { ascending: true }); // was order_index
 
     if (qErr) throw qErr;
 
-    const enrichedQuestions = (questions || []).map(q => ({
-      ...q,
-      test_cases: getQuestionTestCases(q),
+    // Explicit public projection in addition to the narrow Supabase select:
+    // never expose correct_index, explanation or private grading cases before
+    // submission, even if the query is broadened in a later refactor.
+    const publicQuestions = (questions || []).map((q) => ({
+      id: q.id, question_text: q.question_text, description: q.description,
+      type: q.type, options: q.options, marks: q.marks, ordering: q.ordering,
+      section: q.section, placeholder: q.placeholder, word_limit: q.word_limit,
+      starter_code: q.starter_code, examples: q.examples,
+      code_constraints: q.code_constraints,
+      sample_input: q.sample_input, sample_output: q.sample_output,
     }));
-
-    res.json({ test, questions: enrichedQuestions });
+    res.json({ test, questions: publicQuestions });
   } catch (err) {
     console.error('GET /mockoa/tests/:id error:', err);
     res.status(500).json({ error: 'Failed to fetch test' });
@@ -157,10 +213,12 @@ router.get('/tests/:id', auth, async (req, res) => {
 // Body: { testId, answers: { questionId: answerValue } }
 // ─────────────────────────────────────────────
 router.post('/submit', auth, roles('student'), async (req, res) => {
-  const { testId, answers, proctoring, codeRuns, codeLangs } = req.body;
+  // codeRuns from old web clients is intentionally ignored: a client can forge
+  // "Accepted". Only server-executed reference cases may prove correctness.
+  const { testId, answers, proctoring, codeLangs } = req.body || {};
 
-  if (!testId || !answers) {
-    return res.status(400).json({ error: 'testId and answers are required' });
+  if (!testId || !answers || typeof answers !== 'object' || Array.isArray(answers)) {
+    return res.status(400).json({ error: 'testId and an answers object are required' });
   }
 
   // Normalise proctoring payload (optional — older clients may omit it).
@@ -175,7 +233,7 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
   const violationSummary = violations.reduce((acc, v) => {
     acc[v.type] = (acc[v.type] || 0) + 1;
     return acc;
-  }, {});
+  }, Object.create(null));
 
   try {
     const { data: test, error: tErr } = await supabaseAdmin
@@ -208,161 +266,110 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
       const studentAnswer = answers[q.id];
       const isMcq = q.type === 'mcq';
 
-      // ── Coding & Technical Evaluation Against Question Test Cases ──
+      // ── Coding & Technical Evaluation ──
       if (!isMcq) {
         const lang = (codeLangs && codeLangs[q.id]) || 'python3';
+        const testCases = getQuestionTestCases(q);
 
-        // 1. Unattempted, blank, or unmodified starter boilerplate code => 0 MARKS
         if (isBoilerplateOrEmpty(studentAnswer, lang, q.starter_code)) {
           skippedCount++;
           scoredAnswers[q.id] = {
-            answer: studentAnswer || '',
-            result: 'skipped',
-            points: 0,
-            verdict: 'Unattempted',
-            testCasesPassed: 0,
-            totalTestCases: 0,
-            explanation: q.explanation || 'No code solution submitted.'
+            answer: studentAnswer || '', result: 'skipped', points: 0,
+            verdict: 'Unattempted', testCasesPassed: 0,
+            totalTestCases: testCases.length,
+            explanation: q.explanation || 'No code solution submitted.',
           };
           continue;
         }
 
-        // 2. Fetch or extract test cases for this question
-        const testCases = getQuestionTestCases(q);
-        const totalTcs = testCases.length;
-
-        if (totalTcs > 0) {
+        if (testCases.length) {
           let passedCount = 0;
-          let firstError = null;
+          let firstFailure = null;
           const tcDetails = [];
 
-          for (let i = 0; i < totalTcs; i++) {
-            const tc = testCases[i];
-            const tcInp = tc.input || '';
-            const expectedOut = normalizeIO(tc.expected_output);
-
+          for (const [index, tc] of testCases.entries()) {
+            let execRes;
             try {
-              const execRes = await execute(studentAnswer, lang, tcInp);
-              const actualOut = normalizeIO(execRes.stdout);
-              const isExecOk = execRes.verdict === 'Accepted';
-              const passed = isExecOk && (expectedOut ? actualOut === expectedOut : true);
-
-              if (passed) {
-                passedCount++;
-              } else if (!firstError && execRes.verdict !== 'Accepted') {
-                firstError = execRes.verdict;
-              }
-
-              tcDetails.push({
-                testCase: i + 1,
-                passed,
-                expected: expectedOut,
-                actual: actualOut,
-                verdict: passed ? 'Passed' : (isExecOk ? 'Wrong Answer' : execRes.verdict),
-                stderr: execRes.stderr || '',
-              });
-            } catch (err) {
-              tcDetails.push({
-                testCase: i + 1,
-                passed: false,
-                expected: expectedOut,
-                actual: '',
-                verdict: 'Execution Error',
-                stderr: err.message,
-              });
-              if (!firstError) firstError = 'Execution Error';
+              execRes = await execute(studentAnswer, lang, tc.input);
+            } catch (error) {
+              // An offline/quota-limited runner is not a wrong student answer.
+              // No attempt is stored; the student can retry after service recovers.
+              return gradingUnavailable(res, error);
             }
+
+            const actual = normalizeIO(execRes.stdout);
+            const expected = normalizeIO(tc.expected_output);
+            const passed = execRes.verdict === 'Accepted' && actual === expected;
+            const verdict = passed ? 'Passed'
+              : execRes.verdict === 'Accepted' ? 'Wrong Answer' : (execRes.verdict || 'Execution Error');
+            if (passed) passedCount++;
+            else if (!firstFailure) firstFailure = verdict;
+
+            // Hidden test input/output (and stderr, which can echo input) must
+            // not leak through the attempt response or persisted answers.
+            tcDetails.push({
+              testCase: index + 1, passed, verdict,
+              ...(!tc.hidden ? { expected, actual, stderr: execRes.stderr || '' } : {}),
+            });
           }
 
-          if (passedCount === totalTcs) {
-            // All test cases passed! Full score!
-            totalScore += q.marks;
-            correctCount++;
+          const allPassed = passedCount === testCases.length;
+          // The public sample is useful feedback but can be hard-coded by a
+          // student; it must never certify full correctness by itself.
+          const sampleOnly = testCases.every((tc) => tc.source === 'sample');
+          const fullCredit = allPassed && !sampleOnly;
+          const points = fullCredit ? q.marks : passedCount > 0
+            ? Math.max(0, Math.min(q.marks - 1,
+              sampleOnly ? Math.floor(q.marks * 0.25)
+                : Math.round((passedCount / testCases.length) * q.marks)))
+            : 0;
+          totalScore += points;
+          if (fullCredit) correctCount++;
+          else wrongCount++;
+          scoredAnswers[q.id] = {
+            answer: studentAnswer,
+            result: fullCredit ? 'correct' : points > 0 ? 'partial' : 'wrong',
+            points,
+            verdict: fullCredit ? 'Accepted'
+              : sampleOnly && allPassed ? 'Sample passed (not proof of correctness)'
+                : passedCount > 0 ? `${passedCount}/${testCases.length} Test Cases Passed` : firstFailure || 'Wrong Answer',
+            testCasesPassed: passedCount,
+            totalTestCases: testCases.length,
+            testCaseResults: tcDetails,
+            explanation: q.explanation,
+          };
+        } else {
+          // Legacy OA coding questions have no reference output. Running a
+          // program successfully alone is NOT proof of correctness. Grant
+          // at most small, labelled static-review credit (never full marks).
+          let runRes;
+          try {
+            runRes = await execute(studentAnswer, lang, '');
+          } catch (error) {
+            return gradingUnavailable(res, error);
+          }
+          wrongCount++;
+          if (runRes?.verdict !== 'Accepted') {
             scoredAnswers[q.id] = {
-              answer: studentAnswer,
-              result: 'correct',
-              points: q.marks,
-              verdict: 'Accepted',
-              testCasesPassed: passedCount,
-              totalTestCases: totalTcs,
-              testCaseResults: tcDetails,
-              explanation: q.explanation
-            };
-          } else if (passedCount > 0) {
-            // Partial credit proportional to test cases passed!
-            const partialPts = Math.max(1, Math.round((passedCount / totalTcs) * q.marks));
-            totalScore += partialPts;
-            wrongCount++;
-            scoredAnswers[q.id] = {
-              answer: studentAnswer,
-              result: 'partial',
-              points: partialPts,
-              verdict: `${passedCount}/${totalTcs} Test Cases Passed`,
-              testCasesPassed: passedCount,
-              totalTestCases: totalTcs,
-              testCaseResults: tcDetails,
-              explanation: q.explanation
+              answer: studentAnswer, result: 'wrong', points: 0,
+              verdict: runRes?.verdict || 'Execution Error',
+              details: runRes?.stderr || 'Code did not execute cleanly.',
+              testCasesPassed: 0, totalTestCases: 0,
+              explanation: q.explanation,
             };
           } else {
-            // 0 test cases passed => Wrong Answer or Compilation Error => 0 points!
-            const verdict = firstError || 'Wrong Answer';
-            wrongCount++;
+            const evaluation = evaluateCodeHeuristics(studentAnswer, lang, q.starter_code);
+            const points = Math.max(0, Math.min(q.marks, Math.floor(evaluation.scoreRatio * q.marks)));
+            totalScore += points;
             scoredAnswers[q.id] = {
               answer: studentAnswer,
-              result: 'wrong',
-              points: 0,
-              verdict,
-              testCasesPassed: 0,
-              totalTestCases: totalTcs,
-              testCaseResults: tcDetails,
-              explanation: q.explanation
-            };
-          }
-        } else {
-          // When no standard I/O test cases are configured for this question:
-          // Gate 1: Check syntax and compilation on the code engine
-          try {
-            const runRes = await execute(studentAnswer, lang, '');
-            if (!runRes || runRes.verdict !== 'Accepted') {
-              wrongCount++;
-              scoredAnswers[q.id] = {
-                answer: studentAnswer,
-                result: 'wrong',
-                points: 0,
-                verdict: runRes?.verdict || 'Compilation Error',
-                details: runRes?.stderr || 'Code failed to compile or threw a runtime error.',
-                explanation: q.explanation
-              };
-            } else {
-              // Gate 2: Code compiles cleanly -> Evaluate algorithmic structure, control flow & complexity
-              const evalRes = evaluateCodeHeuristics(studentAnswer, lang, q.starter_code, q);
-              const points = Math.round(evalRes.scoreRatio * q.marks);
-              totalScore += points;
-              if (evalRes.result === 'correct') {
-                correctCount++;
-              } else {
-                wrongCount++;
-              }
-
-              scoredAnswers[q.id] = {
-                answer: studentAnswer,
-                result: evalRes.result,
-                points,
-                verdict: evalRes.verdict,
-                staticAnalysis: true,
-                details: evalRes.details,
-                explanation: q.explanation
-              };
-            }
-          } catch (err) {
-            wrongCount++;
-            scoredAnswers[q.id] = {
-              answer: studentAnswer,
-              result: 'wrong',
-              points: 0,
-              verdict: 'Execution Error',
-              details: err.message,
-              explanation: q.explanation
+              result: points > 0 ? 'partial' : 'wrong',
+              points,
+              verdict: evaluation.verdict,
+              staticAnalysis: true,
+              details: evaluation.details,
+              testCasesPassed: 0, totalTestCases: 0,
+              explanation: q.explanation,
             };
           }
         }
@@ -458,40 +465,63 @@ router.post('/submit', auth, roles('student'), async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────
-// GET /api/mockoa/history
-// Student's OA attempt history
-// ─────────────────────────────────────────────
+// Only return persisted, student-owned summaries. Legacy answer blobs might
+// contain hidden grading cases, so no raw answers or private cases leave this
+// history API (even after the attempt has completed).
+function mockAttemptSummary(attempt) {
+  const test = attempt.mock_oa_tests || {};
+  return {
+    id: attempt.id,
+    testId: attempt.test_id || test.id,
+    testTitle: test.title || 'Mock OA',
+    testType: test.type || null,
+    company: test.companies?.name || null,
+    companyLogo: test.companies?.logo_url || null,
+    score: attempt.score,
+    totalPossible: test.total_marks ?? null,
+    percentage: attempt.pct,
+    passed: Number(attempt.pct || 0) >= 50,
+    correct: attempt.passed_mcq ?? 0,
+    wrong: attempt.wrong_mcq ?? 0,
+    skipped: attempt.skipped_mcq ?? 0,
+    submittedAt: attempt.completed_at,
+    integrityScore: attempt.integrity_score ?? null,
+    violationCount: attempt.violation_count ?? null,
+    terminated: attempt.terminated ?? false,
+  };
+}
+
+// GET /api/mockoa/history — completed attempts, newest first.
 router.get('/history', auth, roles('student'), async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from('mock_oa_attempts')
-      .select(`
-        id, score, pct, completed_at,
-        mock_oa_tests(id, title, type, duration,
-          companies(name, logo_url))
-      `)
+      .select('id, test_id, score, pct, passed_mcq, wrong_mcq, skipped_mcq, completed_at, mock_oa_tests(id, title, type, total_marks, companies(name, logo_url))')
       .eq('student_id', req.user.id)
-      .order('completed_at', { ascending: false }); // was submitted_at
-
+      .order('completed_at', { ascending: false });
     if (error) throw error;
-
-    const history = (data || []).map(a => ({
-      id: a.id,
-      testTitle: a.mock_oa_tests?.title,
-      testType: a.mock_oa_tests?.type,       // was test_type
-      company: a.mock_oa_tests?.companies?.name,
-      companyLogo: a.mock_oa_tests?.companies?.logo_url,
-      score: a.score,
-      percentage: a.pct,                     // was calculated from total_marks
-      passed: (a.pct || 0) >= 50,
-      submittedAt: a.completed_at,           // was submitted_at
-    }));
-
-    res.json({ history });
+    res.json({ history: (data || []).map(mockAttemptSummary) });
   } catch (err) {
     console.error('GET /mockoa/history error:', err);
     res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+// GET /api/mockoa/history/:attemptId — read-only result, scoped to the owner.
+router.get('/history/:attemptId', auth, roles('student'), async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('mock_oa_attempts')
+      .select('id, test_id, score, pct, passed_mcq, wrong_mcq, skipped_mcq, completed_at, mock_oa_tests(id, title, type, total_marks, companies(name, logo_url))')
+      .eq('id', req.params.attemptId)
+      .eq('student_id', req.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Attempt not found' });
+    res.json({ attempt: mockAttemptSummary(data) });
+  } catch (err) {
+    console.error('GET /mockoa/history/:attemptId error:', err);
+    res.status(500).json({ error: 'Failed to fetch attempt' });
   }
 });
 
@@ -506,9 +536,11 @@ router.get('/history', auth, roles('student'), async (req, res) => {
 router.post('/upload', auth, roles('recruiter'), async (req, res) => {
   const { companyId, testType, title, durationMinutes, questions } = req.body;
 
-  if (!companyId || !testType || !title || !questions?.length) {
+  if (!companyId || !testType || !title || !Array.isArray(questions) || !questions.length) {
     return res.status(400).json({ error: 'companyId, testType, title, and at least one question are required' });
   }
+  const invalidCases = invalidQuestionTestCases(questions);
+  if (invalidCases) return res.status(400).json({ error: invalidCases });
 
   try {
     // Verify recruiter belongs to this company
@@ -518,8 +550,6 @@ router.post('/upload', auth, roles('recruiter'), async (req, res) => {
       .eq('id', companyId)
       .eq('recruiter_id', req.user.id)
       .single();
-
-    console.log('DEBUG upload → companyId:', companyId, '| req.user.id:', req.user.id, '| company:', company, '| cErr:', cErr);
 
     if (cErr || !company) {
       return res.status(403).json({ error: 'You are not authorized to upload for this company' });
@@ -547,21 +577,14 @@ router.post('/upload', auth, roles('recruiter'), async (req, res) => {
     const qRows = questions.map((q, idx) => ({
       id: crypto.randomUUID(),           // no default on id — must supply
       test_id: test.id,
-      question_text: q.questionText,
-      type: q.questionType || 'mcq',     // was question_type
+      question_text: q.questionText ?? q.question_text,
+      type: q.questionType ?? q.question_type ?? q.type ?? 'mcq',
       section: q.section || 'general',   // NOT NULL
       options: q.options || null,
-      correct_index: q.correctAnswer ?? null, // was correct_answer
+      correct_index: q.correctAnswer ?? q.correct_index ?? q.correct_answer ?? null,
       marks: q.marks || 4,
       ordering: idx,                     // was order_index
-      description: q.description || '',
-      starter_code: q.starterCode || q.starter_code || null,
-      code_constraints: q.constraints || q.code_constraints || null,
-      examples: q.examples || null,
-      explanation: q.explanation || null,
-      test_cases: q.testCases || q.test_cases || [],
-      sample_input: q.sampleInput || q.sample_input || null,
-      sample_output: q.sampleOutput || q.sample_output || null,
+      ...questionUploadFields(q),
     }));
 
     const { error: qErr } = await supabaseAdmin
@@ -766,9 +789,11 @@ router.patch('/:id/reject', auth, roles('admin'), async (req, res) => {
 router.post('/tests', auth, roles('admin'), async (req, res) => {
   const { companyId, testType, title, durationMinutes, questions } = req.body;
 
-  if (!companyId || !testType || !title || !questions?.length) {
+  if (!companyId || !testType || !title || !Array.isArray(questions) || !questions.length) {
     return res.status(400).json({ error: 'companyId, testType, title, questions required' });
   }
+  const invalidCases = invalidQuestionTestCases(questions);
+  if (invalidCases) return res.status(400).json({ error: invalidCases });
 
   try {
     const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 4), 0);
@@ -795,13 +820,14 @@ router.post('/tests', auth, roles('admin'), async (req, res) => {
     const qRows = questions.map((q, idx) => ({
       id: crypto.randomUUID(),
       test_id: test.id,
-      question_text: q.questionText,
-      type: q.questionType || 'mcq',     // was question_type
+      question_text: q.questionText ?? q.question_text,
+      type: q.questionType ?? q.question_type ?? q.type ?? 'mcq',
       section: q.section || 'general',
       options: q.options || null,
-      correct_index: q.correctAnswer ?? null, // was correct_answer
+      correct_index: q.correctAnswer ?? q.correct_index ?? q.correct_answer ?? null,
       marks: q.marks || 4,
       ordering: idx,                     // was order_index
+      ...questionUploadFields(q),
     }));
 
     const { error: qErr } = await supabaseAdmin

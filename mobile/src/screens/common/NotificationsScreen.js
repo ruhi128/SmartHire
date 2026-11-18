@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
@@ -10,8 +10,10 @@ import { AppButton, Badge, EmptyState, ErrorState, LoadingState } from '../../co
 import useAsyncData from '../../utils/useAsyncData';
 import { relativeDate } from '../../utils/format';
 import { colors, spacing } from '../../constants/theme';
-import { navigateFromNotification } from '../../navigation/navigationRef';
+import { navigateFromInboxLink } from '../../navigation/notificationNavigation';
 import { DEMO_MODE } from '../../config/runtime';
+import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationContext';
 
 // The live API returns { notifications: [...] }. Preserve that envelope while
 // optimistically editing a list so future refreshes and callers retain the
@@ -25,6 +27,14 @@ function patchNotifications(data, transform) {
 }
 
 export default function NotificationsScreen({ navigation }) {
+  const opening = useRef(new Set());
+  const { user } = useAuth();
+  const {
+    markNotificationReadLocally,
+    markAllNotificationsReadLocally,
+    removeNotificationLocally,
+    refreshUnreadCount,
+  } = useNotifications();
   const { data, loading, refreshing, error, reload, setData } = useAsyncData(() => notificationsApi.list(), []);
   const notifications = Array.isArray(data) ? data : data?.notifications || [];
 
@@ -47,21 +57,33 @@ export default function NotificationsScreen({ navigation }) {
     try {
       await notificationsApi.markAllRead();
       setData((old) => patchNotifications(old, (items) => items.map((item) => ({ ...item, is_read: true }))));
+      markAllNotificationsReadLocally();
+      refreshUnreadCount().catch(() => {});
     } catch {
       Alert.alert('Could not update notifications', 'Please try again.');
     }
   };
 
   const open = async (item) => {
+    if (opening.current.has(item.id)) return;
+    opening.current.add(item.id);
     try {
       if (!item.is_read) {
-        await notificationsApi.markRead(item.id);
-        setData((old) => patchNotifications(old, (items) => items.map((notification) => (
-          notification.id === item.id ? { ...notification, is_read: true } : notification
-        ))));
+        try {
+          await notificationsApi.markRead(item.id);
+          setData((old) => patchNotifications(old, (items) => items.map((notification) => (
+            notification.id === item.id ? { ...notification, is_read: true } : notification
+          ))));
+          markNotificationReadLocally(item);
+          refreshUnreadCount().catch(() => {});
+        } catch {
+          // A read-status failure should not stop opening the destination.
+          reload({ refresh: true }).catch(() => {});
+        }
       }
+      if (item.link) navigateFromInboxLink(navigation, item.link, user?.role);
     } finally {
-      if (item.link) navigateFromNotification({ link: item.link, notificationId: item.id });
+      opening.current.delete(item.id);
     }
   };
 
@@ -74,6 +96,8 @@ export default function NotificationsScreen({ navigation }) {
         try {
           await notificationsApi.remove(item.id);
           setData((old) => patchNotifications(old, (items) => items.filter((notification) => notification.id !== item.id)));
+          removeNotificationLocally(item);
+          refreshUnreadCount().catch(() => {});
         } catch {
           Alert.alert('Could not delete notification', 'Please try again.');
         }

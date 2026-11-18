@@ -7,6 +7,7 @@ import { adminApi, companyOaApi, jobsApi, mockOaApi } from '../../api';
 import { apiUrl } from '../../api/client';
 import { DEMO_MODE } from '../../config/runtime';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from '../../components/NotificationBell';
 import useAsyncData from '../../utils/useAsyncData';
 import { colors, spacing } from '../../constants/theme';
 import { formatDate, getInitials, statusTone } from '../../utils/format';
@@ -75,9 +76,7 @@ export default function AdminDashboardScreen({ navigation }) {
           <Text style={styles.title}>Placement control</Text>
           <Text style={styles.subtitle}>Review workflow items and monitor placement activity.</Text>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Notifications" onPress={() => navigation.navigate('Notifications')} style={styles.bell}>
-          <Ionicons name="notifications-outline" size={22} color={colors.white} />
-        </Pressable>
+        <NotificationBell navigation={navigation} size={22} />
       </View>
 
       <Card style={styles.metrics}>
@@ -119,7 +118,6 @@ const styles = StyleSheet.create({
   heroBody: { flex: 1 },
   title: { color: colors.white, fontSize: 21, fontWeight: '900' },
   subtitle: { color: '#CBD5E1', marginTop: 4, fontSize: 12, lineHeight: 17 },
-  bell: { padding: 9 },
   metrics: { marginTop: -15, paddingVertical: 15, flexDirection: 'row', justifyContent: 'space-between' },
   metric: { flex: 1, alignItems: 'center' },
   metricIcon: { height: 33, width: 33, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

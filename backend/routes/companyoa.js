@@ -1,4 +1,3 @@
-console.log('✅ companyoa routes loaded');
 const express  = require('express');
 const router   = express.Router();
 const auth     = require('../middleware/auth');
@@ -11,7 +10,6 @@ const supabase = require('../config/supabase');
 
 // POST /api/companyoa/submit — recruiter submits a new OA test with questions
 router.post('/submit', auth, roles('recruiter'), async (req, res) => {
-  console.log('✅ /submit route hit');
   const {
     title, description, test_type, duration, target_branches,
     min_cgpa, instructions, questions
@@ -246,6 +244,21 @@ router.get('/all', auth, roles('admin'), async (req, res) => {
 
 // GET /api/companyoa/:id/questions — admin or recruiter previews questions
 router.get('/:id/questions', auth, roles('admin', 'recruiter'), async (req, res) => {
+  if (req.user.role === 'recruiter') {
+    const { data: test, error: testError } = await supabase
+      .from('company_oa_tests').select('id, company_id, submitted_by')
+      .eq('id', req.params.id).maybeSingle();
+    if (testError) return res.status(500).json({ error: 'Could not verify test owner' });
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    if (test.submitted_by !== req.user.id) {
+      const { data: company, error: companyError } = await supabase
+        .from('companies').select('id')
+        .eq('id', test.company_id).eq('recruiter_id', req.user.id).maybeSingle();
+      if (companyError) return res.status(500).json({ error: 'Could not verify recruiter company' });
+      if (!company) return res.status(403).json({ error: 'Not authorized to view this company assessment' });
+    }
+  }
+
   const { data, error } = await supabase
     .from('company_oa_questions')
     .select('*')
@@ -271,9 +284,11 @@ router.patch('/:id/approve', auth, roles('admin'), async (req, res) => {
       approved_at:     new Date().toISOString(),
     })
     .eq('id', req.params.id)
-    .select('*, companies(name)').single();
+    .eq('approval_status', 'pending')
+    .select('*, companies(name)').maybeSingle();
 
   if (error) return res.status(400).json({ error: error.message });
+  if (!test) return res.status(409).json({ error: 'Only pending assessments can be reviewed' });
 
   if (action === 'approve') {
    // ✅ Fix
@@ -290,36 +305,24 @@ try {
   res.json({ message: `Test ${action === 'approve' ? 'approved and published' : 'rejected'}.`, test });
 });
 
-// GET /api/companyoa/all — admin sees all tests (all statuses)
-router.get('/all', auth, roles('admin'), async (req, res) => {
-  const { data, error } = await supabase
-    .from('company_oa_tests')
-    .select('*, companies(name, logo_url)')
-    .order('created_at', { ascending: false });
-  if (error) return res.status(500).json({ error: error.message });
-
-  // Attach question counts for admin view too
-  const result = await Promise.all((data || []).map(async t => {
-    const { count } = await supabase
-      .from('company_oa_questions').select('id', { count: 'exact', head: true }).eq('test_id', t.id);
-    return { ...t, question_count: count || 0 };
-  }));
-
-  res.json({ tests: result });
-});
-
 // ─────────────────────────────────────────────────────────────────────────────
 // STUDENT ROUTES — Take approved tests
 // ─────────────────────────────────────────────────────────────────────────────
 
+function isCompanyOaEligible(test, profile) {
+  const branches = Array.isArray(test.target_branches) ? test.target_branches : [];
+  return (!branches.length || branches.includes(profile?.branch || ''))
+    && Number(profile?.cgpa || 0) >= Number(test.min_cgpa || 0);
+}
+
+async function getStudentOaProfile(userId) {
+  return supabase.from('student_profiles').select('branch, cgpa').eq('id', userId).maybeSingle();
+}
+
 // GET /api/companyoa/available — student sees approved tests for their branch + cgpa
 router.get('/available', auth, roles('student'), async (req, res) => {
-  // FIX #5: Read from student_profiles (not users) for branch and cgpa
-  const { data: student } = await supabase
-    .from('student_profiles')
-    .select('branch, cgpa')
-    .eq('id', req.user.id)
-    .single();
+  const { data: student, error: profileError } = await getStudentOaProfile(req.user.id);
+  if (profileError) return res.status(500).json({ error: 'Could not verify student eligibility' });
 
   const { data: tests, error } = await supabase
     .from('company_oa_tests')
@@ -330,21 +333,14 @@ router.get('/available', auth, roles('student'), async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // FIX #5: Proper eligibility filtering by branch AND cgpa
-  const branch = student?.branch || '';
-  const cgpa   = parseFloat(student?.cgpa || 0);
-
-  const eligible = (tests || []).filter(t => {
-    const branchOk = !t.target_branches?.length || t.target_branches.includes(branch);
-    const cgpaOk   = cgpa >= parseFloat(t.min_cgpa || 0);
-    return branchOk && cgpaOk;
-  });
+  const eligible = (tests || []).filter((test) => isCompanyOaEligible(test, student));
 
   // Attach attempt data
-  const { data: attempts } = await supabase
+  const { data: attempts, error: attemptsError } = await supabase
     .from('company_oa_attempts')
     .select('test_id, pct, grade, completed_at')
     .eq('student_id', req.user.id);
+  if (attemptsError) return res.status(500).json({ error: 'Could not load assessment attempts' });
 
   const attMap = {};
   (attempts || []).forEach(a => {
@@ -361,6 +357,65 @@ router.get('/available', auth, roles('student'), async (req, res) => {
   res.json({ tests: result });
 });
 
+// Only project saved, student-owned score fields: never return the raw
+// submitted answers or pre-submission answer keys through history endpoints.
+function companyAttemptSummary(attempt) {
+  const test = attempt.company_oa_tests || {};
+  return {
+    id: attempt.id,
+    testId: attempt.test_id,
+    title: test.title || 'Company OA',
+    testType: test.test_type || null,
+    company: test.companies?.name || null,
+    score: attempt.score,
+    maxScore: attempt.max_score,
+    pct: attempt.pct,
+    grade: attempt.grade,
+    correct: attempt.correct_count ?? 0,
+    wrong: attempt.wrong_count ?? 0,
+    skipped: attempt.skipped_count ?? 0,
+    timeTaken: attempt.time_taken,
+    autoSubmitted: attempt.auto_submitted,
+    submittedAt: attempt.completed_at,
+  };
+}
+
+const companyHistorySelect = 'id, test_id, score, max_score, pct, grade, correct_count, wrong_count, skipped_count, time_taken, auto_submitted, completed_at, company_oa_tests(title, test_type, companies(name))';
+
+// GET /api/companyoa/history — past results, even if a test is now inactive.
+router.get('/history', auth, roles('student'), async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('company_oa_attempts')
+      .select(companyHistorySelect)
+      .eq('student_id', req.user.id)
+      .order('completed_at', { ascending: false });
+    if (error) throw error;
+    res.json({ history: (data || []).map(companyAttemptSummary) });
+  } catch (error) {
+    console.error('GET /companyoa/history error:', error);
+    res.status(500).json({ error: 'Failed to fetch company OA history' });
+  }
+});
+
+// GET /api/companyoa/history/:attemptId — never return another user's result.
+router.get('/history/:attemptId', auth, roles('student'), async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('company_oa_attempts')
+      .select(companyHistorySelect)
+      .eq('id', req.params.attemptId)
+      .eq('student_id', req.user.id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Attempt not found' });
+    res.json({ attempt: companyAttemptSummary(data) });
+  } catch (error) {
+    console.error('GET /companyoa/history/:attemptId error:', error);
+    res.status(500).json({ error: 'Failed to fetch company OA result' });
+  }
+});
+
 // GET /api/companyoa/:id/take — get test + questions (without answers)
 router.get('/:id/take', auth, roles('student'), async (req, res) => {
   const { data: test, error } = await supabase
@@ -368,10 +423,17 @@ router.get('/:id/take', auth, roles('student'), async (req, res) => {
     .select('*, companies(name, logo_url)')
     .eq('id', req.params.id)
     .eq('approval_status', 'approved')
+    .eq('is_active', true)
     .single();
 
   if (error || !test)
     return res.status(404).json({ error: 'Test not found or not approved' });
+
+  const { data: profile, error: profileError } = await getStudentOaProfile(req.user.id);
+  if (profileError) return res.status(500).json({ error: 'Could not verify student eligibility' });
+  if (!isCompanyOaEligible(test, profile)) {
+    return res.status(403).json({ error: 'You are not eligible for this Company OA' });
+  }
 
   // FIX #6: Check if student already attempted this test
   const { data: existing } = await supabase
@@ -399,7 +461,10 @@ router.get('/:id/take', auth, roles('student'), async (req, res) => {
 
 // POST /api/companyoa/:id/attempt — student submits attempt
 router.post('/:id/attempt', auth, roles('student'), async (req, res) => {
-  const { answers, timeTaken, autoSubmitted } = req.body;
+  const { answers, timeTaken, autoSubmitted } = req.body || {};
+  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+    return res.status(400).json({ error: 'An answers object is required' });
+  }
 
   // FIX #6: Prevent duplicate attempts
   const { data: existing } = await supabase
@@ -416,13 +481,26 @@ router.post('/:id/attempt', auth, roles('student'), async (req, res) => {
   }
 
   const { data: test } = await supabase
-    .from('company_oa_tests').select('id, title, duration').eq('id', req.params.id).single();
-  if (!test) return res.status(404).json({ error: 'Test not found' });
+    .from('company_oa_tests')
+    .select('id, title, duration, target_branches, min_cgpa')
+    .eq('id', req.params.id)
+    .eq('approval_status', 'approved')
+    .eq('is_active', true)
+    .single();
+  if (!test) return res.status(404).json({ error: 'Test not found or not approved' });
+  const { data: profile, error: profileError } = await getStudentOaProfile(req.user.id);
+  if (profileError) return res.status(500).json({ error: 'Could not verify student eligibility' });
+  if (!isCompanyOaEligible(test, profile)) {
+    return res.status(403).json({ error: 'You are not eligible for this Company OA' });
+  }
 
-  const { data: questions } = await supabase
+  const { data: questions, error: questionError } = await supabase
     .from('company_oa_questions')
     .select('id, question_type, marks, negative_marks, correct_index, explanation, section')
     .eq('test_id', req.params.id);
+  if (questionError || !questions?.length) {
+    return res.status(503).json({ error: 'Could not load the questions for grading. No attempt was saved.' });
+  }
 
   // Score calculation
   let score = 0, maxScore = 0, correct = 0, wrong = 0, skipped = 0;
@@ -467,7 +545,7 @@ router.post('/:id/attempt', auth, roles('student'), async (req, res) => {
         });
       }
     } else if (q.question_type === 'text') {
-      const words = (ans || '').trim().split(/\s+/).filter(Boolean).length;
+      const words = String(ans ?? '').trim().split(/\s+/).filter(Boolean).length;
       const pts = Math.round(q.marks * Math.min(words / (q.word_limit || 100), 1) * 0.7);
       score += pts;
       breakdown[sec].earned += pts;

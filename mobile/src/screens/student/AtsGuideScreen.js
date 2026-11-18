@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { studentApi } from '../../api';
+import { apiErrorMessage } from '../../api/client';
+import { DEMO_MODE } from '../../config/runtime';
+import { pickAndExtractAtsPdf } from '../../utils/atsPdfImport';
 import Screen from '../../components/Screen';
 import AppHeader from '../../components/AppHeader';
 import { AppButton, Badge, Card, SectionTitle } from '../../components/Ui';
@@ -88,10 +93,41 @@ export default function AtsGuideScreen({ navigation }) {
   const [originalResume, setOriginalResume] = useState('');
   const [template, setTemplate] = useState('classic');
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState('');
+  const [resumeSource, setResumeSource] = useState('');
+  const [jdSource, setJdSource] = useState('');
+
+  const importPdf = async (kind) => {
+    if (DEMO_MODE || importing) return;
+    setImporting(kind);
+    try {
+      const extracted = await pickAndExtractAtsPdf({
+        pickDocument: DocumentPicker.getDocumentAsync,
+        extractPdf: studentApi.extractAtsPdf,
+      });
+      if (!extracted) return; // Picker cancellation leaves both fields unchanged.
+      if (kind === 'resume') {
+        setResume(extracted.text);
+        setResumeSource(extracted.name);
+        setOriginalResume('');
+      } else {
+        setJobDescription(extracted.text);
+        setJdSource(extracted.name);
+      }
+      setResult(null);
+    } catch (error) {
+      const message = error?.response?.status === 404
+        ? 'PDF extraction is not available on the deployed SmartHire API yet. Ask the backend owner to deploy /api/students/ats/extract-pdf, or paste the text instead.'
+        : apiErrorMessage(error);
+      Alert.alert('Could not read PDF', message);
+    } finally {
+      setImporting('');
+    }
+  };
 
   const analyze = () => {
     if (resume.trim().length < 40 || jobDescription.trim().length < 40) {
-      Alert.alert('Add more detail', 'Paste your resume content and a job description before analysing.');
+      Alert.alert('Add more detail', 'Select readable resume and job-description PDFs, or paste both texts, before analysing.');
       return;
     }
     if (!originalResume) setOriginalResume(resume);
@@ -100,6 +136,8 @@ export default function AtsGuideScreen({ navigation }) {
 
   const changeResume = (next, { recalculate = false } = {}) => {
     setResume(next);
+    if (!recalculate) setResumeSource('');
+    if (!next.trim()) setOriginalResume('');
     if (recalculate && jobDescription.trim().length >= 40) setResult(analyzeAts(next, jobDescription));
     else if (!recalculate) setResult(null);
   };
@@ -153,13 +191,15 @@ export default function AtsGuideScreen({ navigation }) {
     <>
       <AppHeader navigation={navigation} title="ATS Resume Guide" />
       <Screen>
-        <Text style={styles.intro}>Compare editable resume text with a job description, tailor it deliberately, then create a native PDF to share. Keep every change truthful and verifiable.</Text>
+        <Text style={styles.intro}>Select a resume PDF and a job-description PDF, or paste their text. Compare the extracted, editable text, tailor it truthfully, then create a new PDF to share.</Text>
 
         <Card>
           <View style={styles.cardHeader}>
             <Text style={styles.label}>Resume text</Text>
             {resume ? <Pressable accessibilityRole="button" onPress={() => changeResume('')}><Text style={styles.clear}>Clear</Text></Pressable> : null}
           </View>
+          <AppButton title="Choose resume PDF" variant="outline" compact onPress={() => importPdf('resume')} loading={importing === 'resume'} disabled={DEMO_MODE || Boolean(importing)} style={styles.pdfButton} />
+          {resumeSource ? <Text style={styles.fileSource}>Extracted from {resumeSource}</Text> : null}
           <TextInput
             value={resume}
             onChangeText={(value) => changeResume(value)}
@@ -169,21 +209,23 @@ export default function AtsGuideScreen({ navigation }) {
             placeholder="Paste the text of your resume here…"
             placeholderTextColor="#94A3B8"
           />
-          <Text style={styles.hint}>For existing PDFs, open the file from Profile and paste the text you want to improve. Mobile PDF text extraction is intentionally not performed on-device.</Text>
+          <Text style={styles.hint}>PDF text is extracted temporarily by your signed-in SmartHire backend. This does not replace the resume saved in your profile. PDF up to 8 MB; scanned/image-only PDFs may need text pasted instead.{DEMO_MODE ? ' Offline demo mode accepts pasted text only.' : ''}</Text>
         </Card>
 
         <Card style={styles.space}>
           <View style={styles.cardHeader}><Text style={styles.label}>Job description</Text><Text style={styles.wordCount}>{jobDescription.trim() ? `${jobDescription.trim().split(/\s+/).length} words` : ''}</Text></View>
+          <AppButton title="Choose job-description PDF" variant="outline" compact onPress={() => importPdf('jd')} loading={importing === 'jd'} disabled={DEMO_MODE || Boolean(importing)} style={styles.pdfButton} />
+          {jdSource ? <Text style={styles.fileSource}>Extracted from {jdSource}</Text> : null}
           <View style={styles.samples}>
             {SAMPLE_JDS.map((sample) => (
-              <Pressable key={sample.id} accessibilityRole="button" onPress={() => { setJobDescription(sample.text); setResult(null); }} style={({ pressed }) => [styles.sampleChip, pressed && styles.pressed]}>
+              <Pressable key={sample.id} accessibilityRole="button" onPress={() => { setJobDescription(sample.text); setJdSource(''); setResult(null); }} style={({ pressed }) => [styles.sampleChip, pressed && styles.pressed]}>
                 <Text style={styles.sampleText}>{sample.label}</Text>
               </Pressable>
             ))}
           </View>
           <TextInput
             value={jobDescription}
-            onChangeText={(value) => { setJobDescription(value); setResult(null); }}
+            onChangeText={(value) => { setJobDescription(value); setJdSource(''); setResult(null); }}
             multiline
             textAlignVertical="top"
             style={styles.editor}
@@ -192,7 +234,7 @@ export default function AtsGuideScreen({ navigation }) {
           />
         </Card>
 
-        <AppButton title="Analyse compatibility" onPress={analyze} />
+        <AppButton title="Analyse compatibility" onPress={analyze} disabled={Boolean(importing)} />
         {result ? (
           <Analysis
             result={result}
@@ -311,6 +353,8 @@ const styles = StyleSheet.create({
   label: { fontWeight: '800', color: colors.text },
   clear: { color: colors.primary, fontWeight: '800', fontSize: 12 },
   wordCount: { color: colors.muted, fontSize: 11 },
+  pdfButton: { marginTop: 11 },
+  fileSource: { color: colors.primary, fontSize: 12, marginTop: 8, fontWeight: '700' },
   editor: { marginTop: 10, minHeight: 178, padding: 11, borderRadius: 10, borderWidth: 1, borderColor: colors.border, color: colors.text, lineHeight: 20 },
   hint: { fontSize: 11, color: colors.muted, lineHeight: 16, marginTop: 8 },
   samples: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 10 },

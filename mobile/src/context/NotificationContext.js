@@ -2,6 +2,7 @@ import { AppState } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import { notificationsApi } from '../api';
+import { apiErrorMessage } from '../api/client';
 import { useAuth } from './AuthContext';
 import { savePushRegistration } from '../storage/pushRegistration';
 import {
@@ -148,6 +149,7 @@ export function NotificationProvider({ children }) {
     }, requestIdentity);
 
     const registration = await requestExpoPushRegistration();
+    if (activeIdentityRef.current !== requestIdentity) return { status: 'cancelled' };
     if (registration.status !== 'token_ready') {
       updatePushStatus({
         status: registration.status || 'error',
@@ -162,26 +164,36 @@ export function NotificationProvider({ children }) {
         userId: user.id,
         expoPushToken: registration.expoPushToken,
       });
+      if (activeIdentityRef.current !== requestIdentity) return { status: 'cancelled' };
       await notificationsApi.registerDevice({
         expoPushToken: registration.expoPushToken,
         platform: registration.platform,
         deviceName: registration.deviceName,
         appVersion: registration.appVersion,
-      });
+      }, session.token);
+      if (activeIdentityRef.current !== requestIdentity) {
+        // A late response must not leave alerts bound to an account that has
+        // since logged out or switched. Cleanup is best-effort when offline.
+        notificationsApi.unregisterDevice(registration.expoPushToken, session.token).catch(() => {});
+        return { status: 'cancelled' };
+      }
       updatePushStatus({
         status: 'enabled',
         permissionStatus: registration.permissionStatus,
         message: 'Device notifications are enabled for this SmartHire account.',
       }, requestIdentity);
     } catch (error) {
-      const message = error?.response?.data?.error || 'Could not save this device with SmartHire. Your inbox still works in the app.';
+      const message = error?.response?.status === 404
+        ? 'This SmartHire API does not yet have the Android device-registration route. The backend owner must deploy /api/notifications/devices; your in-app inbox can still work.'
+        : apiErrorMessage(error, 'Could not save this device with SmartHire. Your inbox still works in the app.');
       updatePushStatus({
         status: 'error',
         permissionStatus: registration.permissionStatus || null,
-        message: String(message).slice(0, 260),
+        message: String(message).slice(0, 300),
       }, requestIdentity);
+      return { status: 'error', message };
     }
-    return registration;
+    return { status: 'enabled' };
   }, [identityKey, initializing, session?.token, updatePushStatus, user?.id]);
 
   useEffect(() => {
@@ -198,6 +210,16 @@ export function NotificationProvider({ children }) {
     registerForPushNotifications().catch(() => {});
     return undefined;
   }, [identityKey, initializing, refreshUnreadCount, registerForPushNotifications, updatePushStatus]);
+
+  // Refresh the persisted inbox count while the signed-in app is active.
+  // The in-flight guard above prevents overlapping poll/push requests.
+  useEffect(() => {
+    if (initializing || !identityKey) return undefined;
+    const interval = setInterval(() => {
+      if (AppState.currentState === 'active') refreshUnreadCount().catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [identityKey, initializing, refreshUnreadCount]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -264,7 +286,7 @@ export function NotificationProvider({ children }) {
         // will restore the source-of-truth unread count when connectivity returns.
       }
 
-      const routed = navigateFromInboxLink(navigationRef, tap.link);
+      const routed = navigateFromInboxLink(navigationRef, tap.link, user.role);
       if (!routed && navigationRef.isReady()) navigationRef.navigate('Notifications');
       refreshUnreadCount().catch(() => {});
     } finally {

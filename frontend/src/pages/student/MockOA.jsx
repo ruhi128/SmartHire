@@ -1,6 +1,5 @@
 // src/pages/student/MockOA.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axios';
 import {
   Clock, Search, Building2, ChevronLeft, ChevronRight,
@@ -81,7 +80,11 @@ function isBoilerplateOrEmpty(code, lang, starterCode) {
     .replace(/[{}();:\s]/g, '');
 
   if (stripped.length < 12) {
-    return true;
+    // Short, valid echo solutions (for example print(input())) must still
+    // reach private server grading; only reject comments/no-op templates.
+    const withoutComments = code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(?:\/\/|#)[^\n]*/gm, '');
+    const hasWork = /\b(?:input|stdin|read|print|printf|cout|return)\b|console\.log|System\.out\.print/.test(withoutComments);
+    return !hasWork || /Program executed successfully/i.test(withoutComments);
   }
 
   return false;
@@ -91,7 +94,11 @@ function isBoilerplateOrEmpty(code, lang, starterCode) {
 // ── Format Question Description to Rich HTML ─────────────────────────────
 function formatMarkdown(md) {
   if (!md) return '';
-  let out = String(md);
+  // Test descriptions are recruiter-authored: escape raw HTML before adding
+  // only the small set of supported formatting tags below.
+  let out = String(md).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const safeUrl = (url) => /^https?:\/\/[^\s]+$/i.test(url.trim()) ? url.trim() : null;
 
   // 1. Fenced code blocks ```...```
   out = out.replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, (match, lang, code) => {
@@ -124,8 +131,8 @@ function formatMarkdown(md) {
     .replace(/\\times\b/g, '×')
     .replace(/\\cdot\b/g, '·')
     .replace(/\\dots\b|\\ldots\b|\\cdots\b/g, '...')
-    .replace(/\\lt\b/g, '<')
-    .replace(/\\gt\b/g, '>')
+    .replace(/\\lt\b/g, '&lt;')
+    .replace(/\\gt\b/g, '&gt;')
     // Inline math $...$
     .replace(/\$10\^(\d+)\$/g, '10<sup>$1</sup>')
     .replace(/\$([^$\n]+)\$/g, '<span style="font-family:\'JetBrains Mono\',Consolas,monospace;font-weight:600;color:var(--text-primary);">$1</span>');
@@ -133,9 +140,11 @@ function formatMarkdown(md) {
   // 3. Section Titles (Input Format, Output Format, Constraints, etc.)
   out = out.replace(/^(Input Format|Output Format|Constraints|Note:|Notes:|Explanation|Sample Input|Sample Output):?/gim, '<h4 style="margin:16px 0 8px;font-size:13.5px;color:var(--text-primary);font-weight:800;letter-spacing:0.04em;text-transform:uppercase;">$1</h4>');
 
-  // 4. Markdown images
-  out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:8px;margin:10px 0;display:block;" />');
-  out = out.replace(/<img\s+([^>]*?)>/gi, (m, attrs) => `<img ${attrs} style="max-width:100%;border-radius:8px;margin:8px 0;" />`);
+  // 4. Markdown images: allow only explicit HTTP(S), not data/javascript URLs.
+  out = out.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_match, alt, rawUrl) => {
+    const url = safeUrl(rawUrl);
+    return url ? `<img src="${url}" alt="${alt}" style="max-width:100%;border-radius:8px;margin:10px 0;display:block;" />` : alt;
+  });
 
   // 5. Headings
   out = out
@@ -153,7 +162,10 @@ function formatMarkdown(md) {
   out = out.replace(/`([^`\n]+)`/g, '<code style="background:rgba(125,125,125,0.12);padding:2px 6px;border-radius:5px;color:#0284c7;font-family:\'JetBrains Mono\',Consolas,monospace;font-size:12.5px;font-weight:600;">$1</code>');
 
   // 8. Links
-  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;">$1</a>');
+  out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, label, rawUrl) => {
+    const url = safeUrl(rawUrl);
+    return url ? `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:#60a5fa;text-decoration:underline;">${label}</a>` : label;
+  });
 
   // 9. Blockquotes
   out = out.replace(/^>\s+(.*$)/gim, '<blockquote style="border-left:3px solid #6366f1;padding:8px 14px;margin:10px 0;background:rgba(99,102,241,0.08);border-radius:0 8px 8px 0;color:var(--text-primary);font-size:13.5px;">$1</blockquote>');
@@ -224,91 +236,6 @@ function formatMarkdown(md) {
 }
 
 
-// ── Score calculator ───────────────────────────────────────────────────────
-function calcScore(test, answers, questions, runOutputs = {}, codeLangs = {}) {
-  let earned = 0, totalMCQ = 0, correct = 0, wrong = 0, skipped = 0;
-  const breakdown = {};
-  const scoredAnswers = {};
-
-  (questions || []).forEach(q => {
-    const section = q.section || 'General';
-    if (!breakdown[section]) breakdown[section] = { correct:0, wrong:0, total:0, marks:0, earned:0 };
-    breakdown[section].total++;
-    const correctIdx = q.correct_index !== undefined ? q.correct_index
-                     : q.correct_answer !== undefined ? q.correct_answer
-                     : q.ans;
-    const isMcq = q.type === 'mcq';
-
-    if (isMcq) {
-      totalMCQ++;
-      const ans = answers[q.id];
-      breakdown[section].marks += q.marks;
-      if (ans === undefined || ans === null || ans === '') {
-        skipped++;
-        scoredAnswers[q.id] = { answer: null, result: 'skipped', points: 0, correct: correctIdx, explanation: q.explanation };
-      } else if (parseInt(ans) === correctIdx) {
-        earned += q.marks; correct++;
-        breakdown[section].correct++; breakdown[section].earned += q.marks;
-        scoredAnswers[q.id] = { answer: parseInt(ans), result: 'correct', points: q.marks, correct: correctIdx, explanation: q.explanation };
-      } else {
-        const neg = Math.max(1, Math.floor(q.marks / 4));
-        earned = Math.max(0, earned - neg); wrong++;
-        breakdown[section].wrong++;
-        scoredAnswers[q.id] = { answer: parseInt(ans), result: 'wrong', points: -neg, correct: correctIdx, explanation: q.explanation };
-      }
-    } else {
-      const code = answers[q.id] || '';
-      const lang = codeLangs[q.id] || 'python3';
-      const run = runOutputs[q.id];
-      breakdown[section].marks += q.marks;
-
-      if (isBoilerplateOrEmpty(code, lang, q.starterCode)) {
-        skipped++;
-        scoredAnswers[q.id] = { answer: code, result: 'skipped', points: 0, verdict: 'Unattempted', explanation: q.explanation };
-      } else if (run?.results && run.results.length > 0) {
-        const passedCount = run.passedCount !== undefined ? run.passedCount : run.results.filter(r => r.passed).length;
-        const totalCount = run.totalCount !== undefined ? run.totalCount : run.results.length;
-        if (passedCount === totalCount) {
-          earned += q.marks; correct++;
-          breakdown[section].correct++; breakdown[section].earned += q.marks;
-          scoredAnswers[q.id] = { answer: code, result: 'correct', points: q.marks, verdict: 'Accepted', explanation: q.explanation, testCaseResults: run.results, testCasesPassed: passedCount, totalTestCases: totalCount };
-        } else if (passedCount > 0) {
-          const partial = Math.max(1, Math.round((passedCount / totalCount) * q.marks));
-          earned += partial; wrong++;
-          breakdown[section].earned += partial;
-          scoredAnswers[q.id] = { answer: code, result: 'partial', points: partial, verdict: `${passedCount}/${totalCount} Test Cases Passed`, explanation: q.explanation, testCaseResults: run.results, testCasesPassed: passedCount, totalTestCases: totalCount };
-        } else {
-          wrong++;
-          scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: run.verdict || 'Wrong Answer', explanation: q.explanation, testCaseResults: run.results, testCasesPassed: 0, totalTestCases: totalCount };
-        }
-      } else if (run?.verdict === 'Accepted') {
-        const clean = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '').replace(/#.*/g, '').trim();
-        const hasLogic = /\b(for|while|if|switch|def|function|class|return|vector|map|list)\b/i.test(clean) && clean.split('\n').length > 2;
-        if (hasLogic) {
-          const partial = Math.max(1, Math.round(q.marks * 0.6));
-          earned += partial; wrong++;
-          breakdown[section].earned += partial;
-          scoredAnswers[q.id] = { answer: code, result: 'partial', points: partial, verdict: 'Provisional Pass (Static Analysis: 60%)', staticAnalysis: true, details: 'Algorithmic logic and syntax verified. Pending recruiter review.', explanation: q.explanation };
-        } else {
-          wrong++;
-          scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: 'Trivial Implementation', staticAnalysis: true, details: 'Code executed cleanly but lacks required algorithmic logic.', explanation: q.explanation };
-        }
-      } else if (run?.verdict === 'Wrong Answer' || run?.verdict === 'Compilation Error' || run?.verdict === 'Runtime Error') {
-        wrong++;
-        scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: run.verdict, explanation: q.explanation };
-      } else {
-        wrong++;
-        scoredAnswers[q.id] = { answer: code, result: 'wrong', points: 0, verdict: 'Unverified Solution', explanation: q.explanation };
-      }
-    }
-  });
-
-  const totalMarks = test.total_marks || test.totalMarks || 100;
-  const pct   = Math.min(100, Math.round((earned / totalMarks) * 100));
-  const grade = pct>=90?'A+':pct>=80?'A':pct>=70?'B+':pct>=60?'B':pct>=50?'C':pct>=40?'D':'F';
-  return { earned, total: totalMarks, pct, grade, correct, wrong, skipped, totalMCQ, breakdown, questions, scoredAnswers };
-}
-
 // ── Pill filter button ─────────────────────────────────────────────────────
 const Pill = ({ label, active, color, onClick }) => (
   <button onClick={onClick} style={{ padding:'6px 16px', borderRadius:999, fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:"'Sora',sans-serif", background:active?`${color}18`:'var(--bg-card-high)', border:`1px solid ${active?color+'44':'var(--border)'}`, color:active?color:'#64748b', transition:'all .2s' }}>
@@ -327,7 +254,6 @@ const CompanyTag = () => (
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 export default function MockOA() {
-  const { user } = useAuth();
   const [screen,      setScreen]      = useState('list');
   const [activeType,  setActiveType]  = useState('all');
   const [search,      setSearch]      = useState('');
@@ -338,6 +264,11 @@ export default function MockOA() {
   const [timeLeft,    setTimeLeft]    = useState(0);
   const [result,      setResult]      = useState(null);
   const [submitting,  setSubmitting]  = useState(false);
+  const [attemptLocked, setAttemptLocked] = useState(false);
+  const [submissionError, setSubmissionError] = useState('');
+  const [starting, setStarting] = useState(false);
+  const startingRef = useRef(false);
+  const submittedPayloadRef = useRef(null);
   const [flagged,     setFlagged]     = useState(new Set());
   const [submittedQuestions, setSubmittedQuestions] = useState(new Set());
   const [codeLangs,     setCodeLangs]     = useState({});
@@ -389,9 +320,13 @@ export default function MockOA() {
   // DB-fetched company-uploaded tests
   const [dbTests,     setDbTests]     = useState([]);
   const [dbLoading,   setDbLoading]   = useState(true);
+  const [dbError,     setDbError]     = useState('');
+  const [refreshKey,  setRefreshKey]  = useState(0);
 
   const timerRef = useRef(null);
   const startRef = useRef(null);
+  const submitRef = useRef(null);
+  const submittingRef = useRef(false);
 
   // ── Code execution & submission helpers ─────────────────────────────────
   const getLang = useCallback((qId) => codeLangs[qId] || 'python3', [codeLangs]);
@@ -447,23 +382,27 @@ export default function MockOA() {
 
     try {
       let res;
-      if (isOpenStdin && stdin.trim()) {
+      if ((isOpenStdin && stdin.trim()) || testCases.length === 0) {
         res = await api.post('/api/code/run', {
           code,
           language: lang,
           stdin,
         });
       } else {
+        // Run only the published sample. This is practice feedback, never
+        // proof that the private grading cases passed.
         res = await api.post('/api/code/run-tests', {
           code,
           language: lang,
-          testCases: testCases.length > 0 ? testCases : [{ input: stdin, expected_output: '' }]
+          testCases,
         });
       }
       const data = res.data;
       setRunOutputs(prev => ({ ...prev, [qId]: data }));
       if (data.verdict === 'Accepted') {
-        const passedText = data.passedCount ? `All ${data.passedCount} test cases passed!` : 'Execution successful!';
+        const passedText = data.totalCount
+          ? `Public sample passed (${data.passedCount}/${data.totalCount}); private cases are graded on submission.`
+          : 'Code executed. No reference cases were checked.';
         toast.success(passedText, { id: 'run-toast' });
       } else if (data.verdict === 'Wrong Answer') {
         toast.error(`Wrong Answer (${data.passedCount || 0}/${data.totalCount || testCases.length} test cases passed)`, { id: 'run-toast' });
@@ -544,28 +483,38 @@ export default function MockOA() {
 
   // ── Fetch approved company-uploaded tests from API ─────────────────────
   useEffect(() => {
+    let active = true;
+    setDbLoading(true);
+    setDbError('');
     api.get('/api/mockoa/tests')
       .then(r => {
-        const tests = (r.data?.tests || []).map(t => ({
+        if (!active) return;
+        if (!Array.isArray(r.data?.tests)) throw new Error('The server did not return a test list.');
+        const tests = r.data.tests.map(t => ({
           id:            t.id,
           title:         t.title,
           company:       t.companies?.name || 'Company',
           companyLogo:   t.companies?.logo_url,
           type:          t.type || t.test_type || 'technical',
           duration:      t.duration || t.duration_minutes || 60,
-          totalMarks:    t.total_marks || 100,
+          totalMarks:    t.total_marks ?? null,
           sections:      t.sections || [],
           questionCount: t.question_count || 0,
-          source:        'company', // ← company-uploaded
+          source:        'company',
           attempts:      t.attempts || 0,
-          bestScore:     t.bestScore || null,
+          bestScore:     t.bestScore ?? null,
           dbId:          t.id,
         }));
         setDbTests(tests);
       })
-      .catch(() => setDbTests([]))
-      .finally(() => setDbLoading(false));
-  }, []);
+      .catch(err => {
+        if (!active) return;
+        setDbTests([]);
+        setDbError(err.response?.data?.error || err.message || 'Could not load assessments.');
+      })
+      .finally(() => { if (active) setDbLoading(false); });
+    return () => { active = false; };
+  }, [refreshKey]);
 
   // ── All tests loaded directly from Supabase ─────────────────────────
   const allTests = dbTests;
@@ -582,11 +531,18 @@ export default function MockOA() {
   // ── Timer ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (screen !== 'test') { clearInterval(timerRef.current); return; }
+    const deadline = startRef.current + (test?.duration || 60) * 60_000;
     timerRef.current = setInterval(() => {
-      setTimeLeft(t => { if (t <= 1) { clearInterval(timerRef.current); handleSubmit(true); return 0; } return t - 1; });
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        clearInterval(timerRef.current);
+        setAttemptLocked(true);
+        submitRef.current?.(true);
+      }
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [screen]);
+  }, [screen, test?.duration]);
 
   // ── Proctoring: collect violations from ProctorLayer ────────────────────
   const handleViolation = useCallback((v) => {
@@ -594,13 +550,36 @@ export default function MockOA() {
     setViolationCount(proctorRef.current.length);
   }, []);
 
-  // ── Start test (always fetches directly from Supabase via backend) ──────
+  // ── Start test (fetches the approved questions from the backend) ────────
   const startTest = async (catalogEntry) => {
+    // A viewport gate is a laptop UX check, not an identity/security boundary.
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      toast.error('Please open SmartHire on a laptop to take a Mock OA. You can browse results on your phone.');
+      return;
+    }
+    if (startingRef.current) return;
+    startingRef.current = true;
+    setStarting(true);
+    let enteredFullscreen = false;
     try {
+      // Browser user activation is lost after awaiting an API call. Request
+      // full-screen directly from the Start click, before fetching questions.
+      const el = document.documentElement;
+      const requestFullscreen = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (requestFullscreen && !document.fullscreenElement) {
+        try {
+          await Promise.resolve(requestFullscreen.call(el));
+          enteredFullscreen = true;
+        } catch (_) { /* ProctorLayer provides an explicit retry button. */ }
+      }
+
       const testId = catalogEntry.dbId || catalogEntry.id;
       const r = await api.get(`/api/mockoa/tests/${testId}`);
-      const t = r.data.test;
-      const qs = (r.data.questions || []).map(q => ({
+      const t = r.data?.test;
+      if (!t || !Array.isArray(r.data?.questions) || !r.data.questions.length) {
+        throw new Error('The assessment is unavailable or has no questions.');
+      }
+      const qs = r.data.questions.map(q => ({
         id:            q.id,
         section:       q.section || 'General',
         type:          q.type || q.question_type || 'text',
@@ -611,101 +590,110 @@ export default function MockOA() {
         constraints:   q.code_constraints || '',
         placeholder:   q.placeholder || '',
         opts:          q.options || [],
-        ans:           q.correct_index !== undefined ? q.correct_index : q.correct_answer,
-        correct_index: q.correct_index !== undefined ? q.correct_index : q.correct_answer,
         marks:         q.marks || 25,
-        explanation:   q.explanation || '',
-        test_cases:    q.test_cases || [],
-        sample_input:  q.sample_input || '',
-        sample_output: q.sample_output || '',
+        // Only public examples are available until the server grades the
+        // saved attempt. Neither answer keys nor private cases are fetched.
+        test_cases: q.sample_output == null ? [] : [{ input: q.sample_input || '', expected_output: q.sample_output }],
       }));
+      const duration = Number(t.duration || t.duration_minutes || 60);
+      if (!Number.isFinite(duration) || duration < 1) throw new Error('Invalid assessment duration.');
       const testObj = {
         id:          t.id,
         title:       t.title,
         company:     t.companies?.name || catalogEntry.company,
         type:        t.type || t.test_type || 'technical',
-        duration:    t.duration || t.duration_minutes || 60,
+        duration,
         totalMarks:  t.total_marks || qs.reduce((s,q) => s + q.marks, 0),
         sections:    [...new Set(qs.map(q => q.section))],
         source:      'company',
       };
       setTest(testObj);
       setQuestions(qs);
+      setAnswers({});
+      setFlagged(new Set());
+      setSubmittedQuestions(new Set());
+      setCodeLangs({});
+      setCustomInputs({});
+      setShowStdinMap({});
+      setRunOutputs({});
+      setRunningCode(false);
+      setCurrent(0);
+      setTimeLeft(duration * 60);
+      setAttemptLocked(false);
+      setSubmissionError('');
+      submittedPayloadRef.current = null;
+      proctorRef.current = [];
+      setViolationCount(0);
+      startRef.current = Date.now();
+      toast('Proctored exam — camera & full-screen are required. Stay on this tab.', { icon:'🎥', duration:3500 });
+      setScreen('test');
     } catch (err) {
-      toast.error('Failed to load test from database. Please try again.');
-      return;
+      if (enteredFullscreen && document.fullscreenElement) Promise.resolve(document.exitFullscreen?.()).catch(() => {});
+      toast.error(err.response?.data?.error || err.message || 'Could not load assessment. Please try again.');
+    } finally {
+      startingRef.current = false;
+      setStarting(false);
     }
-    setAnswers({});
-    setFlagged(new Set());
-    setSubmittedQuestions(new Set());
-    setCodeLangs({});
-    setCustomInputs({});
-    setShowStdinMap({});
-    setRunOutputs({});
-    setRunningCode(false);
-    setCurrent(0);
-    setTimeLeft((catalogEntry.duration || 60) * 60);
-    proctorRef.current = [];
-    setViolationCount(0);
-    toast('Proctored exam — camera & full-screen are required. Stay on this tab.', { icon:'🎥', duration:3500 });
-    // Request full-screen from this user gesture (click) so the browser allows it.
-    try {
-      const el = document.documentElement;
-      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
-      if (req) await req.call(el).catch(() => {});
-    } catch (_) {}
-    startRef.current = Date.now();
-    setScreen('test');
   };
 
   // ── Submit ─────────────────────────────────────────────────────────────
   const handleSubmit = useCallback(async (auto = false) => {
-    if (submitting) return;
-    clearInterval(timerRef.current);
+    if (auto) setAttemptLocked(true);
+    if (submittingRef.current || !test) return;
+    submittingRef.current = true;
     setSubmitting(true);
-
-    // Snapshot proctoring for this attempt.
-    const violations = proctorRef.current.slice();
-    const integrityScore = computeIntegrity(violations);
-    const terminated = violations.filter(v => v.type === 'tab_switch' || v.type === 'fullscreen_exit').length >= 3;
-    const violationSummary = violations.reduce((acc, v) => { acc[v.type] = (acc[v.type] || 0) + 1; return acc; }, {});
-    const proctoring = { violations, integrityScore, terminated };
+    setSubmissionError('');
 
     try {
-      const answerMap = {};
-      Object.entries(answers).forEach(([qid, val]) => {
-        const qObj = questions.find(x => x.id === qid);
-        const lang = getLang(qid);
-        if (qObj && qObj.type !== 'mcq') {
-          if (!val || isBoilerplateOrEmpty(val, lang, qObj.starterCode)) {
-            // Do not submit unmodified starter boilerplate
-            return;
-          }
-        }
-        answerMap[qid] = val;
-      });
+      // When the timer expires or proctoring terminates, retries must resend
+      // the identical frozen answers; a manual failure before expiry can be
+      // corrected while the clock keeps running.
+      let snapshot = attemptLocked ? submittedPayloadRef.current : null;
+      if (!snapshot) {
+        const violations = proctorRef.current.slice();
+        const integrityScore = computeIntegrity(violations);
+        const terminated = violations.filter(v => v.type === 'tab_switch' || v.type === 'fullscreen_exit').length >= 3;
+        const violationSummary = violations.reduce((acc, v) => { acc[v.type] = (acc[v.type] || 0) + 1; return acc; }, {});
+        const answerMap = {};
+        Object.entries(answers).forEach(([qid, val]) => {
+          const qObj = questions.find(x => x.id === qid);
+          const lang = getLang(qid);
+          if (qObj && qObj.type !== 'mcq' && (!val || isBoilerplateOrEmpty(val, lang, qObj.starterCode))) return;
+          answerMap[qid] = val;
+        });
+        snapshot = {
+          body: {
+            testId: test.id,
+            answers: answerMap,
+            codeLangs: { ...codeLangs },
+            startedAt: new Date(startRef.current).toISOString(),
+            proctoring: { violations, integrityScore, terminated },
+          },
+          integrityScore, violationCount: violations.length, terminated, violationSummary,
+          capturedAt: Date.now(), autoSubmitted: auto || attemptLocked,
+        };
+        submittedPayloadRef.current = snapshot;
+      }
 
-      const r = await api.post('/api/mockoa/submit', {
-        testId: test.id,
-        answers: answerMap,
-        codeRuns: runOutputs,
-        codeLangs,
-        startedAt: new Date(startRef.current).toISOString(),
-        proctoring,
-      });
+      const r = await api.post('/api/mockoa/submit', snapshot.body);
       const d = r.data;
-      // Build result shape compatible with result screen
+      if (!d?.attemptId || typeof d.score !== 'number' || typeof d.totalPossible !== 'number'
+        || typeof d.percentage !== 'number' || !d.scoredAnswers) {
+        throw new Error('Submission was not confirmed by the server. Check history before retrying.');
+      }
+      // Build result shape exclusively from the confirmed server grade.
       const breakdown = {};
       questions.forEach(q => {
         const sec = q.section || 'General';
         if (!breakdown[sec]) breakdown[sec] = { correct:0, wrong:0, total:0, marks:0, earned:0 };
         breakdown[sec].total++;
         breakdown[sec].marks += q.marks || 25;
-        const scored = d.scoredAnswers?.[q.id];
+        const scored = d.scoredAnswers[q.id];
         if (scored?.result === 'correct' || scored?.result === 'answered') {
           breakdown[sec].correct++;
           breakdown[sec].earned += scored.points || 0;
         } else if (scored?.result === 'partial') {
+          breakdown[sec].wrong++;
           breakdown[sec].earned += scored.points || 0;
         } else if (scored?.result === 'wrong') {
           breakdown[sec].wrong++;
@@ -715,25 +703,29 @@ export default function MockOA() {
         earned: d.score, total: d.totalPossible, pct: d.percentage,
         grade: d.percentage>=90?'A+':d.percentage>=80?'A':d.percentage>=70?'B+':d.percentage>=60?'B':d.percentage>=50?'C':d.percentage>=40?'D':'F',
         correct: d.correct, wrong: d.wrong, skipped: d.skipped,
-        totalMCQ: (d.correct||0)+(d.wrong||0)+(d.skipped||0),
-        timeTaken: Math.round((Date.now() - startRef.current) / 1000),
-        autoSubmitted: auto, breakdown, questions,
+        timeTaken: Math.min(test.duration * 60, Math.round((snapshot.capturedAt - startRef.current) / 1000)),
+        autoSubmitted: auto || snapshot.autoSubmitted, breakdown, questions,
         scoredAnswers: d.scoredAnswers,
-        integrityScore: d.integrityScore ?? integrityScore,
-        violationCount: d.violationCount ?? violations.length,
-        terminated: d.terminated ?? terminated,
-        violationSummary: d.violationSummary || violationSummary,
+        integrityScore: d.integrityScore ?? snapshot.integrityScore,
+        violationCount: d.violationCount ?? snapshot.violationCount,
+        terminated: d.terminated ?? snapshot.terminated,
+        violationSummary: d.violationSummary || snapshot.violationSummary,
       });
+      clearInterval(timerRef.current);
+      setScreen('result');
     } catch (err) {
-      // Fallback to local scoring
-      const res = calcScore(test, answers, questions, runOutputs, codeLangs);
-      setResult({ ...res, timeTaken: Math.round((Date.now() - startRef.current) / 1000), autoSubmitted: auto,
-        integrityScore, violationCount: violations.length, terminated, violationSummary });
+      // An interrupted response may leave the server's save status unknown.
+      const message = err.response?.data?.error || err.message ||
+        'Submission failed; no attempt was saved on this page. Check your history before retrying if the connection dropped.';
+      setSubmissionError(message);
+      toast.error(message);
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-
-    setScreen('result');
-    setSubmitting(false);
-  }, [test, answers, submitting, questions, runOutputs, codeLangs, getLang]);
+  }, [test, answers, questions, codeLangs, getLang, attemptLocked]);
+  submitRef.current = handleSubmit;
+  const returnToTests = () => { setScreen('list'); setRefreshKey(key => key + 1); };
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   const tc  = timeLeft < 120 ? C.red : timeLeft < 300 ? C.amber : C.cyan;
@@ -761,10 +753,10 @@ export default function MockOA() {
           </div>
           <div>
             <p style={{ margin:0, fontSize:14, fontWeight:800, color:'var(--text-primary)' }}>
-              {companyTestCount} Authentic Company Tests Available in Supabase!
+              {companyTestCount} Approved Mock OA Test{companyTestCount === 1 ? '' : 's'} Available
             </p>
             <p style={{ margin:'3px 0 0', fontSize:12, color:'#64748b' }}>
-              Extracted from real on-campus and placement recruitment drives — practice company-wise questions with solutions and proctoring.
+              Browse recruiter-provided practice questions. Your results are saved and graded by the server.
             </p>
           </div>
         </div>
@@ -797,6 +789,12 @@ export default function MockOA() {
         </div>
       )}
 
+      {dbError && !dbLoading && (
+        <div role="alert" style={{ marginBottom:16, padding:16, border:'1px solid #dc2626', borderRadius:10, color:C.red }}>
+          {dbError} <button type="button" onClick={() => setRefreshKey(key => key + 1)} style={{ color:C.cyan, background:'none', border:0, cursor:'pointer', fontWeight:700 }}>Retry</button>
+        </div>
+      )}
+
       {/* Test Grid */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:16 }}>
         {filtered.map(t => {
@@ -804,12 +802,9 @@ export default function MockOA() {
           const Icon   = TYPE_ICON[t.type]  || Cpu;
           const isCompany = t.source === 'company';
 
-          // Get attempt data
-          const attData = (() => {
-            if (isCompany) return t.bestScore != null ? [{ score: t.bestScore }] : [];
-            try { return JSON.parse(localStorage.getItem('oa_attempts_' + t.id) || '[]'); } catch { return []; }
-          })();
-          const att = attData.length > 0 ? attData[0] : null;
+          // Server-owned counts and raw marks; a local cache is not proof of
+          // an attempt and score points must not be labelled as percentages.
+          const attempted = Number(t.attempts) > 0;
 
           return (
             <div key={t.id}
@@ -855,20 +850,23 @@ export default function MockOA() {
               )}
 
               {/* Attempt info */}
-              {att && (
-                <p style={{ margin:0, fontSize:12, color:C.green, fontWeight:700 }}>✓ Attempted — Best: {att.score}%</p>
+              {attempted && (
+                <p style={{ margin:0, fontSize:12, color:C.green, fontWeight:700 }}>
+                  ✓ {t.attempts} saved attempt{t.attempts === 1 ? '' : 's'}
+                  {t.bestScore != null ? ` · Best: ${t.bestScore}${t.totalMarks != null ? `/${t.totalMarks}` : ''} points` : ''}
+                </p>
               )}
 
               {/* CTA */}
-              <button onClick={() => startTest(t)}
-                style={{ width:'100%', padding:'11px 0', background:att?`${color}15`:isCompany?`linear-gradient(135deg,${C.green},#15803d)`:color, border:`1px solid ${isCompany?C.green:color}`, borderRadius:10, fontSize:13, fontWeight:700, color:att?color:isCompany?'#ffffff':'#ffffff', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all .2s' }}>
-                {att ? <><RefreshCw size={14}/> Retake Test</> : isCompany ? <><Building2 size={14}/> Start Company OA</> : <>Start Test →</>}
+              <button onClick={() => startTest(t)} disabled={starting}
+                style={{ width:'100%', padding:'11px 0', background:attempted?`${color}15`:isCompany?`linear-gradient(135deg,${C.green},#15803d)`:color, border:`1px solid ${isCompany?C.green:color}`, borderRadius:10, fontSize:13, fontWeight:700, color:attempted?color:'#ffffff', cursor:starting?'wait':'pointer', opacity:starting?0.65:1, fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:8, transition:'all .2s' }}>
+                {starting ? 'Loading assessment…' : attempted ? <><RefreshCw size={14}/> Retake Test</> : isCompany ? <><Building2 size={14}/> Start Mock OA</> : <>Start Test →</>}
               </button>
             </div>
           );
         })}
       </div>
-      {filtered.length === 0 && !dbLoading && (
+      {filtered.length === 0 && !dbLoading && !dbError && (
         <p style={{ textAlign:'center', color:C.gray, padding:'60px 0', fontSize:14 }}>
           No tests match your filters.
         </p>
@@ -952,12 +950,32 @@ export default function MockOA() {
 
         {/* Proctoring layer: fullscreen lock, tab/blur, copy-paste, camera face-presence */}
         <ProctorLayer
-          active={screen === 'test'}
+          active={screen === 'test' && !attemptLocked}
           onViolation={handleViolation}
           onTerminate={() => handleSubmit(true)}
           maxHardStrikes={3}
           requireCamera={true}
         />
+
+        {attemptLocked && (
+          <div role="alertdialog" aria-modal="true" aria-label="Final assessment submission"
+            style={{ position:'fixed', inset:0, zIndex:2200, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(15,23,42,0.9)', padding:20 }}>
+            <div style={{ maxWidth:440, background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:24, textAlign:'center' }}>
+              <h2 style={{ color:C.white, fontSize:20, margin:'0 0 10px' }}>Assessment closed</h2>
+              <p style={{ color:C.light, fontSize:13, lineHeight:1.6 }}>
+                {submitting ? 'Submitting your frozen answers to the server…'
+                  : submissionError || 'The timer ended or proctoring closed the attempt. Your answers are frozen.'}
+              </p>
+              {!submitting && (
+                <button type="button" onClick={() => handleSubmit(true)}
+                  style={{ padding:'10px 18px', border:0, borderRadius:8, color:'#fff', background:C.cyan, cursor:'pointer', fontWeight:700 }}>
+                  Retry final submission
+                </button>
+              )}
+              <p style={{ color:C.gray, fontSize:11 }}>If your connection dropped, check saved results before retrying; a response can be lost after the server saves.</p>
+            </div>
+          </div>
+        )}
 
         <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
 
@@ -1193,9 +1211,9 @@ export default function MockOA() {
                       <div style={{ background:'var(--bg-input)', border:'1px solid var(--border)', borderRadius:12, padding:16, marginBottom:16 }}>
                         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                           <span style={{ fontSize:11, fontWeight:800, color:C.cyan, textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                            Test Cases ({q.test_cases.length})
+                            Public Sample ({q.test_cases.length})
                           </span>
-                          <span style={{ fontSize:10, color:C.gray }}>Tested on Run & Submit</span>
+                          <span style={{ fontSize:10, color:C.gray }}>Private grading cases are never shown</span>
                         </div>
                         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                           {q.test_cases.slice(0, 3).map((tc, tcIdx) => (
@@ -1213,11 +1231,7 @@ export default function MockOA() {
                               </div>
                             </div>
                           ))}
-                          {q.test_cases.length > 3 && (
-                            <p style={{ margin:'2px 0 0', fontSize:11, color:C.gray, fontStyle:'italic' }}>
-                              + {q.test_cases.length - 3} additional hidden/evaluation test cases
-                            </p>
-                          )}
+
                         </div>
                       </div>
                     )}
@@ -1466,12 +1480,17 @@ export default function MockOA() {
                                 {!out.loading && (
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       const text = out.results && out.results.length > 0
                                         ? out.results.map(r => `Case ${r.testCase} (${r.verdict}):\nInput: ${r.input || '(none)'}\nExpected: ${r.expected || '(none)'}\nActual: ${r.actual || '(none)'}`).join('\n\n')
                                         : [out.stdout, out.stderr].filter(Boolean).join('\n');
-                                      navigator.clipboard.writeText(text);
-                                      toast.success('Console output copied!');
+                                      try {
+                                        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+                                        await navigator.clipboard.writeText(text);
+                                        toast.success('Console output copied!');
+                                      } catch {
+                                        toast.error('Clipboard access is unavailable in this browser.');
+                                      }
                                     }}
                                     style={{ display:'flex', alignItems:'center', gap:4, background:'transparent', border:'1px solid #334155', borderRadius:6, padding:'2px 7px', color:'#94a3b8', fontSize:10, cursor:'pointer' }}
                                   >
@@ -1869,7 +1888,7 @@ export default function MockOA() {
             <p style={{ margin:0, fontSize:13, color:C.gray }}>{test.title} · {test.company}</p>
             {result.autoSubmitted && <span style={{ fontSize:11, color:C.amber, fontWeight:700 }}>⚡ Auto-submitted (timer expired)</span>}
           </div>
-          <button onClick={() => setScreen('list')}
+          <button onClick={returnToTests}
             style={{ padding:'9px 18px', background:'var(--bg-card-high)', border:'1px solid var(--border)', borderRadius:9, color:C.white, fontSize:13, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
             ← Back to Tests
           </button>
@@ -2018,23 +2037,19 @@ export default function MockOA() {
         {/* Question-by-Question Review with Solutions */}
         <div style={{ background:'var(--bg-card)', border:'1px solid var(--border)', borderRadius:14, padding:20, marginBottom:24 }}>
           <p style={{ margin:'0 0 16px', fontSize:14, fontWeight:700, color:C.white, display:'flex', alignItems:'center', gap:8 }}>
-            <Sparkles size={16} color={C.green}/> Question-by-Question Review & Official Solutions
+            <Sparkles size={16} color={C.green}/> Server-graded answer review
           </p>
           {(result.questions || []).map((q, i) => {
             const userAns = answers[q.id];
             const isText = q.type !== 'mcq';
-            const correctIdx = q.correct_index !== undefined ? q.correct_index : q.correct_answer !== undefined ? q.correct_answer : q.ans;
             const scored = result.scoredAnswers?.[q.id];
-            const isSkipped = scored
-              ? scored.result === 'skipped'
-              : (isText ? isBoilerplateOrEmpty(userAns, getLang(q.id), q.starterCode) : (userAns === undefined || userAns === null || userAns === ''));
-            const isCorrect = scored
-              ? (scored.result === 'correct' || scored.result === 'answered')
-              : (isText ? (!isSkipped && !!userAns) : parseInt(userAns) === correctIdx);
+            const correctIdx = scored?.correct;
+            const isSkipped = scored?.result === 'skipped';
+            const isCorrect = scored?.result === 'correct' || scored?.result === 'answered';
             const isPartial = scored ? (scored.result === 'partial') : false;
             const statusColor = isSkipped ? C.gray : isCorrect ? C.green : isPartial ? C.amber : C.red;
             const statusIcon  = isSkipped ? '—' : isCorrect ? '✓' : isPartial ? '½' : '✗';
-            const explanation = scored?.explanation || q.explanation;
+            const explanation = scored?.explanation;
 
             return (
               <div key={q.id} style={{ marginBottom:14, padding:16, background:`${statusColor}08`, border:`1px solid ${statusColor}20`, borderRadius:10 }}>
@@ -2067,8 +2082,8 @@ export default function MockOA() {
                               <span style={{ fontSize:11, fontWeight:700, color:C.light }}>
                                 Test Case Results: {scored.testCasesPassed || 0}/{scored.totalTestCases || scored.testCaseResults.length} Passed
                               </span>
-                              <span style={{ fontSize:10, color:scored.testCasesPassed === (scored.totalTestCases || scored.testCaseResults.length) ? C.green : C.amber, fontWeight:700 }}>
-                                {scored.testCasesPassed === (scored.totalTestCases || scored.testCaseResults.length) ? 'All Test Cases Passed' : 'Partial / Failed Test Cases'}
+                              <span style={{ fontSize:10, color:isCorrect ? C.green : C.amber, fontWeight:700 }}>
+                                {isCorrect ? 'Passed server grading' : scored.verdict || 'Partial / Failed Test Cases'}
                               </span>
                             </div>
                             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -2079,16 +2094,18 @@ export default function MockOA() {
                                       {tc.passed ? '✓' : '✗'} Case {tc.testCase || tcIdx + 1}: {tc.verdict || (tc.passed ? 'Passed' : 'Failed')}
                                     </span>
                                   </div>
-                                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:11 }}>
-                                    <div>
-                                      <span style={{ color:C.gray, fontSize:10 }}>Expected Output:</span>
-                                      <pre style={{ margin:0, padding:'3px 6px', background:'#090d16', borderRadius:4, color:'#4ade80', fontFamily:"'JetBrains Mono', monospace", whiteSpace:'pre-wrap' }}>{tc.expected || '(None)'}</pre>
+                                  {tc.expected !== undefined && tc.actual !== undefined ? (
+                                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:11 }}>
+                                      <div>
+                                        <span style={{ color:C.gray, fontSize:10 }}>Expected Output:</span>
+                                        <pre style={{ margin:0, padding:'3px 6px', background:'#090d16', borderRadius:4, color:'#4ade80', fontFamily:"'JetBrains Mono', monospace", whiteSpace:'pre-wrap' }}>{tc.expected || '(None)'}</pre>
+                                      </div>
+                                      <div>
+                                        <span style={{ color:C.gray, fontSize:10 }}>Your Output:</span>
+                                        <pre style={{ margin:0, padding:'3px 6px', background:'#090d16', borderRadius:4, color:tc.passed ? '#4ade80' : '#f87171', fontFamily:"'JetBrains Mono', monospace", whiteSpace:'pre-wrap' }}>{tc.actual || '(No output)'}</pre>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <span style={{ color:C.gray, fontSize:10 }}>Your Output:</span>
-                                      <pre style={{ margin:0, padding:'3px 6px', background:'#090d16', borderRadius:4, color:tc.passed ? '#4ade80' : '#f87171', fontFamily:"'JetBrains Mono', monospace", whiteSpace:'pre-wrap' }}>{tc.actual || '(No output)'}</pre>
-                                    </div>
-                                  </div>
+                                  ) : <span style={{ color:C.gray, fontSize:11 }}>Private case output is not disclosed.</span>}
                                 </div>
                               ))}
                             </div>
@@ -2100,12 +2117,12 @@ export default function MockOA() {
                           <div style={{ marginTop:10, background:'rgba(56,189,248,0.06)', border:'1px solid rgba(56,189,248,0.25)', borderRadius:8, padding:'10px 14px' }}>
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
                               <span style={{ fontSize:11, fontWeight:700, color:'#38bdf8' }}>
-                                🔍 Static Logic & Algorithmic Analysis
+                                Limited static-review credit (not correctness)
                               </span>
                               <span style={{ fontSize:10, color:'#94a3b8' }}>No automated I/O test cases configured</span>
                             </div>
                             <p style={{ margin:0, fontSize:12, color:'var(--text-primary)', lineHeight:1.5 }}>
-                              {scored.details || 'Code logic, syntax execution, and algorithmic complexity verified.'}
+                              {scored.details || 'No reference cases were available. Code execution alone does not prove a solution is correct.'}
                             </p>
                           </div>
                         )}
@@ -2113,7 +2130,7 @@ export default function MockOA() {
                     ) : (
                       <div style={{ display:'flex', gap:16, fontSize:12, flexWrap:'wrap', marginBottom:8 }}>
                         <span style={{ color:C.gray }}>Your answer: <strong style={{ color:isSkipped?C.gray:isCorrect?C.green:C.red }}>{isSkipped ? 'Not attempted' : (q.opts||q.options||[])[parseInt(userAns)]||'N/A'}</strong></span>
-                        <span style={{ color:C.gray }}>Correct: <strong style={{ color:C.green }}>{(q.opts||q.options||[])[correctIdx]}</strong></span>
+                        <span style={{ color:C.gray }}>Correct: <strong style={{ color:C.green }}>{(q.opts||q.options||[])[correctIdx] ?? 'Not available'}</strong></span>
                       </div>
                     )}
 
@@ -2134,11 +2151,11 @@ export default function MockOA() {
 
         {/* Action buttons */}
         <div style={{ display:'flex', gap:12, justifyContent:'center' }}>
-          <button onClick={() => startTest(test)}
-            style={{ padding:'12px 28px', background:C.violet, border:'none', borderRadius:10, fontSize:14, fontWeight:700, color:'#fff', cursor:'pointer', fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
-            <RefreshCw size={15}/> Retake Test
+          <button onClick={() => startTest(test)} disabled={starting}
+            style={{ padding:'12px 28px', background:C.violet, border:'none', borderRadius:10, fontSize:14, fontWeight:700, color:'#fff', cursor:starting?'wait':'pointer', opacity:starting?0.65:1, fontFamily:"'Sora',sans-serif", display:'flex', alignItems:'center', gap:8 }}>
+            <RefreshCw size={15}/> {starting ? 'Loading assessment…' : 'Retake Test'}
           </button>
-          <button onClick={() => setScreen('list')}
+          <button onClick={returnToTests}
             style={{ padding:'12px 28px', background:'transparent', border:'1px solid var(--border)', borderRadius:10, fontSize:14, fontWeight:700, color:C.white, cursor:'pointer', fontFamily:"'Sora',sans-serif" }}>
             All Tests
           </button>
