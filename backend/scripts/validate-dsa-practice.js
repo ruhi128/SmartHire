@@ -43,8 +43,9 @@ function localExecute(program, language) {
 }
 
 function loadHarness() {
-  const start = routeSource.indexOf('const FUNCTION_RESULT_MARKER_PREFIX');
-  const end = routeSource.indexOf('// ─────────────────────────────────────────────\n// GET /api/dsa/problems', start);
+  const normalizedRouteSource = routeSource.replace(/\r\n/g, '\n');
+  const start = normalizedRouteSource.indexOf('const FUNCTION_RESULT_MARKER_PREFIX');
+  const end = normalizedRouteSource.indexOf('// ─────────────────────────────────────────────\n// GET /api/dsa/problems', start);
   assert.ok(start >= 0 && end > start, 'Could not isolate the DSA harness helpers.');
 
   const sandbox = {
@@ -63,7 +64,7 @@ function loadHarness() {
     Math,
   };
   vm.createContext(sandbox);
-  vm.runInContext(`${routeSource.slice(start, end)}
+  vm.runInContext(`${normalizedRouteSource.slice(start, end)}
 module.exports = {
   createFunctionRunnerContext,
   resolveTypedSpec,

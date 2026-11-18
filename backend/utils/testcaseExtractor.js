@@ -1,5 +1,6 @@
 // utils/testcaseExtractor.js
 // Extracts or retrieves test cases for Mock OA questions
+const MAX_OA_TEST_CASES = 10;
 
 function normalizeIO(str) {
   if (str == null) return '';
@@ -23,7 +24,9 @@ function getQuestionTestCases(q) {
         cases.push({
           input: normalizeIO(tc.input),
           expected_output: normalizeIO(tc.expected_output),
-          sample: !!tc.sample,
+          hidden: tc.hidden === true || (tc.sample !== true && tc.hidden !== false),
+          sample: tc.sample === true,
+          source: tc.sample === true ? 'sample' : 'test',
         });
       }
     });
@@ -35,7 +38,9 @@ function getQuestionTestCases(q) {
     cases.push({
       input: normalizeIO(q.sample_input),
       expected_output: normalizeIO(q.sample_output),
+      hidden: false,
       sample: true,
+      source: 'sample',
     });
   }
 
@@ -48,7 +53,13 @@ function getQuestionTestCases(q) {
     const inp = normalizeIO(tm[1]);
     const out = normalizeIO(tm[2]);
     if (inp && out && !cases.some(c => c.input === inp && c.expected_output === out)) {
-      cases.push({ input: inp, expected_output: out, sample: true });
+      cases.push({
+        input: inp,
+        expected_output: out,
+        hidden: false,
+        sample: true,
+        source: 'sample',
+      });
     }
   }
 
@@ -59,7 +70,13 @@ function getQuestionTestCases(q) {
     const inp = normalizeIO(hm[1]);
     const out = normalizeIO(hm[2]);
     if (inp && out && !cases.some(c => c.input === inp && c.expected_output === out)) {
-      cases.push({ input: inp, expected_output: out, sample: true });
+      cases.push({
+        input: inp,
+        expected_output: out,
+        hidden: false,
+        sample: true,
+        source: 'sample',
+      });
     }
   }
 
@@ -70,7 +87,13 @@ function getQuestionTestCases(q) {
     const inp = normalizeIO(em[1]);
     const out = normalizeIO(em[2]);
     if (inp && out && !cases.some(c => c.input === inp && c.expected_output === out)) {
-      cases.push({ input: inp, expected_output: out, sample: true });
+      cases.push({
+        input: inp,
+        expected_output: out,
+        hidden: false,
+        sample: true,
+        source: 'sample',
+      });
     }
   }
 
@@ -83,7 +106,13 @@ function getQuestionTestCases(q) {
     const inp = kVal ? `${rawArr.length} ${kVal}\n${rawArr.join(' ')}` : `${rawArr.length}\n${rawArr.join(' ')}`;
     const out = normalizeIO(arm[3]);
     if (inp && out && !cases.some(c => c.input === inp && c.expected_output === out)) {
-      cases.push({ input: inp, expected_output: out, sample: true });
+      cases.push({
+        input: inp,
+        expected_output: out,
+        hidden: false,
+        sample: true,
+        source: 'sample',
+      });
     }
   }
 
@@ -95,7 +124,13 @@ function getQuestionTestCases(q) {
     const inp = `${rawArr.length}\n${rawArr.join(' ')}`;
     const out = normalizeIO(gm[3]);
     if (inp && out && !cases.some(c => c.input === inp && c.expected_output === out)) {
-      cases.push({ input: inp, expected_output: out, sample: true });
+      cases.push({
+        input: inp,
+        expected_output: out,
+        hidden: false,
+        sample: true,
+        source: 'sample',
+      });
     }
   }
 
@@ -106,7 +141,13 @@ function getQuestionTestCases(q) {
     const inp = normalizeIO(pm[1]);
     const out = normalizeIO(pm[2]);
     if (inp && out && !cases.some(c => c.input === inp && c.expected_output === out)) {
-      cases.push({ input: inp, expected_output: out, sample: true });
+      cases.push({
+        input: inp,
+        expected_output: out,
+        hidden: false,
+        sample: true,
+        source: 'sample',
+       });
     }
   }
 
@@ -187,6 +228,7 @@ function evaluateCodeHeuristics(code, lang, starterCode, question) {
 }
 
 module.exports = {
+  MAX_OA_TEST_CASES,
   getQuestionTestCases,
   normalizeIO,
   evaluateCodeHeuristics,

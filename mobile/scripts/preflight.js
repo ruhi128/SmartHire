@@ -42,7 +42,9 @@ function readEnvFile(filePath) {
 }
 
 function configuredValue(name, localEnv) {
-  return process.env[name] || localEnv[name] || '';
+  return Object.prototype.hasOwnProperty.call(process.env, name)
+    ? process.env[name]
+    : localEnv[name] || '';
 }
 
 function placeholder(value) {
