@@ -1051,9 +1051,8 @@ const saveToProfile = async () => {
 
     const result = await response.json();
 
-    if (!result.url) throw new Error('No URL returned');
+    if (!result.path) throw new Error('No storage path returned');
 
-    await studentAPI.updateProfile({ resume_url: result.url });
     toast.success('Resume saved to profile!');
 
   } catch (err) {

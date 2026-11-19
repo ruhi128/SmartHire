@@ -14,3 +14,5 @@ ENV_VALUES.local.md
 SmartHire_IEEE_Research_Paper.tex
 
 node_modules/
+/SmartHire/
+/verification/

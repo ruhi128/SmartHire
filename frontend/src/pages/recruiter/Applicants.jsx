@@ -73,11 +73,14 @@ export default function Applicants() {
     setUpdating(appId);
     try {
       await applicationsAPI.updateStage(appId, stage);
+      setApps(prev => prev.map(a =>
+        a.id === appId ? { ...a, stage, status: stageToStatus(stage) } : a
+      ));
+      toast.success(`Candidate status updated: ${STAGES.find(x => x.key === stage)?.label || stage}`);
     } catch (e) {
-      console.warn('API update stage fallback for demo:', e);
+      console.error('Failed to update candidate status:', e);
+      toast.error('Failed to update candidate status. Please try again.');
     } finally {
-      setApps(prev => prev.map(a => a.id === appId ? {...a, stage, status: stageToStatus(stage)} : a));
-      toast.success(`Candidate status updated: ${STAGES.find(x=>x.key===stage)?.label || stage}`);
       setUpdating(null);
     }
   };

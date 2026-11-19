@@ -114,7 +114,7 @@ router.get('/students', auth, roles('admin'), async (req, res) => {
       .from('student_profiles')
       .select(`
         id, full_name, roll_number, branch, cgpa,
-        semester, phone, placement_status, resume_url,
+        semester, phone, placement_status,
         skills, backlogs,
         users(email, created_at)
       `, { count: 'exact' });

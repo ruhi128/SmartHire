@@ -87,6 +87,34 @@ async function attachOwnAvatar(profile, userId) {
   };
 }
 
+async function attachResumeUrl(profile, userId) {
+  if (!profile) return profile;
+
+  const path = profile.resume_url;
+
+  if (
+    typeof path !== 'string' ||
+    !path ||
+    !userId ||
+    !path.startsWith(`${userId}/`) ||
+    path.includes('..') ||
+    path.startsWith('http')
+  ) {
+    return { ...profile, resume_url: null };
+  }
+
+  const { data, error } = await supabase.storage
+    .from('student-resumes')
+    .createSignedUrl(path, 300);
+
+  if (error) {
+    console.error('Resume signed URL error:', error.message);
+    return { ...profile, resume_url: null };
+  }
+
+  return { ...profile, resume_url: data.signedUrl };
+}
+
 // ────────────────────────────────────────────────
 // GET /api/students/profile
 // Own profile — student only
@@ -109,13 +137,15 @@ router.get('/profile', auth, roles('student'), async (req, res) => {
           .single();
         if (insertErr) return res.status(500).json({ error: insertErr.message });
         const profile = await attachOwnAvatar(newProfile, req.user.id);
-        return res.json({ profile: { ...profile, email: req.user.email || profile.email || null } });
+        const profileWithResume = await attachResumeUrl(profile, req.user.id);
+        return res.json({ profile: { ...profileWithResume, email: req.user.email || profileWithResume.email || null } });
       }
       return res.status(404).json({ error: 'Profile not found.' });
     }
 
     const profile = await attachOwnAvatar(data, req.user.id);
-    res.json({ profile: { ...profile, email: req.user.email || profile.email || null } });
+    const profileWithResume = await attachResumeUrl(profile, req.user.id);
+    return res.json({ profile: { ...profileWithResume, email: req.user.email || profileWithResume.email || null } });
   } catch (err) {
     console.error('GET /profile error:', err);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -195,7 +225,15 @@ router.put('/profile', auth, roles('student'), async (req, res) => {
     }
 
     const profile = await attachOwnAvatar(data, req.user.id);
-    res.json({ message: 'Profile updated successfully.', profile: { ...profile, email: req.user.email || profile.email || null } });
+    const profileWithResume = await attachResumeUrl(profile, req.user.id);
+
+    res.json({
+      message: 'Profile updated successfully.',
+      profile: {
+        ...profileWithResume,
+        email: req.user.email || profileWithResume.email || null,
+      },
+    });
   } catch (err) {
     console.error('PUT /profile error:', err);
     res.status(500).json({ error: 'Failed to update profile' });
@@ -249,26 +287,28 @@ router.post('/resume', auth, roles('student'), upload.single('resume'), async (r
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
 
-    const fileName = `${req.user.id}/resume_${Date.now()}.pdf`;
+    const filePath = `${req.user.id}/resume_${Date.now()}.pdf`;
 
     const { error: storageError } = await supabase.storage
-      .from('resumes')
-      .upload(fileName, req.file.buffer, {
+      .from('student-resumes')
+      .upload(filePath, req.file.buffer, {
         contentType: 'application/pdf',
-        upsert: true,
+        upsert: false,
       });
 
-    if (storageError) return res.status(500).json({ error: storageError.message });
+    if (storageError) {
+      return res.status(500).json({ error: storageError.message });
+    }
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('resumes')
-      .getPublicUrl(fileName);
-
-    await supabase
+    const { error: profileError } = await supabase
       .from('student_profiles')
-      .upsert({ id: req.user.id, resume_url: publicUrl }, { onConflict: 'id' });
+      .upsert({ id: req.user.id, resume_url: filePath }, { onConflict: 'id' });
 
-    res.json({ message: 'Resume uploaded successfully.', resume_url: publicUrl });
+    if (profileError) {
+      return res.status(500).json({ error: profileError.message });
+    }
+
+    res.json({ message: 'Resume uploaded successfully.' });
   } catch (err) {
     console.error('POST /resume error:', err);
     res.status(500).json({ error: 'Failed to upload resume' });
@@ -309,9 +349,10 @@ router.get('/dashboard', auth, roles('student'), async (req, res) => {
       accepted: dsaSubmissions.data?.filter(s => s.status === 'Accepted').length || 0,
     };
     const dashboardProfile = await attachOwnAvatar(profile.data || null, id);
+    const dashboardProfileWithResume = await attachResumeUrl(dashboardProfile, id);
 
     res.json({
-      profile:             dashboardProfile,
+      profile:             dashboardProfileWithResume,
       applications:        appCounts,
       recentApplications:  applications.data?.slice(0, 5) || [],
       aptitudeScores:      aptitudeAttempts.data || [],
@@ -343,7 +384,7 @@ router.get('/all', auth, roles('admin', 'recruiter'), async (req, res) => {
 
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
-    res.json(data);
+    res.json((data || []).map(({ resume_url, ...student }) => student));
   } catch (err) {
     console.error('GET /all error:', err);
     res.status(500).json({ error: 'Failed to fetch students' });
@@ -353,7 +394,7 @@ router.get('/all', auth, roles('admin', 'recruiter'), async (req, res) => {
 // ────────────────────────────────────────────────
 // GET /api/students/:id  (admin/recruiter)
 // ────────────────────────────────────────────────
-router.get('/:id', auth, roles('admin', 'recruiter'), async (req, res) => {
+router.get('/:id', auth, roles('admin'), async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('student_profiles')
@@ -362,7 +403,8 @@ router.get('/:id', auth, roles('admin', 'recruiter'), async (req, res) => {
       .single();
 
     if (error) return res.status(404).json({ error: 'Student not found.' });
-    res.json(data);
+    const { resume_url, ...student } = data;
+    res.json(student);
   } catch (err) {
     console.error('GET /:id error:', err);
     res.status(500).json({ error: 'Failed to fetch student' });

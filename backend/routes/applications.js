@@ -131,7 +131,7 @@ router.get('/job/:jobId', auth, roles('recruiter', 'admin'), async (req, res) =>
     .select(`
       id, status, stage, stage_history, applied_at,
       student_profiles(
-        full_name, roll_number, branch, cgpa, backlogs,
+        id, full_name, roll_number, branch, cgpa, backlogs,
         skills, resume_url, linkedin_url, github_url, phone,
         users(email)
       )
@@ -143,7 +143,46 @@ router.get('/job/:jobId', auth, roles('recruiter', 'admin'), async (req, res) =>
 
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
+  const applicationsWithResumes = await Promise.all(
+    (data || []).map(async (application) => {
+      const student = application.student_profiles;
+      if (!student?.resume_url) return application;
+
+      const path = student.resume_url;
+
+      if (
+        typeof path !== 'string' ||
+        !path ||
+        !student.id ||
+        !path.startsWith(`${student.id}/`) ||
+        path.includes('..') ||
+        path.startsWith('http')
+      ) {
+        return {
+          ...application,
+          student_profiles: { ...student, resume_url: null },
+        };
+      }
+
+      const { data: signed, error: signError } = await supabase.storage
+        .from('student-resumes')
+        .createSignedUrl(path, 300);
+
+      if (signError) {
+        console.error('Applicant resume signing failed:', signError.message);
+      }
+
+      return {
+        ...application,
+        student_profiles: {
+          ...student,
+          resume_url: signError ? null : signed.signedUrl,
+        },
+      };
+    })
+  );
+
+  res.json(applicationsWithResumes);
 });
 
 // ────────────────────────────────────────────────

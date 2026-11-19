@@ -127,7 +127,7 @@ async function issueOtp(userId, email, name) {
 const registerRules = [
   body('email').isEmail().withMessage('Invalid email address'),
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
-  body('role').isIn(['student', 'recruiter', 'admin']).withMessage('Invalid role'),
+  body('role').isIn(['student', 'recruiter']).withMessage('Invalid role'),
   // full_name only required for students
   body('full_name').if(body('role').equals('student')).notEmpty().withMessage('Full name is required'),
 ];
